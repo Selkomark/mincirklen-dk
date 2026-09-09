@@ -1,0 +1,29 @@
+name: PR temp folder check
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check-temp-cleared:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Fail if tmp/ has anything besides .gitkeep
+        run: |
+          set -euo pipefail
+          if [ -d tmp ]; then
+            extra="$(find tmp -type f ! -name '.gitkeep')"
+            if [ -n "$extra" ]; then
+              echo "::error::tmp/ still has scratch content that must be removed before merging to main:"
+              echo "$extra"
+              echo ""
+              echo "See .agents/skills/pre-release-docs — promote anything worth keeping into a real doc first, then delete the rest."
+              exit 1
+            fi
+          fi
+          echo "tmp/ is clean."

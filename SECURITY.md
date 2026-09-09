@@ -31,6 +31,11 @@ open a public issue for a security problem.
 - Conversation resolution required before merge
 - Force pushes disabled
 - Branch deletion disabled
+- Required status check: `check-temp-cleared` (`.github/workflows/pr-temp-check.yml`)
+  — fails if a PR targeting `main` has anything under `tmp/` besides
+  `tmp/.gitkeep`. `tmp/` is scratch space for a release branch's own
+  working notes; this keeps it from ever landing in `main`. See
+  `.agents/skills/pre-release-docs`.
 - Merged PR branches auto-delete
 - Admins can bypass (`enforce_admins: false`) — intentional: the sole
   maintainer needs to keep shipping solo without a second reviewer.
