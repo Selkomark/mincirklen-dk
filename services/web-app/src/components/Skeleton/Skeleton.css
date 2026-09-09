@@ -1,0 +1,28 @@
+.ds-skeleton {
+  /* A moving-gradient shimmer spends most of its cycle showing only its
+     dark end (the bright band is a narrow slice of a much wider
+     travel distance), which reads as "just dark" in any single frame —
+     exactly the complaint this replaced. A solid, always-visibly-lighter
+     color pulsing in opacity guarantees contrast against the card
+     background (--surface-raised) at every point in the animation, not
+     just briefly. */
+  background: var(--border-strong);
+  animation: ds-skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-skeleton {
+    animation: none;
+    opacity: 0.75;
+  }
+}
+
+@keyframes ds-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}

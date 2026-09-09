@@ -1,0 +1,18 @@
+.ds-figure {
+  margin: 0;
+}
+
+.ds-figure img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+}
+
+.ds-figure__caption {
+  margin-top: var(--space-2);
+  color: var(--text-secondary);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}

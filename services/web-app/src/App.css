@@ -1,0 +1,48 @@
+/* 100dvh (dynamic viewport height) tracks the *currently visible* area —
+   shrinking when a mobile browser's address bar is expanded and, on
+   browsers that honor interactive-widget=resizes-content (index.html),
+   when the on-screen keyboard opens. 100vh is kept as the first
+   declaration purely as a fallback for the small set of browsers that
+   don't understand `dvh` yet — CSS just ignores a value it can't parse,
+   so unsupported browsers silently keep the vh line. Without this, iOS
+   Safari sizes 100vh to its *largest* possible viewport (chrome
+   collapsed), which is taller than what's actually visible on load and
+   never shrinks for the keyboard — the root cause of content (e.g. the
+   session page's message composer) being hidden below the fold on mobile.
+
+   Deliberately a normal in-flow block, NOT position: fixed — fixed-position
+   elements' containing block doesn't reliably follow the
+   interactive-widget-driven layout-viewport shrink on iOS Safari, so
+   pinning the shell with position: fixed + inset: 0 actually stopped it
+   shrinking for the keyboard at all (the composer ended up hidden behind
+   the keyboard, worse than the *not-shrinking* problem this rule already
+   fixes on its own). Known tradeoff of the plain in-flow approach: iOS
+   Safari can still pan the visual viewport to bring a focused input above
+   the keyboard, which can scroll the header out of view above the fold —
+   accepted as lower-impact than an unusable, keyboard-hidden composer. */
+.ds-shell-root {
+  height: 100vh;
+  height: 100dvh;
+}
+
+.ds-shell-view {
+  flex: 1;
+  min-height: 0;
+}
+
+.ds-shell-view--fixed {
+  overflow: hidden;
+}
+
+.ds-shell-view--scroll {
+  overflow: auto;
+}
+
+.ds-inline-link,
+.ds-inline-link:visited {
+  color: var(--accent-safe);
+}
+
+.ds-inline-link:hover {
+  color: var(--accent-safe-hover);
+}

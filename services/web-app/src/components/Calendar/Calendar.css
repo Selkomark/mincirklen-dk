@@ -1,0 +1,97 @@
+.ds-calendar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  font-family: var(--font-family-base);
+  color: var(--text-primary);
+}
+
+.ds-calendar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ds-calendar__title {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+}
+
+.ds-calendar__nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font-size: var(--font-size-lg);
+  cursor: pointer;
+}
+
+.ds-calendar__nav[data-hovered] {
+  background: var(--surface-sunken);
+}
+
+.ds-calendar__nav[data-focus-visible] {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-calendar__grid {
+  border-collapse: collapse;
+}
+
+.ds-calendar__weekday {
+  padding: var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.ds-calendar__cell {
+  width: 36px;
+  height: 36px;
+  text-align: center;
+  vertical-align: middle;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  outline: none;
+}
+
+.ds-calendar__cell[data-outside-month] {
+  color: var(--text-secondary);
+  opacity: 0.5;
+}
+
+.ds-calendar__cell[data-hovered] {
+  background: var(--surface-sunken);
+}
+
+.ds-calendar__cell[data-selected] {
+  background: var(--accent-safe);
+  color: var(--text-on-accent);
+  font-weight: var(--font-weight-medium);
+}
+
+.ds-calendar__cell[data-today]:not([data-selected]) {
+  border: 1px solid var(--accent-safe);
+}
+
+.ds-calendar__cell[data-focus-visible] {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-calendar__cell[data-disabled],
+.ds-calendar__cell[data-unavailable] {
+  color: var(--text-secondary);
+  opacity: 0.35;
+  cursor: not-allowed;
+}

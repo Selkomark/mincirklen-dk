@@ -1,0 +1,86 @@
+{
+  "shared": {
+    "stepOf": "Trin {{step}} af {{total}}",
+    "minutesShort": "{{count}} min",
+    "hours_one": "{{count}} time",
+    "hours_other": "{{count}} timer",
+    "days_one": "{{count}} dag",
+    "days_other": "{{count}} dage",
+    "startsIn": "Starter om {{duration}}",
+    "live": "Live",
+    "startingSoon": "Starter snart",
+    "open": "Åben",
+    "openCalendar": "Åbn kalender"
+  },
+  "sizes": {
+    "upTo": "Op til {{count}}"
+  },
+  "durations": {
+    "openEnded": "Åben slutning"
+  },
+  "errors": {
+    "topicsLoadFailed": "Kunne ikke indlæse emner",
+    "sessionsLoadFailed": "Kunne ikke indlæse åbne cirkler",
+    "moreSessionsLoadFailed": "Kunne ikke indlæse flere cirkler",
+    "previousSessionsLoadFailed": "Kunne ikke indlæse tidligere cirkler"
+  },
+  "choose": {
+    "documentTitle": "Start en cirkel — MinCirklen",
+    "title": "Ny session",
+    "subtitle": "Hvordan vil du gerne begynde",
+    "joinTitle": "Bliv medlem af en eksisterende cirkel",
+    "joinSubtitle": "Gennemse cirkler, der allerede dannes",
+    "newTitle": "Start en ny cirkel",
+    "newSubtitle": "Angiv emne, tid og længde"
+  },
+  "joinPage": {
+    "documentTitle": "Bliv medlem af en cirkel — MinCirklen",
+    "title": "Bliv medlem af en cirkel",
+    "subtitle": "Vælg en cirkel, der passer til din tidsplan",
+    "searchPlaceholder": "Søg cirkler efter navn",
+    "showFilters": "Vis filtre",
+    "topic": "Emne",
+    "any": "Alle",
+    "groupSize": "Gruppestørrelse",
+    "date": "Dato",
+    "duration": "Varighed",
+    "clear": "Ryd",
+    "search": "Søg",
+    "scrollUpHint": "Scroll op for senere cirkler",
+    "scrollDownHint": "Scroll ned for tidligere cirkler",
+    "noMatches": "Ingen åbne cirkler matcher disse filtre",
+    "sessionMeta": "{{timing}} · {{duration}} · {{joined}}/{{capacity}}",
+    "circleFilledUp": "Den cirkel blev lige fyldt op — vælg en anden.",
+    "joinFailed": "Der opstod en fejl, da du skulle blive medlem af cirklen.",
+    "cancel": "Annuller",
+    "back": "Tilbage"
+  },
+  "newPage": {
+    "documentTitle": "Start en ny cirkel — MinCirklen",
+    "title": "Start en ny cirkel",
+    "subtitle": "Angiv emne, tid og hvor mange der kan deltage",
+    "circleName": "Cirklens navn",
+    "circleNameHint": "Vises for andre, der gennemser cirkler at blive medlem af — gør den til din egen",
+    "circleNamePlaceholder": "f.eks. Søndag aften check-in",
+    "topic": "Emne",
+    "dateAndTime": "Dato og tid",
+    "date": "Dato",
+    "time": "Tid",
+    "length": "Længde",
+    "groupSize": "Gruppestørrelse",
+    "cancel": "Annuller",
+    "back": "Tilbage",
+    "continue": "Fortsæt",
+    "beforeYouBegin": "Før du begynder",
+    "startingName": "Starter \"{{name}}\"",
+    "anonymousNote": "Du vises for andre kun som en anonym bruger. Ingen i denne cirkel ser dit navn, foto eller kontooplysninger.",
+    "understandAnonymous": "Jeg forstår, at denne cirkel er anonym som standard",
+    "agreeToThePrefix": "Jeg accepterer",
+    "communityGuidelines": "fællesskabsreglerne",
+    "termsOfService": "servicevilkårene",
+    "liabilityNote": "og accepterer, at MinCirklen ikke er ansvarlig for råd eller resultater, der deles i denne cirkel",
+    "startCircle": "Start cirkel",
+    "createFailed": "Der opstod en fejl, da cirklen skulle startes.",
+    "createdButJoinFailed": "Din cirkel blev oprettet, men det mislykkedes at blive medlem — prøv igen."
+  }
+}

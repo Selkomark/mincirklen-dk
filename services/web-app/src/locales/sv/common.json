@@ -1,0 +1,24 @@
+{
+  "toggleTheme": "Växla tema",
+  "language": "Språk",
+  "toast": {
+    "dismiss": "Stäng"
+  },
+  "nav": {
+    "preferences": "Preferenser",
+    "profile": "Profil",
+    "privacy": "Integritet och data",
+    "logOut": "Logga ut"
+  },
+  "account": {
+    "title": "Inställningar"
+  },
+  "actions": {
+    "saveChanges": "Spara ändringar",
+    "saved": "Sparat."
+  },
+  "errors": {
+    "saveFailed": "Något gick fel när dina ändringar skulle sparas.",
+    "logoutFailed": "Något gick fel vid utloggningen."
+  }
+}

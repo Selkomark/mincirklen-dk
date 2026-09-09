@@ -1,0 +1,72 @@
+.ds-datepicker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-family: var(--font-family-base);
+}
+
+.ds-datepicker__label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.ds-datepicker__group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 44px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+  transition: border-color var(--duration-fast) var(--easing-standard);
+}
+
+.ds-datepicker__group[data-focus-within] {
+  border-color: var(--accent-safe);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-datepicker__input {
+  display: flex;
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+}
+
+.ds-datepicker__segment {
+  padding: 0 1px;
+  outline: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-datepicker__segment[data-placeholder] {
+  color: var(--text-secondary);
+}
+
+.ds-datepicker__segment[data-focused] {
+  background: var(--accent-safe-surface);
+  color: var(--accent-safe);
+  border-radius: 2px;
+}
+
+.ds-datepicker__trigger {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: var(--font-size-md);
+  line-height: 1;
+}
+
+.ds-datepicker__popover {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-lg);
+}
+
+.ds-datepicker__dialog {
+  padding: var(--space-4);
+  outline: none;
+}

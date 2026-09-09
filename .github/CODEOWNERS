@@ -1,0 +1,5 @@
+# Every PR needs a review from an owner before merging (paired with
+# "Require review from Code Owners" in the main branch protection rule).
+# Sole maintainer for now — see .github/workflows and IaC/ in particular,
+# since those are what can trigger WIF-authenticated GCP workflows.
+* @blackavec

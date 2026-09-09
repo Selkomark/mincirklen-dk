@@ -1,0 +1,26 @@
+.ds-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--easing-standard);
+}
+
+.ds-icon-button:hover {
+  background: var(--surface-sunken);
+}
+
+.ds-icon-button--urgent {
+  border-color: var(--signal-urgent);
+  color: var(--signal-urgent);
+}
+
+.ds-icon-button--urgent:hover {
+  background: var(--signal-urgent-surface);
+}

@@ -1,0 +1,31 @@
+[test]
+coverage = true
+# Target is 100%. Bun enforces coverageThreshold per file, not just in
+# aggregate, so this floor has to sit at or below the lowest individually
+# justified file rather than the overall percentage.
+#
+# Note: an empty `class X extends Error {}` body (no explicit constructor)
+# counts as a permanently-uncovered "function" in Bun's coverage tool,
+# regardless of how many times `new X()` runs — every custom error class
+# in this codebase gets an explicit constructor specifically to avoid
+# that. If a new file's function coverage looks wrong despite real tests
+# calling every function, check for this before touching this threshold.
+#
+# Currently-known, reviewed gaps (commented in place at the exact
+# uncovered lines):
+# - services/trpc-api/src/repositories/healthRepository.ts (83.33% lines) —
+#   a defensive branch that can't be triggered against a real Postgres
+#   connection.
+# - packages/shared/src/db/migrate.ts (91.89% lines) — a Kysely
+#   migration-result branch this Kysely version never actually returns.
+# - services/trpc-api/src/services/messageService.ts (lines) and
+#   services/trpc-api/src/controllers/sessionRouter.ts (92% functions) —
+#   a compile-time-only exhaustiveness guard and a
+#   moderation-persistence-failure logging path, neither reachable without
+#   a contrived test.
+#
+# This threshold does not excuse a NEW file from full coverage — that's a
+# code-review check, not something the tool can express per file. Raise
+# it back toward 1.0 if any of the above gaps close.
+coverageThreshold = { lines = 0.80, functions = 0.90 }
+coveragePathIgnorePatterns = ["*.test.ts", "*.integration.test.ts", "**/mincirklen-broken-migration-*/**"]

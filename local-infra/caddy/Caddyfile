@@ -1,0 +1,71 @@
+# Local host-based routing for dev-mincirklen.dk, mirroring the cloud HTTPS
+# Load Balancer's host-based routing (IaC/environments/prod) at a scale
+# that works on a laptop. Bound directly to host ports 80/443 via
+# docker-compose.yml's caddy service, so URLs need no port suffix — this
+# means no other local project can bind 80/443 while this stack is up.
+#
+# auto_https is off because dev-mincirklen.dk isn't a real public domain —
+# ACME can't reach it. TLS instead uses a cert from ./setup-local-certs.sh
+# (mkcert), mounted read-only into /certs.
+{
+	auto_https off
+}
+
+https://dev-mincirklen.dk {
+	tls /certs/dev-mincirklen.dk.pem /certs/dev-mincirklen.dk-key.pem
+
+	# Same-origin path to trpc-api — used by the Google OAuth callback
+	# (registered in Google Cloud Console as
+	# https://dev-mincirklen.dk/api/auth/callback/google) and available
+	# for any other same-origin API call the web-app makes later. A
+	# reverse proxy is transparent to the browser's cookie/origin model,
+	# so mc_session ends up scoped to dev-mincirklen.dk with no CORS or
+	# cross-subdomain cookie Domain attribute needed. handle_path strips
+	# the /api prefix, so trpc-api's existing /health and /trpc/* routes
+	# are unchanged — only /auth/google/start and /auth/callback/google
+	# are new, unprefixed routes on the same app.
+	handle_path /api/* {
+		reverse_proxy trpc-api:8787
+	}
+
+	reverse_proxy web-app:5190
+}
+
+https://trpc.dev-mincirklen.dk {
+	tls /certs/dev-mincirklen.dk.pem /certs/dev-mincirklen.dk-key.pem
+	reverse_proxy trpc-api:8787
+}
+
+https://socket.dev-mincirklen.dk {
+	tls /certs/dev-mincirklen.dk.pem /certs/dev-mincirklen.dk-key.pem
+	reverse_proxy websocket-service:8080
+}
+
+# Dev-only admin UIs for the data stores — no auth of their own, so these
+# are only as safe as the rest of the LAN-reachable stack (see SECURITY.md).
+https://pg.dev-mincirklen.dk {
+	tls /certs/dev-mincirklen.dk.pem /certs/dev-mincirklen.dk-key.pem
+	reverse_proxy adminer:8080
+}
+
+https://redis.dev-mincirklen.dk {
+	tls /certs/dev-mincirklen.dk.pem /certs/dev-mincirklen.dk-key.pem
+	reverse_proxy redisinsight:5540
+}
+
+https://nats.dev-mincirklen.dk {
+	tls /certs/dev-mincirklen.dk.pem /certs/dev-mincirklen.dk-key.pem
+	reverse_proxy nats-nui:31311
+}
+
+# Self-hosted error/log tracking (GlitchTip) — see SECURITY.md's
+# "Error/log tracking" section. Not published to a host port either, same
+# posture as the admin UIs above.
+https://glitchtip.dev-mincirklen.dk {
+	tls /certs/dev-mincirklen.dk.pem /certs/dev-mincirklen.dk-key.pem
+	reverse_proxy glitchtip:8000
+}
+
+http://dev-mincirklen.dk, http://trpc.dev-mincirklen.dk, http://socket.dev-mincirklen.dk, http://pg.dev-mincirklen.dk, http://redis.dev-mincirklen.dk, http://nats.dev-mincirklen.dk, http://glitchtip.dev-mincirklen.dk {
+	redir https://{host}{uri} permanent
+}

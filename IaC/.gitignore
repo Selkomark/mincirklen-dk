@@ -1,0 +1,20 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Environment-specific tfvars often carry values worth keeping out of git
+# even though they're not secret values themselves (see modules/secrets) —
+# keep example files, ignore the real ones.
+*.tfvars
+*.auto.tfvars
+!*.tfvars.example
+!*.auto.tfvars.example

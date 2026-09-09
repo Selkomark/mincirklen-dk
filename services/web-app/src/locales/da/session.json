@@ -1,0 +1,198 @@
+{
+  "communityRules": {
+    "anonymity": {
+      "title": "Beskyt din anonymitet",
+      "description": "Del aldrig dit fulde navn, telefonnummer, adresse, e-mail eller andre identificerende oplysninger i en cirkel — hverken dine egne eller andres."
+    },
+    "noAdvertising": {
+      "title": "Ingen reklame eller opsøgende salg",
+      "description": "Undlad at promovere en virksomhed, tjeneste eller et produkt, og bed ikke andre brugere om at betale for noget."
+    },
+    "noEndorsements": {
+      "title": "Ingen anbefalinger eller godkendelser",
+      "description": "Anbefal eller godkend ikke specifikke behandlere, behandlinger eller eksterne tjenester. Dette er ikke et henvisningssted."
+    },
+    "supportDontDirect": {
+      "title": "Støt, styr ikke",
+      "description": "Del din egen oplevelse, ikke medicinsk eller juridisk rådgivning. Det er altid nok bare at lytte."
+    },
+    "reportOrLeave": {
+      "title": "Rapportér eller forlad når som helst",
+      "description": "Hvis noget føles forkert, eller du er i krise, så brug Rapportér eller Kriseressourcer med det samme. Ingen behøver forklare, hvorfor de forlod."
+    }
+  },
+  "guidelinesModal": {
+    "stepOf": "Trin {{step}} af {{total}}",
+    "beforeYouJoin": "Før du deltager",
+    "nonNegotiable": "Disse regler er ikke til forhandling og gælder for alle cirkler. Overtrædelse kan medføre, at en session afsluttes, eller en konto fjernes.",
+    "understandAnonymous": "Jeg forstår, at cirkler er anonyme som standard",
+    "readAndAgreeToThePrefix": "Jeg har læst og accepterer",
+    "communityGuidelines": "fællesskabsreglerne",
+    "and": "og",
+    "privacyPolicy": "privatlivspolitikken",
+    "agreeToThePrefix": "Jeg accepterer",
+    "termsOfService": "servicevilkårene",
+    "liabilityNote": "og accepterer, at MinCirklen ikke er ansvarlig for råd eller resultater, der deles i en cirkel",
+    "back": "Tilbage",
+    "continue": "Fortsæt",
+    "next": "Næste",
+    "saving": "Gemmer…",
+    "agreeAndContinue": "Accepter og fortsæt"
+  },
+  "member": {
+    "onlineNow": "{{name}} · online nu"
+  },
+  "reportModal": {
+    "title": "Rapportér denne session",
+    "description": "Fortæl os, hvad der skete. Din rapport går til en moderator og forbliver anonym — ingen i cirklen bliver underrettet.",
+    "whoIsThisAbout": "Hvem handler dette om?",
+    "selectAllThatApply": "(vælg alle, der gælder)",
+    "nobodyElseJoined": "Ingen andre er endnu blevet medlem af denne session.",
+    "whatsGoingOn": "Hvad foregår der?",
+    "describePlaceholder": "Beskriv, hvad der skete...",
+    "cancel": "Annuller",
+    "submitted": "Rapport om {{about}} indsendt — en moderator gennemgår den.",
+    "submitError": "Der gik noget galt under indsendelsen af din rapport. Prøv igen.",
+    "submit": "Indsend rapport"
+  },
+  "newSessionModal": {
+    "title": "Ny session",
+    "tabListLabel": "Bliv medlem af eller start en cirkel",
+    "joinTab": "Bliv medlem af en cirkel",
+    "createTab": "Start en cirkel"
+  },
+  "accountModal": {
+    "back": "Tilbage",
+    "profile": "Profil",
+    "profileUnavailable": "Din profil er ikke tilgængelig lige nu.",
+    "firstName": "Fornavn",
+    "lastName": "Efternavn",
+    "gender": "Køn",
+    "genderPlaceholder": "Vælg dit køn",
+    "gender_male": "Mand",
+    "gender_female": "Kvinde",
+    "gender_other": "Andet",
+    "country": "Land",
+    "countryPlaceholder": "Vælg dit land",
+    "mobileNumber": "Mobilnummer",
+    "mobileHint": "Mobilnummeret bruges kun til kontosikkerhed — vises aldrig i en cirkel.",
+    "stayAnonymous": "Forbliv anonym i cirkler",
+    "stayAnonymousHint": "Andre brugere ser \"Anonym\", ikke dit navn",
+    "appearance": "Udseende",
+    "appearanceHint": "Skift mellem lyst og mørkt",
+    "privacyNote": "Dit navn og dine kontaktoplysninger er krypteret i hvile og vises aldrig for andre medlemmer — cirkler ser altid kun et anonymt mærkat, medmindre du har valgt at vise dit navn.",
+    "readFullPrivacyPolicy": "Læs hele privatlivspolitikken",
+    "trainingConsent": "Tillad AI-træning",
+    "trainingConsentHint": "Slået fra som standard — slå kun dette til, hvis du er tryg ved, at dine beskeder bruges til at træne vores AI",
+    "trainingConsentInfoLabel": "Hvorfor vi spørger om dette",
+    "trainingConsentInfo": "Vi bruger anonymiserede beskeder til at træne og forbedre vores AI-moderation — det hjælper os med at fange det, der betyder noget, og gør platformen mere sikker og bedre for alle her, ikke kun dig.",
+    "dataExport": "Download dine data",
+    "dataExportHint": "Få en kopi af din profil, dine beskeder og din kontoaktivitet i et maskinlæsbart format.",
+    "dataExportRequest": "Anmod om mine data",
+    "dataExportPreparing": "Forbereder din eksport — det kan tage et par minutter.",
+    "dataExportDownload": "Download",
+    "dataExportExpiresOn": "Tilgængelig indtil {{date}}",
+    "dataExportExpired": "Ikke længere tilgængelig",
+    "dataExportFailed": "Der opstod en fejl med denne eksport.",
+    "dataExportRequestFailed": "Der opstod en fejl, da dine data skulle anmodes om. Prøv igen.",
+    "dataExportDownloadFailed": "Der opstod en fejl med at starte downloadet. Prøv igen.",
+    "deleteAccount": "Slet konto",
+    "deleteAccountHint": "Slet din konto og alt tilknyttet permanent. Dette kan ikke fortrydes.",
+    "deleteAccountButton": "Slet min konto",
+    "deleteAccountConfirmTitle": "Slet din konto?",
+    "deleteAccountConfirmBody": "Dette sletter permanent din profil, dine beskeder og din kontoaktivitet. Dette kan ikke fortrydes.",
+    "deleteAccountConfirmLabel": "Skriv DELETE for at bekræfte",
+    "deleteAccountConfirmCancel": "Annuller",
+    "deleteAccountConfirmAccept": "Slet min konto permanent",
+    "deleteAccountFailed": "Der opstod en fejl ved sletning af din konto. Prøv igen.",
+    "preferencesUnavailable": "Dine præferencer er ikke tilgængelige lige nu.",
+    "language": "Sprog",
+    "timezone": "Tidszone",
+    "systemDefaultShort": "Systemstandard",
+    "systemDefault": "Systemstandard — {{zone}} ({{offset}})"
+  },
+  "status": {
+    "ended": "Denne session er afsluttet",
+    "startsAt": "Starter {{time}} · anonymt som standard"
+  },
+  "emptyState": {
+    "ended": "Denne session er afsluttet. Transskriptioner er kun synlige for brugere under den aktive runde.",
+    "forming": "Denne cirkel er ikke startet endnu. Du får besked, når runden begynder.",
+    "waitingForFirstMessage": "Venter på den første besked."
+  },
+  "sidebar": {
+    "liveNow": "Live nu",
+    "ended": "Afsluttet",
+    "notStarted": "Ikke startet",
+    "account": "Konto",
+    "newSession": "Ny session",
+    "searchSessions": "Søg sessioner",
+    "noSessionsMatch": "Ingen sessioner matcher den søgning",
+    "loadMore": "Indlæs flere"
+  },
+  "panel": {
+    "toggleMenu": "Skift menu",
+    "showOfflineParticipants_one": "Vis {{count}} offline-deltager",
+    "showOfflineParticipants_other": "Vis {{count}} offline-deltagere",
+    "notCurrentlyOnline": "Ikke online lige nu",
+    "userCount_one": "{{count}} bruger",
+    "userCount_other": "{{count}} brugere",
+    "participantsButton_one": "Deltagere, {{count}} online",
+    "participantsButton_other": "Deltagere, {{count}} online",
+    "onlineSectionLabel": "Online",
+    "offlineToggle_one": "Offline ({{count}})",
+    "offlineToggle_other": "Offline ({{count}})",
+    "participantsTitle": "Deltagere",
+    "closeParticipants": "Luk"
+  },
+  "composer": {
+    "memberJoined": "{{name}} tilsluttede sig cirklen",
+    "newMessages_one": "{{count}} ny besked",
+    "newMessages_other": "{{count}} nye beskeder",
+    "sendingIn": "Sender om {{count}}s",
+    "skippingIn": "Springer over om {{count}}s",
+    "keepTypingToPause": "bliv ved med at skrive for at pause",
+    "placeholder": "Skriv...",
+    "send": "Send",
+    "sendOptions": "Sendemuligheder",
+    "autoSendToggle": "Send automatisk, når tiden løber ud",
+    "sessionNotActive": "Sessionen er ikke aktiv",
+    "itsYourTurn": "Det er din tur",
+    "hasTheFloor": "{{name}} har ordet",
+    "waitingForNextUser": "Venter på næste bruger",
+    "onlyYouCanSeeThis": "Kun du kan se dette",
+    "reportFalsePositive": "Bed om et nyt kig",
+    "falsePositiveReported": "Vi kigger på det igen",
+    "falsePositiveReportedNotice": "Tak — vi kigger på det."
+  },
+  "rightPanel": {
+    "essentialPages": "Vigtige sider",
+    "transparency": "Gennemsigtighed",
+    "ifInCrisis": "Hvis du er i krise",
+    "crisisResources": "Kriseressourcer",
+    "reportThisSession": "Rapportér denne session"
+  },
+  "crisisModal": {
+    "title": "Du er ikke alene lige nu",
+    "notice": "Det, du har skrevet her, bliver kun mellem dig og os — resten af gruppen ser det ikke. Nogen vil kigge på det bagefter, hvis det ikke behøvede at blive holdt tilbage."
+  },
+  "centerPanelError": {
+    "errorCode": "FEJL {{code}}",
+    "notFoundTitle": "Session ikke fundet",
+    "notFoundMessage": "Den session findes ikke, eller den kan være blevet fjernet.",
+    "fullTitle": "Denne cirkel er fuld",
+    "fullMessage": "Denne cirkel har allerede nået sin kapacitet.",
+    "genericTitle": "Der opstod en fejl",
+    "genericMessage": "Vi kunne ikke indlæse denne session lige nu. Prøv igen."
+  },
+  "errors": {
+    "agreementFailed": "Der opstod en fejl under registrering af din accept. Prøv igen.",
+    "messageHeld": "Din besked blev tilbageholdt til gennemgang og blev ikke sendt til cirklen.",
+    "sendFailed": "Der opstod en fejl under afsendelse af beskeden.",
+    "skipFailed": "Der opstod en fejl, da din tur skulle springes over.",
+    "recentSessionsLoadFailed": "Kunne ikke indlæse seneste sessioner",
+    "moreRecentSessionsLoadFailed": "Kunne ikke indlæse flere sessioner",
+    "sessionLoadFailed": "Kunne ikke indlæse denne session lige nu.",
+    "earlierMessagesLoadFailed": "Kunne ikke indlæse tidligere beskeder lige nu."
+  }
+}

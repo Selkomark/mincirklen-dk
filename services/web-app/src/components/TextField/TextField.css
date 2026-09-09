@@ -1,0 +1,48 @@
+.ds-textfield {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ds-textfield__label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.ds-textfield__input {
+  height: 44px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-md);
+  transition: border-color var(--duration-fast) var(--easing-standard);
+}
+
+.ds-textfield__input:hover {
+  border-color: var(--border-strong);
+}
+
+.ds-textfield__input:focus-visible {
+  border-color: var(--accent-safe);
+}
+
+.ds-textfield__input:-webkit-autofill,
+.ds-textfield__input:-webkit-autofill:hover,
+.ds-textfield__input:-webkit-autofill:focus,
+.ds-textfield__input:-webkit-autofill:active,
+.ds-textfield__input:autofill {
+  -webkit-text-fill-color: var(--text-primary);
+  -webkit-box-shadow: 0 0 0 1000px var(--surface-raised) inset;
+  box-shadow: 0 0 0 1000px var(--surface-raised) inset;
+  caret-color: var(--text-primary);
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.ds-textfield__hint {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}

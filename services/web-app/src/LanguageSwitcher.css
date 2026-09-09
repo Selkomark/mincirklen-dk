@@ -1,0 +1,9 @@
+/* Compact header control — smaller than the design system's default
+   44px-tall Select (used in forms) to sit comfortably next to the 40px
+   IconButton (ThemeToggle) it's always paired with. No visible label:
+   the current language name in the trigger is label enough in a header. */
+.language-switcher .ds-select__trigger {
+  height: 36px;
+  padding: 0 var(--space-3);
+  font-size: var(--font-size-sm);
+}

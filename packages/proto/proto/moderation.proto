@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package mincirklen.moderation.v1;
+
+service ModerationService {
+  rpc Classify(ClassifyRequest) returns (ClassifyResponse);
+}
+
+message ClassifyRequest {
+  string session_id = 1;
+  string message = 2;
+}
+
+message ClassifyResponse {
+  // One of "pass" / "flag" / "crisis" — see
+  // @mincirklen/shared's classificationSchema, which the caller
+  // (moderationServiceAdapter.ts) re-validates this against.
+  string result = 1;
+}

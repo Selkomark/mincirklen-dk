@@ -1,0 +1,106 @@
+name: IaC apply
+
+# Section 7.4: a prod deployment is always an explicit, reviewable, tagged
+# event — never a plain branch push. terraform plan runs first and its
+# output is visible before the `production` GitHub Environment's required
+# reviewers approve the job; only then does apply run. This is the one
+# pipeline in the whole system allowed to mutate real infrastructure.
+on:
+  push:
+    tags:
+      - "prod-*"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: iac-apply-prod
+  cancel-in-progress: false # never cancel an in-flight apply
+
+defaults:
+  run:
+    working-directory: IaC/environments/prod
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      plan-exitcode: ${{ steps.plan.outputs.exitcode }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: "1.7.5"
+
+      - id: auth
+        name: Authenticate to GCP (Workload Identity Federation)
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_TERRAFORM_SERVICE_ACCOUNT }}
+
+      - name: Terraform init
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ vars.GCP_TERRAFORM_STATE_BUCKET }}"
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        id: plan
+        run: |
+          terraform plan -no-color -input=false -detailed-exitcode \
+            -var="project_id=${{ vars.GCP_PROJECT_ID }}" \
+            -out=tfplan
+        # detailed-exitcode: 0 = no changes, 1 = error, 2 = changes present.
+        # Both 0 and 2 are fine outcomes here; only 1 should fail the job.
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: tfplan-${{ github.ref_name }}
+          path: IaC/environments/prod/tfplan
+          retention-days: 14
+
+  apply:
+    needs: plan
+    runs-on: ubuntu-latest
+    # This is the manual approval gate (section 7.4). Configure the
+    # `production` environment's required reviewers once in repo settings —
+    # see IaC/README.md.
+    environment: production
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: "1.7.5"
+
+      - uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_TERRAFORM_SERVICE_ACCOUNT }}
+
+      - name: Terraform init
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ vars.GCP_TERRAFORM_STATE_BUCKET }}"
+
+      - name: Download plan artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: tfplan-${{ github.ref_name }}
+          path: IaC/environments/prod
+
+      - name: Terraform apply
+        run: terraform apply -input=false -auto-approve tfplan
+
+  # web-app and moderation-service pipelines (their own repos/workflows,
+  # section 7.3) watch *this* workflow via a workflow_run trigger and must
+  # not deploy application code unless the run above completes with
+  # conclusion: success for the matching prod-* tag — implemented on their
+  # side, not here, since neither pipeline exists yet (out of scope for this
+  # phase — see tech spec section 7.3 on repo/pipeline split).

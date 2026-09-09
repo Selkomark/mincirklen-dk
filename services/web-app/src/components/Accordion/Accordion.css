@@ -1,0 +1,66 @@
+.ds-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-family: var(--font-family-base);
+}
+
+.ds-accordion-item {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.ds-accordion-item__heading {
+  margin: 0;
+}
+
+.ds-accordion-item__trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4);
+  background: var(--surface-raised);
+  border: none;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  text-align: left;
+}
+
+.ds-accordion-item__trigger[data-hovered] {
+  background: var(--surface-sunken);
+}
+
+.ds-accordion-item__trigger[data-focus-visible] {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.ds-accordion-item__chevron {
+  color: var(--text-secondary);
+  transition: transform var(--duration-fast) var(--easing-standard);
+}
+
+.ds-accordion-item[data-expanded] .ds-accordion-item__chevron {
+  transform: rotate(180deg);
+}
+
+.ds-accordion-item__panel {
+  padding: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
+}
+
+/* The browser sets hidden="until-found" (not plain `hidden`) so the panel stays
+   find-in-page searchable, which triggers content-visibility: hidden instead of
+   display: none — that hides the text but leaves the padding/border box behind.
+   We don't wire up the beforematch find-in-page flow, so force it fully closed. */
+.ds-accordion-item__panel[hidden] {
+  display: none;
+}

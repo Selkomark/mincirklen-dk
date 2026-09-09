@@ -1,0 +1,29 @@
+@import './tokens/index.css';
+
+/* Belt-and-suspenders for index.html's viewport `user-scalable=no` /
+   `maximum-scale=1` — modern mobile browsers (iOS Safari since iOS 10,
+   recent Chrome) deliberately ignore those for accessibility reasons, so
+   pinch-zoom still works through the meta tag alone. `touch-action: pan-x
+   pan-y` on the root element blocks the pinch-zoom gesture at the CSS
+   level instead (panning/scrolling stays allowed; zoom is simply not in
+   the allowed-behaviors list) — the actual mechanism that still works. */
+html {
+  touch-action: pan-x pan-y;
+}
+
+/* Without this, `body` is free to grow taller than the visible viewport
+   and scroll on its own — and mobile Safari's default "scroll the
+   focused input into view" behavior on tapping a text field does exactly
+   that, on top of (not instead of) the layout-viewport resize already
+   triggered by index.html's interactive-widget=resizes-content. The
+   combination pushed our fixed-height app shell (.ds-shell-root, see
+   App.css) up out of view and left blank body background showing below
+   it. Pinning body to exactly 100%/100dvh with nothing else to scroll
+   removes the room for that extra scroll to happen. */
+html,
+body {
+  height: 100%;
+  height: 100dvh;
+  margin: 0;
+  overflow: hidden;
+}

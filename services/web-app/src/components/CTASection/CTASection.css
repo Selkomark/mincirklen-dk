@@ -1,0 +1,36 @@
+/* Higher specificity than .ds-section--raised alone, so this wins regardless
+   of CSS import order. */
+.ds-cta-section.ds-section--raised {
+  background: var(--accent-safe);
+}
+
+.ds-cta-section__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  text-align: center;
+  max-width: 560px;
+  margin-inline: auto;
+}
+
+.ds-cta-section__title {
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-on-accent);
+}
+
+.ds-cta-section__body {
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-md);
+  color: var(--text-on-accent);
+  opacity: 0.9;
+}
+
+.ds-cta-section__actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  justify-content: center;
+}

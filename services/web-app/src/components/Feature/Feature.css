@@ -1,0 +1,38 @@
+.ds-feature {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.ds-feature__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-safe-surface);
+  color: var(--accent-safe);
+  font-size: var(--font-size-xl);
+}
+
+.ds-feature__title {
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+}
+
+.ds-feature__body {
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: var(--line-height-base);
+}
+
+@media (max-width: 640px) {
+  .ds-feature {
+    align-items: center;
+    text-align: center;
+  }
+}

@@ -1,0 +1,51 @@
+.ds-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  font-family: var(--font-family-base);
+}
+
+.ds-tabs__list {
+  display: flex;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.ds-tabs__tab {
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  outline: none;
+  transition:
+    color var(--duration-fast) var(--easing-standard),
+    border-color var(--duration-fast) var(--easing-standard);
+}
+
+.ds-tabs__tab[data-hovered] {
+  color: var(--text-primary);
+}
+
+.ds-tabs__tab[data-selected] {
+  color: var(--accent-safe);
+  border-color: var(--accent-safe);
+}
+
+.ds-tabs__tab[data-focus-visible] {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-tabs__tab[data-disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ds-tabs__panel {
+  outline: none;
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+}

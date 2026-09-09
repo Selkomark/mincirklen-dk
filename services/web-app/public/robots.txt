@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+Disallow: /MinCirklen.dk/new
+Disallow: /MinCirklen.dk/login
+Disallow: /MinCirklen.dk/register
+Disallow: /MinCirklen.dk/s/
+Disallow: /MinCirklen.dk/system-design
+
+Sitemap: https://selkomark.github.io/MinCirklen.dk/sitemap.xml

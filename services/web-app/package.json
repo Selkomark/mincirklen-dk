@@ -1,0 +1,55 @@
+{
+  "name": "mincirklen-design-system",
+  "private": true,
+  "version": "0.1.0",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "type": "module",
+  "main": "./dist/index.es.js",
+  "module": "./dist/index.es.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.es.js"
+    },
+    "./code-editor": {
+      "types": "./dist/components/CodeEditor/index.d.ts",
+      "import": "./dist/code-editor/code-editor.es.js"
+    },
+    "./style.css": "./dist/style.css",
+    "./code-editor.css": "./dist/code-editor/style.css"
+  },
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "build": "vite build --config vite.lib.config.ts && vite build --config vite.lib.code-editor.config.ts && tsc -p tsconfig.lib.json",
+    "build:docs": "vite build --mode catalog",
+    "preview": "vite preview"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.1"
+  },
+  "dependencies": {
+    "@internationalized/date": "^3.12.3",
+    "@monaco-editor/react": "^4.7.0",
+    "@sentry/react": "^10.72.0",
+    "i18next": "^26.4.0",
+    "i18next-browser-languagedetector": "^8.2.1",
+    "i18next-resources-to-backend": "^1.2.3",
+    "monaco-editor": "^0.56.0",
+    "msgpackr": "^2.1.0",
+    "react-aria-components": "^1.20.0",
+    "react-i18next": "^17.0.12",
+    "vanilla-cookieconsent": "^3.1.0"
+  }
+}

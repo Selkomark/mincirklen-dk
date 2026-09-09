@@ -1,0 +1,20 @@
+.ds-spinner {
+  display: inline-flex;
+  flex: none;
+  animation: ds-spinner-rotate 0.8s linear infinite;
+}
+
+/* A frozen ring reads as broken, not "reduced" — so unlike most motion in
+   this design system, prefers-reduced-motion turns the spin off entirely
+   rather than zeroing its duration (see tokens/motion.css). */
+@media (prefers-reduced-motion: reduce) {
+  .ds-spinner {
+    animation: none;
+  }
+}
+
+@keyframes ds-spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "toggleTheme": "Skift tema",
+  "language": "Sprog",
+  "toast": {
+    "dismiss": "Luk"
+  },
+  "nav": {
+    "preferences": "Præferencer",
+    "profile": "Profil",
+    "privacy": "Privatliv og data",
+    "logOut": "Log ud"
+  },
+  "account": {
+    "title": "Indstillinger"
+  },
+  "actions": {
+    "saveChanges": "Gem ændringer",
+    "saved": "Gemt."
+  },
+  "errors": {
+    "saveFailed": "Der opstod en fejl, da dine ændringer skulle gemmes.",
+    "logoutFailed": "Der opstod en fejl under log ud."
+  }
+}

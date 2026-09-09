@@ -1,0 +1,48 @@
+.ds-hero__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 640px;
+}
+
+.ds-hero__content--center {
+  margin-inline: auto;
+  align-items: center;
+  text-align: center;
+}
+
+.ds-hero__content--left {
+  align-items: flex-start;
+  text-align: left;
+}
+
+/* Split layout: content + media side by side, targeting Section's own
+   Container so Hero doesn't need to reimplement container/media wiring. */
+.ds-hero--split .ds-container {
+  display: flex;
+  align-items: center;
+  gap: var(--space-7);
+}
+
+.ds-hero--split .ds-hero__content {
+  flex: 1;
+  max-width: none;
+}
+
+.ds-hero__media {
+  flex: 1;
+  min-width: 0;
+}
+
+.ds-hero__media img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-lg);
+}
+
+@media (max-width: 768px) {
+  .ds-hero--split .ds-container {
+    flex-direction: column;
+  }
+}

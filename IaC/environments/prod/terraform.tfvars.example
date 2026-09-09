@@ -1,0 +1,7 @@
+// Copy to terraform.tfvars (gitignored) for local runs, or pass the same
+// values as -var/-var-file in CI. project_id has no default on purpose —
+// see variables.tf.
+
+project_id = "mincirklen-prod"
+region     = "europe-west1"
+domain     = "mincirklen.dk"

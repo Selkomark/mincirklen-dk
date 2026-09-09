@@ -1,0 +1,96 @@
+syntax = "proto3";
+
+// trpc-api's internal calls to websocket-service — see
+// services/websocket-service/src/rpcServer.ts (server) and
+// services/trpc-api/src/adapters/websocketServiceAdapter.ts (client).
+// Not the browser-facing /ws WebSocket endpoint, and not exposed to the
+// host — see docker-compose.yml.
+package mincirklen.internal.v1;
+
+service InternalService {
+  // Relays an already-persisted chat message for live delivery.
+  rpc PublishMessage(PublishMessageRequest) returns (PublishMessageResponse) {}
+
+  // Redis-backed live turn/roster/presence state for one session.
+  rpc GetTurnState(GetTurnStateRequest) returns (GetTurnStateResponse) {}
+
+  // Registers a new roster member (turn order) for a session.
+  rpc JoinRoster(JoinRosterRequest) returns (JoinRosterResponse) {}
+
+  // Relays a resolved display-name change to every connected viewer.
+  rpc NotifyProfileUpdated(NotifyProfileUpdatedRequest) returns (NotifyProfileUpdatedResponse) {}
+
+  rpc ClaimTurn(ClaimTurnRequest) returns (ClaimTurnResponse) {}
+  rpc ReleaseTurnClaim(ReleaseTurnClaimRequest) returns (ReleaseTurnClaimResponse) {}
+  rpc AdvanceTurn(AdvanceTurnRequest) returns (AdvanceTurnResponse) {}
+}
+
+message RosterEntry {
+  string user_id = 1;
+  int32 turn_order = 2;
+}
+
+message PublishMessageRequest {
+  string session_id = 1;
+  string message_id = 2;
+  string user_id = 3;
+  string body = 4;
+  string type = 5;
+  // ISO 8601 — mirrors MessageRow.createdAt (a Date on the trpc-api side).
+  string created_at = 6;
+}
+
+message PublishMessageResponse {}
+
+message GetTurnStateRequest {
+  string session_id = 1;
+}
+
+message GetTurnStateResponse {
+  // Empty string means "no current turn holder" (proto3 has no null;
+  // mirrors the JSON API's `currentTurnUserId: string | null`).
+  string current_turn_user_id = 1;
+  repeated RosterEntry roster = 2;
+  repeated string online_user_ids = 3;
+}
+
+message JoinRosterRequest {
+  string session_id = 1;
+  string user_id = 2;
+  int32 turn_order = 3;
+}
+
+message JoinRosterResponse {}
+
+message NotifyProfileUpdatedRequest {
+  string session_id = 1;
+  string user_id = 2;
+  // Whether display_name is meaningful — proto3 can't distinguish "" from
+  // unset, and null (anonymous) is a real, distinct value here.
+  optional string display_name = 3;
+}
+
+message NotifyProfileUpdatedResponse {}
+
+message ClaimTurnRequest {
+  string session_id = 1;
+  string user_id = 2;
+}
+
+message ClaimTurnResponse {}
+
+message ReleaseTurnClaimRequest {
+  string session_id = 1;
+}
+
+message ReleaseTurnClaimResponse {}
+
+message AdvanceTurnRequest {
+  string session_id = 1;
+}
+
+message AdvanceTurnResponse {
+  // Empty string means "no next turn holder" — same convention as
+  // GetTurnStateResponse.current_turn_user_id.
+  string next_turn_user_id = 1;
+}

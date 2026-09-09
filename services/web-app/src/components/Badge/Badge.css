@@ -1,0 +1,29 @@
+.ds-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.ds-badge--neutral {
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+}
+
+.ds-badge--safe {
+  background: var(--accent-safe-surface);
+  color: var(--accent-safe);
+}
+
+.ds-badge--info {
+  background: var(--accent-info-surface);
+  color: var(--accent-info);
+}
+
+.ds-badge--urgent {
+  background: var(--signal-urgent-surface);
+  color: var(--signal-urgent);
+}

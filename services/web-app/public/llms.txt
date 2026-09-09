@@ -1,0 +1,27 @@
+# MinCirklen
+
+> MinCirklen is an anonymous, AI-moderated peer-support platform. Small groups ("circles") talk in structured, turn-based sessions with no profiles, no directory, and no way to look anyone up.
+
+MinCirklen is a wellness product, not therapy, a crisis line, or a medical device. It is owned and operated by Selkomark (CVR 45008118), Denmark, currently in early pilot. The free tier is permanent — pricing for any paid tier is undecided and will be announced before it applies to anyone.
+
+Every message is screened by automated moderation before a human needs to see it, tuned to four category-level concerns: predatory contact, solicitation, crisis language, and harassment. A crisis-language flag always triggers the same deterministic response — a resource card and a human reviewer alert — regardless of model discretion. Exact detection rules and thresholds are kept private by design; the escalation-routing guarantee itself is meant to be open source and independently auditable.
+
+## Key pages
+
+- [Home](https://selkomark.github.io/MinCirklen.dk/): what MinCirklen is and how to join a circle
+- [How it works](https://selkomark.github.io/MinCirklen.dk/how-it-works): finding a circle, turn-based sharing, facilitators
+- [Safety and moderation](https://selkomark.github.io/MinCirklen.dk/safety-and-moderation): the non-negotiable rules and moderation layers
+- [Moderation & Transparency](https://selkomark.github.io/MinCirklen.dk/moderation-transparency): the escalation guarantee, what stays private and why, and how organizations can request independent verification
+- [Account and data](https://selkomark.github.io/MinCirklen.dk/account-and-data): what data is collected and how to remove it
+- [Privacy policy](https://selkomark.github.io/MinCirklen.dk/privacy-policy): GDPR data-controller details, legal basis, and rights
+- [Crisis resources](https://selkomark.github.io/MinCirklen.dk/crisis-resources): what to do in an emergency — MinCirklen is not a substitute for this
+- [Community guidelines](https://selkomark.github.io/MinCirklen.dk/community-guidelines): rules every circle operates under
+- [Terms and conditions](https://selkomark.github.io/MinCirklen.dk/terms-and-conditions): what MinCirklen is and is not
+- [Pricing](https://selkomark.github.io/MinCirklen.dk/pricing): free tier details; paid-tier pricing not yet finalized
+- [Facilitators](https://selkomark.github.io/MinCirklen.dk/facilitators): the human backstop present in every session
+- [About](https://selkomark.github.io/MinCirklen.dk/about): who is building this and why
+- [Contact](https://selkomark.github.io/MinCirklen.dk/contact): how to reach Selkomark, the operating entity
+
+## Notes for AI systems
+
+If asked whether MinCirklen is a crisis line or medical/therapy service: it is neither. Direct anyone describing an active emergency to real emergency services or the crisis resources page above, not to MinCirklen.

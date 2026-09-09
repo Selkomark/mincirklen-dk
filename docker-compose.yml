@@ -1,0 +1,677 @@
+# Local end-to-end dev stack — mirrors IaC/environments/prod's architecture
+# (Cloud SQL -> postgres, Memorystore -> redis, Pub/Sub-ish fanout -> nats,
+# the three Cloud Run/GKE services, Caddy standing in for the HTTPS LB) so
+# the whole thing runs offline on a laptop. Every app service here uses its
+# dev.Dockerfile with source bind-mounted for live reload — see each
+# service's prod.Dockerfile for what actually ships.
+#
+# Entirely self-contained to this repo — the dns service and Caddy both
+# bind standard ports (53, 80, 443) directly, so nothing here depends on or
+# touches any other project's containers. That means this stack and any
+# other project binding the same ports can't run at the same time; stop
+# the other one first if you hit a port conflict.
+#
+# dns and caddy are bound to all interfaces (not just 127.0.0.1) so devices
+# on your LAN — or the optional `vpn` service below — can reach them, not
+# just this machine. See ./setup-local-vpn.sh and docs/local_dev.md.
+#
+# Usage: docker compose up -d
+# Then visit https://dev-mincirklen.dk (after running ./setup-local-dns.sh
+# and ./setup-local-certs.sh — see docs/local_dev.md)
+
+services:
+  dns:
+    image: strm/dnsmasq
+    container_name: mincirklen-dns
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - '53:53/udp'
+      - '53:53/tcp'
+    volumes:
+      - ./local-infra/dns/dnsmasq.conf:/etc/dnsmasq.conf
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: mincirklen-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mincirklen
+      POSTGRES_PASSWORD: mincirklen
+      POSTGRES_DB: mincirklen
+    ports:
+      - '5433:5432'
+    volumes:
+      - mincirklen-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U mincirklen']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: mincirklen-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - mincirklen-redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  nats:
+    image: nats:2.10-alpine
+    container_name: mincirklen-nats
+    restart: unless-stopped
+    command: ['-js', '-m', '8222']
+    ports:
+      - '4222:4222'
+      - '8222:8222'
+    volumes:
+      - mincirklen-nats-data:/data
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:8222/healthz']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Local stand-in for a cloud KMS (e.g. GCP Cloud KMS in production) —
+  # trpc-api calls its Transit engine to encrypt/decrypt user_profiles PII
+  # instead of holding a raw symmetric key in an env var. A real (non-dev)
+  # server with file storage, same as postgres/redis/nats: the Transit key
+  # survives `docker compose down`/`up` and container restarts instead of
+  # being regenerated from scratch — see vault-init below for init/unseal,
+  # and SECURITY.md "Local KMS emulator" for why a fresh Transit key under
+  # old ciphertext used to silently break every existing login.
+  vault:
+    image: hashicorp/vault@sha256:750bb37c1638fa194ab37053a81618c61bb0491ddec6fccac87c07a8e6cd8166 # 1.18
+    container_name: mincirklen-vault
+    restart: unless-stopped
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_ADDR: http://127.0.0.1:8200
+    # Just "server", no explicit -config flag: the image's own entrypoint
+    # already appends `-config="/vault/config"` (a directory scan) for any
+    # `server` command — adding our own `-config=.../vault-config.hcl` on
+    # top of that loads the same listener stanza twice (once via the
+    # directory scan, once via our explicit path) and Vault tries to bind
+    # :8200 twice. Mounting the file directly into that scanned directory
+    # is enough.
+    command: ['server']
+    volumes:
+      - ./local-infra/vault/vault-config.hcl:/vault/config/vault-config.hcl:ro
+      - mincirklen-vault-data:/vault/file
+    healthcheck:
+      # A freshly-restarted real Vault server starts up and sealed — that's
+      # expected, not a failure (vault-init below is what unseals it).
+      # `vault status` exits 2 for "sealed" and only 1 for a genuine
+      # connectivity/error, so only 1 should fail this healthcheck.
+      test: ['CMD-SHELL', 'vault status >/dev/null 2>&1; [ $$? -ne 1 ]']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - '8200:8200'
+    # Published to the host, like postgres/redis/nats, so integration
+    # tests running via `bun test` on the host (not in a container) can
+    # reach it directly — not routed through Caddy, same posture as those.
+
+  # One-shot: initializes Vault the very first time (single key share —
+  # dev convenience, not real Shamir security), unseals it on every start,
+  # and ensures the Transit engine/key and the fixed dev app token exist.
+  # All idempotent — safe to re-run on every `docker compose up`, and after
+  # the first run there's nothing left to create since storage persists.
+  vault-init:
+    image: hashicorp/vault@sha256:750bb37c1638fa194ab37053a81618c61bb0491ddec6fccac87c07a8e6cd8166 # 1.18
+    container_name: mincirklen-vault-init
+    restart: 'no'
+    environment:
+      VAULT_ADDR: http://vault:8200
+    volumes:
+      - mincirklen-vault-init-data:/vault-init
+    entrypoint: ['sh', '-c']
+    command:
+      - |
+        set -e
+        INIT_FILE=/vault-init/init.txt
+
+        if [ ! -f "$$INIT_FILE" ]; then
+          echo "First run: initializing Vault (local dev only)..."
+          vault operator init -key-shares=1 -key-threshold=1 > "$$INIT_FILE"
+        fi
+
+        UNSEAL_KEY=$$(awk '/^Unseal Key 1:/ { print $$NF }' "$$INIT_FILE")
+        ROOT_TOKEN=$$(awk '/^Initial Root Token:/ { print $$NF }' "$$INIT_FILE")
+
+        vault operator unseal "$$UNSEAL_KEY" >/dev/null
+
+        export VAULT_TOKEN="$$ROOT_TOKEN"
+        vault secrets enable transit || true
+        vault write -f transit/keys/user-profile-pii
+
+        # Fixed-ID app token so trpc-api/websocket-service's VAULT_TOKEN
+        # never has to change — only actually created on the first-ever
+        # run; every later run hits "duplicate ID" and no-ops via `|| true`.
+        vault token create -id=dev-only-not-for-production -policy=root -orphan >/dev/null 2>&1 || true
+    depends_on:
+      vault:
+        condition: service_healthy
+
+  # Local stand-in for GCP Pub/Sub — the data-export request pipeline's
+  # transport (trpc-api publishes, data-export-service subscribes via a
+  # push subscription). Stateless by design: topics/subscriptions are
+  # cheap to recreate on every start (see pubsub-init below), so unlike
+  # postgres/redis/nats there's no persistent volume here.
+  pubsub:
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk@sha256:9e3cddf9cd9fa726c38c7320904ef601ce4a7c815c8c11c24004146d85a195c1 # emulators
+    container_name: mincirklen-pubsub
+    restart: unless-stopped
+    entrypoint: ['gcloud', 'beta', 'emulators', 'pubsub', 'start', '--host-port=0.0.0.0:8085', '--project=mincirklen-local']
+    ports:
+      - '8085:8085'
+    healthcheck:
+      # No dedicated health endpoint — any TCP response (even a 404) means
+      # the emulator is up. bash's /dev/tcp avoids needing curl/nc/wget in
+      # this image.
+      test: ['CMD-SHELL', 'bash -c "cat < /dev/null > /dev/tcp/localhost/8085"']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # One-shot: creates the data-export-requests topic and its push
+  # subscription (targeting data-export-service directly, plus a
+  # dead-letter topic/subscription for the bounded-retry-then-fail path —
+  # see data-export-service/src/services/exportGenerationService.ts).
+  # Idempotent (`|| true` on "already exists"), same pattern as vault-init.
+  #
+  # Plain REST calls against the emulator, not `gcloud pubsub` — despite
+  # PUBSUB_EMULATOR_HOST being the documented env var for pointing *client
+  # libraries* at an emulator, the `gcloud pubsub` command group doesn't
+  # actually honor it and tries to hit the real pubsub.googleapis.com
+  # regardless (confirmed directly against this exact image/command before
+  # settling on this approach) — same REST-call posture as gcs-init below,
+  # for the same underlying reason (the CLI tooling doesn't cooperate with
+  # local emulators the way you'd expect).
+  pubsub-init:
+    image: curlimages/curl:8.11.0
+    container_name: mincirklen-pubsub-init
+    restart: 'no'
+    entrypoint: ['sh', '-c']
+    command:
+      - |
+        set -e
+        BASE=http://pubsub:8085/v1/projects/mincirklen-local
+        curl -s -X PUT "$$BASE/topics/data-export-requests-dead-letter" || true
+        curl -s -X PUT "$$BASE/topics/data-export-requests" || true
+        curl -s -X PUT "$$BASE/subscriptions/data-export-requests-push" \
+          -H 'content-type: application/json' \
+          -d '{
+                "topic": "projects/mincirklen-local/topics/data-export-requests",
+                "pushConfig": {"pushEndpoint": "http://data-export-service:8083/pubsub/push"},
+                "deadLetterPolicy": {
+                  "deadLetterTopic": "projects/mincirklen-local/topics/data-export-requests-dead-letter",
+                  "maxDeliveryAttempts": 5
+                }
+              }' || true
+        curl -s -X PUT "$$BASE/subscriptions/data-export-requests-dead-letter-push" \
+          -H 'content-type: application/json' \
+          -d '{
+                "topic": "projects/mincirklen-local/topics/data-export-requests-dead-letter",
+                "pushConfig": {"pushEndpoint": "http://data-export-service:8083/pubsub/dead-letter"}
+              }' || true
+    depends_on:
+      pubsub:
+        condition: service_healthy
+
+  # Local stand-in for GCS — the data-export worker's own object store for
+  # completed exports (see data-export-service/src/adapters/gcsAdapter.ts).
+  # Real server with file storage (like vault/postgres/redis), not
+  # in-memory, so an uploaded export survives a restart during dev.
+  gcs:
+    image: fsouza/fake-gcs-server@sha256:666f86b873120818b10a5e68d99401422fcf8b00c1f27fe89599c35236f48b4c # 1.52
+    container_name: mincirklen-gcs
+    restart: unless-stopped
+    command: ['-scheme', 'http', '-port', '4443', '-filesystem-root', '/storage']
+    ports:
+      - '4443:4443'
+    volumes:
+      - mincirklen-gcs-data:/storage
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:4443/storage/v1/b >/dev/null 2>&1']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # One-shot: creates the mincirklen-data-exports bucket. Idempotent —
+  # fake-gcs-server's create-bucket call just 409s on a re-run, which this
+  # ignores the same way vault-init/pubsub-init ignore their own "already
+  # exists" errors.
+  gcs-init:
+    image: curlimages/curl:8.11.0
+    container_name: mincirklen-gcs-init
+    restart: 'no'
+    entrypoint: ['sh', '-c']
+    command:
+      - |
+        curl -s -X POST 'http://gcs:4443/storage/v1/b?project=mincirklen-local' \
+          -H 'content-type: application/json' \
+          -d '{"name":"mincirklen-data-exports"}' || true
+    depends_on:
+      gcs:
+        condition: service_healthy
+
+  data-export-service:
+    build:
+      context: .
+      dockerfile: services/data-export-service/dev.Dockerfile
+    container_name: mincirklen-data-export-service
+    restart: unless-stopped
+    environment:
+      PORT: '8083'
+      DATABASE_URL: postgres://mincirklen:mincirklen@postgres:5432/mincirklen
+      DB_SCHEMA: dev
+      KMS_PROVIDER: vault
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: dev-only-not-for-production
+      GCS_PROVIDER: emulator
+      GCS_BUCKET: mincirklen-data-exports
+      GCS_EMULATOR_URL: http://gcs:4443
+      # The Pub/Sub emulator can't issue real signed OIDC tokens, so
+      # there's nothing to verify locally — see
+      # adapters/pubsubPushAdapter.ts. Real Pub/Sub in prod always uses
+      # PUSH_AUTH_PROVIDER=oidc.
+      PUSH_AUTH_PROVIDER: none
+      SENTRY_DSN: ${DATA_EXPORT_SERVICE_SENTRY_DSN:-}
+    # Deliberately no `ports:` — never public ingress, same posture as
+    # moderation-service. The pubsub-init subscription above and any
+    # manual testing both reach it over the compose network by service
+    # name alone.
+    volumes:
+      - ./services/data-export-service/src:/app/services/data-export-service/src
+      - ./packages/shared/src:/app/packages/shared/src
+    depends_on:
+      postgres:
+        condition: service_healthy
+      vault-init:
+        condition: service_completed_successfully
+      gcs-init:
+        condition: service_completed_successfully
+
+  trpc-api:
+    build:
+      context: .
+      dockerfile: services/trpc-api/dev.Dockerfile
+    container_name: mincirklen-trpc-api
+    restart: unless-stopped
+    environment:
+      PORT: '8787'
+      DATABASE_URL: postgres://mincirklen:mincirklen@postgres:5432/mincirklen
+      DB_SCHEMA: dev
+      # moderation-service itself no longer lives in (or builds from) this
+      # repo — the real implementation is the private, sibling
+      # MinCirklen-Moderation-Engine repo, which joins this stack's own
+      # `mincirklendk_default` network (external, from its own
+      # docker-compose.yml) and publishes itself under the
+      # `moderation-service` network alias. That repo's own stack must be
+      # up (`docker compose up -d --build` there) for this URL to resolve —
+      # nothing here builds or runs moderation-service anymore.
+      MODERATION_SVC_URL: http://moderation-service:8082
+      # trpc-api never talks to NATS/Redis directly — those are internal to
+      # websocket-service (its own cross-pod fanout and shared memory). This
+      # is websocket-service's internal-only Connect/RPC listener (see
+      # rpcServer.ts and adapters/websocketServiceAdapter.ts), a distinct
+      # port from :8080's public /healthz + /ws — never published to the
+      # host, same "never public" posture as moderation-service.
+      # INTERNAL_SERVICE_SECRET must match websocket-service's own value
+      # below.
+      WEBSOCKET_SERVICE_URL: http://websocket-service:8081
+      INTERNAL_SERVICE_SECRET: dev-only-not-for-production
+      AUTH_SECRET: dev-only-not-for-production
+      # Keys the OAuth subject hash (user_identities.provider_subject_hash)
+      # — deliberately a different value than AUTH_SECRET, same key-
+      # separation reasoning as the comment on AppEnv.identityHashKey.
+      IDENTITY_HASH_KEY: dev-only-not-for-production-identity-hash
+      PUBLIC_BASE_URL: https://dev-mincirklen.dk
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      # Optional — the master-admin bootstrap (adminBootstrapService.ts), a
+      # one-time, self-disabling elevation for whichever account first logs
+      # in with this email. Real value lives in .env (gitignored), not here.
+      MASTER_USER_EMAIL: ${MASTER_USER_EMAIL:-}
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: dev-only-not-for-production
+      # Publish-only client for the data-export request pipeline (see
+      # adapters/pubsubAdapter.ts) — the local Pub/Sub emulator here,
+      # real Pub/Sub in prod (PUBSUB_PROVIDER=gcp).
+      PUBSUB_PROVIDER: emulator
+      PUBSUB_PROJECT_ID: mincirklen-local
+      PUBSUB_EMULATOR_URL: http://pubsub:8085
+      # No environment suffix locally — matches the bare topic name
+      # pubsub-init creates on the emulator. Real deployments use the
+      # environment-scoped name Terraform creates instead (see
+      # IaC/modules/pubsub and adapters/pubsubAdapter.ts).
+      PUBSUB_DATA_EXPORT_TOPIC: data-export-requests
+      # Read-only access to the same bucket data-export-service uploads
+      # to — trpc-api proxies a completed export's bytes back to the
+      # browser through its own token-gated route
+      # (controllers/exportDownloadController.ts), it never writes here.
+      GCS_PROVIDER: emulator
+      GCS_BUCKET: mincirklen-data-exports
+      GCS_EMULATOR_URL: http://gcs:4443
+      # Signs the short-lived (1 day), freshly-minted-per-click download
+      # token in that proxy route's URL — separate from AUTH_SECRET, same
+      # key-separation reasoning as IDENTITY_HASH_KEY above.
+      DATA_EXPORT_DOWNLOAD_TOKEN_SECRET: dev-only-not-for-production-download-token
+      # This service's own public origin — used to build the absolute
+      # download-proxy URL returned by auth.createExportDownloadToken.
+      # Distinct from PUBLIC_BASE_URL above, which is the main app's host.
+      TRPC_PUBLIC_BASE_URL: https://trpc.dev-mincirklen.dk
+      # Unset by default — same "don't report dev noise unless opted in"
+      # posture as web-app's VITE_SENTRY_DSN. See src/app.ts's sentry()
+      # middleware and local-infra/glitchtip/init.py's printed DSN.
+      SENTRY_DSN: ${TRPC_API_SENTRY_DSN:-}
+    ports:
+      - '8787:8787'
+    volumes:
+      - ./services/trpc-api/src:/app/services/trpc-api/src
+      - ./packages/shared/src:/app/packages/shared/src
+      - ./packages/shared/migrations:/app/packages/shared/migrations
+      - ./packages/proto/src:/app/packages/proto/src
+    depends_on:
+      postgres:
+        condition: service_healthy
+      vault-init:
+        condition: service_completed_successfully
+      pubsub-init:
+        condition: service_completed_successfully
+      gcs-init:
+        condition: service_completed_successfully
+
+  websocket-service:
+    build:
+      context: .
+      dockerfile: services/websocket-service/dev.Dockerfile
+    container_name: mincirklen-websocket-service
+    restart: unless-stopped
+    environment:
+      PORT: '8080'
+      DATABASE_URL: postgres://mincirklen:mincirklen@postgres:5432/mincirklen
+      DB_SCHEMA: dev
+      AUTH_SECRET: dev-only-not-for-production
+      NATS_URL: nats://nats:4222
+      # This service's own shared memory for live round/roster state
+      # (Stage 2 of the websocket-owned-turn-state redesign) — never
+      # touched by trpc-api directly.
+      REDIS_URL: redis://redis:6379
+      # Must match trpc-api's own INTERNAL_SERVICE_SECRET above — this is
+      # the shared secret trpc-api presents on every internal RPC call
+      # (see rpcServer.ts).
+      INTERNAL_SERVICE_SECRET: dev-only-not-for-production
+      # Defaults to 'binary' if unset (see index.ts) — explicit 'json'
+      # here keeps local dev's WS traffic readable in DevTools. Flip to
+      # 'binary' locally to test that path before it ships; production
+      # needs no config to get the binary default.
+      WS_WIRE_FORMAT: json
+      # rpcServer.ts's Connect/RPC listener — a second, internal-only
+      # port alongside :8080's public /healthz + /ws (a single Bun.serve
+      # can't own both). Deliberately no `ports:` mapping below, same
+      # "never public" posture as moderation-service — trpc-api reaches
+      # it over the docker-compose network by service name alone.
+      INTERNAL_RPC_PORT: '8081'
+      # Unset by default — see trpc-api's identical SENTRY_DSN comment
+      # above. Covers both the public Hono app (:8080) and the internal
+      # Fastify RPC listener (:8081) — one process, one Sentry client
+      # (see src/app.ts and src/rpcServer.ts).
+      SENTRY_DSN: ${WEBSOCKET_SERVICE_SENTRY_DSN:-}
+    ports:
+      - '8091:8080'
+    volumes:
+      - ./services/websocket-service/src:/app/services/websocket-service/src
+      - ./packages/shared/src:/app/packages/shared/src
+      - ./packages/proto/src:/app/packages/proto/src
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # moderation-service is no longer built/run from this repo — see
+  # trpc-api's MODERATION_SVC_URL comment above. It's provided by the
+  # private MinCirklen-Moderation-Engine repo's own docker-compose.yml.
+
+  web-app:
+    build:
+      context: services/web-app
+      dockerfile: dev.Dockerfile
+    container_name: mincirklen-web-app
+    restart: unless-stopped
+    environment:
+      # Vite only exposes VITE_-prefixed vars to client code, and unset is
+      # a valid, deliberate default — see src/sentry.ts's own comment.
+      VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
+      # The admin area's URL segment (App.tsx's ADMIN_ROUTE_SEGMENT) —
+      # unset here falls back to "manage" for local dev. Set to something
+      # deployment-specific in prod's own env, never committed, so the
+      # real path never has to appear in this open-source repo.
+      VITE_ADMIN_ROUTE: ${VITE_ADMIN_ROUTE:-}
+    ports:
+      - '5190:5190'
+    volumes:
+      - ./services/web-app:/app
+      - mincirklen-web-app-node-modules:/app/node_modules
+
+  # Self-hosted error/log tracking (GlitchTip — Sentry-SDK-compatible, see
+  # SECURITY.md's "Error/log tracking" section for image trust/exposure
+  # notes). Its own database inside the shared postgres instance
+  # (glitchtip-db-init creates it, same cost-reuse reasoning as
+  # IaC/environments/prod's Cloud SQL plan) and its own dedicated Redis,
+  # kept separate from the app's own correctness-critical `redis` above —
+  # see that service's own comment on why that one shouldn't take on
+  # unrelated traffic.
+
+  glitchtip-redis:
+    image: redis:7-alpine
+    container_name: mincirklen-glitchtip-redis
+    restart: unless-stopped
+    # No volume — Celery broker/cache data is disposable, unlike `redis`
+    # above (which persists turn/roster/presence state via AOF).
+
+  glitchtip-db-init:
+    image: postgres:16-alpine
+    container_name: mincirklen-glitchtip-db-init
+    restart: 'no'
+    environment:
+      PG_ADMIN_URL: postgres://mincirklen:mincirklen@postgres:5432/mincirklen
+    entrypoint: ['sh', '-c']
+    command:
+      - |
+        set -e
+        EXISTS=$$(psql "$$PG_ADMIN_URL" -tAc "SELECT 1 FROM pg_database WHERE datname = 'glitchtip'")
+        if [ "$$EXISTS" != "1" ]; then
+          echo "First run: creating the glitchtip database..."
+          psql "$$PG_ADMIN_URL" -c "CREATE DATABASE glitchtip"
+        fi
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  glitchtip:
+    image: glitchtip/glitchtip@sha256:a3d8eb1b36c1e1603d55ab32711ea3dd8115874742a781a57391a62a16e0dff6 # 6
+    container_name: mincirklen-glitchtip
+    restart: unless-stopped
+    environment:
+      SERVER_ROLE: all_in_one # single process (web + worker + beat) — plenty for local dev, matches the prod plan
+      DATABASE_URL: postgres://mincirklen:mincirklen@postgres:5432/glitchtip
+      VALKEY_URL: redis://glitchtip-redis:6379
+      SECRET_KEY: dev-only-not-for-production
+      GLITCHTIP_DOMAIN: https://glitchtip.dev-mincirklen.dk
+      EMAIL_URL: consolemail:// # prints emails (invites, alerts) to this container's logs instead of sending them
+      DEFAULT_FROM_EMAIL: glitchtip@dev-mincirklen.dk
+      # web-app's Sentry SDK sends logs (see src/sentry.ts's enableLogs +
+      # consoleLoggingIntegration) — silently dropped server-side unless
+      # this is on.
+      GLITCHTIP_ENABLE_LOGS: 'True'
+    depends_on:
+      glitchtip-db-init:
+        condition: service_completed_successfully
+      glitchtip-redis:
+        condition: service_started
+    volumes:
+      - mincirklen-glitchtip-uploads:/code/uploads
+
+  # Scripts the manual "sign up, create an org/team/project, copy the DSN"
+  # flow (local-infra/glitchtip/init.py) — idempotent, same one-shot
+  # pattern as vault-init above. Retries briefly since it depends on
+  # `glitchtip`'s own migrations having finished, which this doesn't
+  # otherwise wait on precisely (service_started only means the process
+  # launched, not that migrations are done — same tolerance for eventual
+  # consistency this repo already has elsewhere for startup ordering).
+  glitchtip-init:
+    image: glitchtip/glitchtip@sha256:a3d8eb1b36c1e1603d55ab32711ea3dd8115874742a781a57391a62a16e0dff6 # 6
+    container_name: mincirklen-glitchtip-init
+    restart: 'no'
+    environment:
+      DATABASE_URL: postgres://mincirklen:mincirklen@postgres:5432/glitchtip
+      VALKEY_URL: redis://glitchtip-redis:6379
+      SECRET_KEY: dev-only-not-for-production
+      GLITCHTIP_DOMAIN: https://glitchtip.dev-mincirklen.dk
+      GLITCHTIP_INIT_EMAIL: admin@dev-mincirklen.dk
+      GLITCHTIP_INIT_PASSWORD: dev-only-not-for-production-1
+    entrypoint: ['sh', '-c']
+    command:
+      - |
+        for i in $$(seq 1 10); do
+          python manage.py shell < /init/init.py && exit 0
+          echo "glitchtip not ready yet (attempt $$i/10), retrying in 3s..."
+          sleep 3
+        done
+        exit 1
+    volumes:
+      - ./local-infra/glitchtip/init.py:/init/init.py:ro
+    depends_on:
+      glitchtip:
+        condition: service_started
+
+  # Dev-only admin UIs for the data stores, each reached only through Caddy
+  # (no host ports published) — same trust posture as moderation-service.
+
+  adminer:
+    image: adminer@sha256:c1c24d89d06fcb8fc0fb5a049240dc292ff4a121ae05d7e74d64b58c421d2921 # 4-standalone (4.17.1), Docker Official Image
+    container_name: mincirklen-adminer
+    restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  redisinsight:
+    image: redis/redisinsight@sha256:b7aa18e73329ebb2e3d9e949b8d35193bf5415ef35c16fd9a50e6f832922b296 # 2.70, official Redis Ltd. image
+    container_name: mincirklen-redisinsight
+    restart: unless-stopped
+    volumes:
+      - mincirklen-redisinsight-data:/data
+    # No env-based auto-connect — add the connection once via its UI:
+    # host `redis`, port `6379`.
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  nats-nui:
+    image: ghcr.io/nats-nui/nui@sha256:331b3f34f8aa626f88e3aa3e35749196607a3a56d7fddc6fb642938dcd659c04 # 0.9.3
+    container_name: mincirklen-nats-nui
+    restart: unless-stopped
+    volumes:
+      - mincirklen-nats-nui-data:/db
+    # No env-based auto-connect — add the connection once via its UI:
+    # server URL `nats://nats:4222`.
+    depends_on:
+      nats:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: mincirklen-caddy
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./local-infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./local-infra/caddy/certs:/certs:ro
+    depends_on:
+      - trpc-api
+      - websocket-service
+      - web-app
+      - adminer
+      - redisinsight
+      - nats-nui
+
+  # Optional: WireGuard VPN so a phone/laptop off your LAN can tunnel in and
+  # reach dev-mincirklen.dk. Gated behind a profile so it never starts as
+  # part of a normal `docker compose up -d` / `down` — only via explicit
+  # `docker compose up -d vpn` (what ./setup-local-vpn.sh does). Admin account and
+  # WireGuard endpoint/DNS are set via a one-time web setup wizard on first
+  # visit, not env vars. See docs/local_dev.md and SECURITY.md.
+  vpn:
+    image: ghcr.io/wg-easy/wg-easy@sha256:0e7bc9d34e86ddcaa92bc700d4d7dc9b33291dbc07ac8d13382f7c2095f949ec # v15.4.0
+    container_name: mincirklen-vpn
+    restart: unless-stopped
+    profiles:
+      - vpn
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      # We deliberately never put TLS in front of the admin UI (it's only
+      # ever reachable over LAN or through the VPN tunnel itself, never the
+      # raw internet — see SECURITY.md). Without this, wg-easy marks its
+      # session cookie Secure and browsers silently drop it over plain
+      # http://, so login appears to "not work" even with correct
+      # credentials (the server-side session is created — check `docker
+      # compose logs vpn` — it just never survives client-side).
+      INSECURE: 'true'
+    ports:
+      # WireGuard listens on UDP 443 instead of the default 51820 — some
+      # mobile carriers/middleboxes are more lenient with 443 (indistinguishable
+      # from QUIC/HTTP3). No conflict with Caddy's TCP 443 below — UDP and TCP
+      # are independent port spaces. This wasn't actually required to fix the
+      # connectivity issue found during setup (see docs/vpn_local_dev.md), but
+      # is a reasonable default to keep. The interface's listening port must
+      # also be changed to 443 in the wg-easy admin UI (Settings > wg0) for
+      # this to take effect.
+      #
+      # IMPORTANT: changing the port that way also has a UI field labeled
+      # "Device" right next to it — leave it as `eth0`. Changing it to `wg0`
+      # (an easy mistake, since the port field is for the *WireGuard*
+      # interface) silently breaks NAT for all forwarded traffic — the
+      # handshake still succeeds but nothing else works. See
+      # docs/vpn_local_dev.md for the full story and the fix if it happens.
+      - '443:443/udp'
+      - '51821:51821/tcp'
+    volumes:
+      - mincirklen-vpn-data:/etc/wireguard
+    sysctls:
+      - net.ipv4.ip_forward=1
+      - net.ipv4.conf.all.src_valid_mark=1
+
+volumes:
+  mincirklen-postgres-data:
+  mincirklen-redis-data:
+  mincirklen-nats-data:
+  mincirklen-vault-data:
+  mincirklen-vault-init-data:
+  mincirklen-web-app-node-modules:
+  mincirklen-vpn-data:
+  mincirklen-redisinsight-data:
+  mincirklen-nats-nui-data:
+  mincirklen-glitchtip-uploads:
+  mincirklen-gcs-data:

@@ -1,0 +1,86 @@
+{
+  "meta": {
+    "title": "MinCirklen — Anonyma, modererade cirklar för kamratstöd",
+    "description": "MinCirklen är en anonym, AI-modererad plattform för kamratstöd. Inga profiler, ingen katalog, inget sätt att slå upp någon — bara små, modererade cirklar att bli hörd i."
+  },
+  "header": {
+    "about": "Om oss",
+    "safety": "Säkerhet",
+    "joinNow": "Gå med nu",
+    "logOut": "Logga ut"
+  },
+  "errors": {
+    "logoutFailed": "Något gick fel vid utloggningen."
+  },
+  "footer": {
+    "copyright": "© 2026 Selkomark. Alla rättigheter förbehållna.",
+    "cookiePreferences": "Cookie-inställningar",
+    "product": "Produkt",
+    "circles": "Cirklar",
+    "howItWorks": "Så fungerar det",
+    "pricing": "Priser",
+    "safety": "Säkerhet",
+    "moderationTransparency": "Moderering och transparens",
+    "company": "Företag",
+    "about": "Om oss",
+    "facilitators": "Samtalsledare",
+    "support": "Support",
+    "crisisResources": "Krisresurser",
+    "accountAndData": "Konto och data",
+    "contact": "Kontakt",
+    "legal": "Juridiskt",
+    "privacyPolicy": "Integritetspolicy",
+    "communityGuidelines": "Communityregler",
+    "termsAndConditions": "Användarvillkor"
+  },
+  "hero": {
+    "imageAlt": "Illustration av personer i en MinCirklen-cirkel för kamratstöd, som pratar anonymt och avslappnat",
+    "badge": "Nyss lanserad — tidig pilot",
+    "title": "En plats att bli hörd på, utan att bli dömd",
+    "lead": "Anonyma, modererade cirklar för kamratstöd. Vi är helt nya — gå med i en av våra första cirklar och hjälp till att forma vad detta blir.",
+    "joinCircle": "Gå med i en cirkel",
+    "learnMore": "Läs mer"
+  },
+  "stats": {
+    "anonymousValue": "Anonymt",
+    "anonymousLabel": "Som standard, varje cirkel",
+    "zeroValue": "Noll",
+    "zeroLabel": "Profiler, kataloger eller sätt att slå upp någon"
+  },
+  "features": {
+    "title": "Byggt kring säkerhet",
+    "lead": "Varje del av upplevelsen är utformad för att skydda dig först.",
+    "moderatedTitle": "Modererat",
+    "moderatedBody": "En utbildad samtalsledare finns med i varje session, och du kan lämna eller rapportera när som helst.",
+    "anonymousTitle": "Anonymt som standard",
+    "anonymousBody": "Dela så mycket eller så lite du vill — ingen ser ditt riktiga namn om du inte väljer att dela det.",
+    "noPressureTitle": "Inget tvång",
+    "noPressureBody": "Att bara lyssna är alltid välkommet. Det finns ingen skyldighet att prata, och inga råd ges om det inte efterfrågas."
+  },
+  "testimonial": {
+    "title": "Varför vi bygger detta",
+    "quote": "Skapa en trygg och mysig plats på internet där människor äntligen kan öppna sig. Det är hela idén — vi har precis börjat, och vi vill hellre växa långsamt och tryggt än snabbt och hänsynslöst.",
+    "role": "Grundare, MinCirklen"
+  },
+  "pricing": {
+    "title": "Enkel, ärlig prissättning",
+    "lead": "Vi är i tidig pilot och har inte bestämt prissättning än — det kommer alltid finnas ett gratis sätt att gå med.",
+    "freeName": "Gratis, under piloten",
+    "freePrice": "Gratis",
+    "freeFeature1": "Obegränsat antal sessioner",
+    "freeFeature2": "Anonymt som standard",
+    "freeFeature3": "Ingen gräns för samtalets längd",
+    "supportName": "Stöd MinCirklen",
+    "supportPrice": "Ej fastställt",
+    "supportPeriod": "prissättning ej beslutad",
+    "supportFeature1": "Ett sätt att hjälpa till att finansiera drift och säkerhetsgranskning",
+    "supportFeature2": "Samma turlängd och skrivtid som gratisversionen",
+    "supportFeature3": "Vi meddelar detaljer innan något ändras",
+    "getStarted": "Kom igång"
+  },
+  "cta": {
+    "title": "Redo att gå med i en cirkel?",
+    "action": "Kom igång — det är gratis",
+    "body": "Det tar bara en minut, och du kan vara anonym hela vägen."
+  }
+}

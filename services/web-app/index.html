@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- interactive-widget=resizes-content: on browsers that support it
+         (Chrome/Android, newer Safari/iOS), the layout viewport shrinks
+         when the on-screen keyboard opens instead of the keyboard just
+         overlaying fixed-height content — combined with 100dvh (see
+         App.tsx/App.css), this is what lets the dashboard's message
+         composer stay visible above the keyboard. Unsupported browsers
+         ignore the token and keep their previous (overlay) behavior, so
+         this is additive, not a regression risk.
+         maximum-scale=1, user-scalable=no: pinch/double-tap zoom is
+         deliberately disabled on mobile — this is a chat-style app UI,
+         not readable content that benefits from user zoom, and stray
+         zooming on a phone (e.g. a double-tap that lands on the message
+         list) does more harm than good here. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#171d1c" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f4f6f5" media="(prefers-color-scheme: light)" />
+    <title>MinCirklen — Anonymous, moderated peer-support circles</title>
+    <meta
+      name="description"
+      content="MinCirklen is an anonymous, AI-moderated peer-support platform. No profiles, no directory, no way to look anyone up — just small, moderated circles to be heard in."
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

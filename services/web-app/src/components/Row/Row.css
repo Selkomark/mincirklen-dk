@@ -1,0 +1,15 @@
+.ds-row {
+  display: flex;
+  flex-wrap: wrap;
+  row-gap: var(--ds-row-gap, var(--space-4));
+  margin-left: calc(var(--ds-row-gap, var(--space-4)) / -2);
+  margin-right: calc(var(--ds-row-gap, var(--space-4)) / -2);
+}
+
+/* Columns stack full-width on mobile, so give wrapped items a bit more
+   breathing room than their configured desktop gutter provides. */
+@media (max-width: 640px) {
+  .ds-row {
+    row-gap: calc(var(--ds-row-gap, var(--space-4)) + var(--space-4));
+  }
+}

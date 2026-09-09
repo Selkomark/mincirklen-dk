@@ -1,0 +1,16 @@
+{
+  "errorCode": "FEL {{code}}",
+  "backToHome": "Tillbaka till startsidan",
+  "notFound": {
+    "title": "Sidan hittades inte",
+    "message": "Den sidan finns inte, eller så kan den ha flyttats."
+  },
+  "forbidden": {
+    "title": "Ingen åtkomst",
+    "message": "Du har inte åtkomst till den här delen av sidan."
+  },
+  "boundary": {
+    "title": "Något gick fel",
+    "message": "Ett oväntat fel inträffade. Försök igen."
+  }
+}

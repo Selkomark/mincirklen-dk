@@ -1,0 +1,30 @@
+.ds-col {
+  min-width: 0;
+  box-sizing: border-box;
+  padding-left: calc(var(--ds-row-gap, var(--space-4)) / 2);
+  padding-right: calc(var(--ds-row-gap, var(--space-4)) / 2);
+}
+
+.ds-col--auto {
+  flex: 1 1 0%;
+}
+
+.ds-col--sized {
+  flex: 0 0 auto;
+  flex-basis: calc((100% / 12) * var(--col-span, 12));
+  max-width: calc((100% / 12) * var(--col-span, 12));
+}
+
+@media (min-width: 768px) {
+  .ds-col--sized {
+    flex-basis: calc((100% / 12) * var(--col-span-md, var(--col-span, 12)));
+    max-width: calc((100% / 12) * var(--col-span-md, var(--col-span, 12)));
+  }
+}
+
+@media (min-width: 1024px) {
+  .ds-col--sized {
+    flex-basis: calc((100% / 12) * var(--col-span-lg, var(--col-span-md, var(--col-span, 12))));
+    max-width: calc((100% / 12) * var(--col-span-lg, var(--col-span-md, var(--col-span, 12))));
+  }
+}

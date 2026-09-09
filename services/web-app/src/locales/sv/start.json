@@ -1,0 +1,86 @@
+{
+  "shared": {
+    "stepOf": "Steg {{step}} av {{total}}",
+    "minutesShort": "{{count}} min",
+    "hours_one": "{{count}} timme",
+    "hours_other": "{{count}} timmar",
+    "days_one": "{{count}} dag",
+    "days_other": "{{count}} dagar",
+    "startsIn": "Börjar om {{duration}}",
+    "live": "Live",
+    "startingSoon": "Börjar snart",
+    "open": "Öppen",
+    "openCalendar": "Öppna kalender"
+  },
+  "sizes": {
+    "upTo": "Upp till {{count}}"
+  },
+  "durations": {
+    "openEnded": "Öppet slut"
+  },
+  "errors": {
+    "topicsLoadFailed": "Kunde inte läsa in ämnen",
+    "sessionsLoadFailed": "Kunde inte läsa in öppna cirklar",
+    "moreSessionsLoadFailed": "Kunde inte läsa in fler cirklar",
+    "previousSessionsLoadFailed": "Kunde inte läsa in tidigare cirklar"
+  },
+  "choose": {
+    "documentTitle": "Starta en cirkel — MinCirklen",
+    "title": "Ny session",
+    "subtitle": "Hur vill du börja",
+    "joinTitle": "Gå med i en befintlig cirkel",
+    "joinSubtitle": "Bläddra bland cirklar som redan bildas",
+    "newTitle": "Starta en ny cirkel",
+    "newSubtitle": "Ange ämne, tid och längd"
+  },
+  "joinPage": {
+    "documentTitle": "Gå med i en cirkel — MinCirklen",
+    "title": "Gå med i en cirkel",
+    "subtitle": "Välj en cirkel som passar ditt schema",
+    "searchPlaceholder": "Sök cirklar efter namn",
+    "showFilters": "Visa filter",
+    "topic": "Ämne",
+    "any": "Alla",
+    "groupSize": "Gruppstorlek",
+    "date": "Datum",
+    "duration": "Längd",
+    "clear": "Rensa",
+    "search": "Sök",
+    "scrollUpHint": "Scrolla upp för senare cirklar",
+    "scrollDownHint": "Scrolla ner för tidigare cirklar",
+    "noMatches": "Inga öppna cirklar matchar dessa filter",
+    "sessionMeta": "{{timing}} · {{duration}} · {{joined}}/{{capacity}}",
+    "circleFilledUp": "Den cirkeln blev precis full — välj en annan.",
+    "joinFailed": "Något gick fel när du skulle gå med i cirkeln.",
+    "cancel": "Avbryt",
+    "back": "Tillbaka"
+  },
+  "newPage": {
+    "documentTitle": "Starta en ny cirkel — MinCirklen",
+    "title": "Starta en ny cirkel",
+    "subtitle": "Ange ämne, tid och hur många som kan gå med",
+    "circleName": "Cirkelns namn",
+    "circleNameHint": "Visas för andra som bläddrar bland cirklar att gå med i — gör den till din egen",
+    "circleNamePlaceholder": "t.ex. Söndagkvällens incheckning",
+    "topic": "Ämne",
+    "dateAndTime": "Datum och tid",
+    "date": "Datum",
+    "time": "Tid",
+    "length": "Längd",
+    "groupSize": "Gruppstorlek",
+    "cancel": "Avbryt",
+    "back": "Tillbaka",
+    "continue": "Fortsätt",
+    "beforeYouBegin": "Innan du börjar",
+    "startingName": "Startar \"{{name}}\"",
+    "anonymousNote": "Du visas för andra endast som en anonym användare. Ingen i den här cirkeln ser ditt namn, foto eller kontouppgifter.",
+    "understandAnonymous": "Jag förstår att den här cirkeln är anonym som standard",
+    "agreeToThePrefix": "Jag godkänner",
+    "communityGuidelines": "communityreglerna",
+    "termsOfService": "användarvillkoren",
+    "liabilityNote": "och accepterar att MinCirklen inte ansvarar för råd eller resultat som delas i denna cirkel",
+    "startCircle": "Starta cirkel",
+    "createFailed": "Något gick fel när cirkeln skulle startas.",
+    "createdButJoinFailed": "Din cirkel skapades, men det gick inte att gå med — försök igen."
+  }
+}

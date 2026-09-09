@@ -1,0 +1,26 @@
+.ds-text {
+  margin: 0;
+  font-family: var(--font-family-base);
+  line-height: var(--line-height-base);
+}
+
+.ds-text--body {
+  font-size: var(--font-size-md);
+  color: var(--text-primary);
+}
+
+.ds-text--lead {
+  font-size: var(--font-size-lg);
+  color: var(--text-primary);
+  font-weight: var(--font-weight-regular);
+}
+
+.ds-text--muted {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.ds-text--small {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}

@@ -1,0 +1,198 @@
+{
+  "communityRules": {
+    "anonymity": {
+      "title": "Protect your anonymity",
+      "description": "Never share your full name, phone number, address, email, or other identifying details in a circle — yours or anyone else's."
+    },
+    "noAdvertising": {
+      "title": "No advertising or soliciting",
+      "description": "Don't promote a business, service, or product, and don't ask other users to pay for anything."
+    },
+    "noEndorsements": {
+      "title": "No endorsements or recommendations",
+      "description": "Don't recommend or endorse specific practitioners, treatments, or outside services. This isn't a referral space."
+    },
+    "supportDontDirect": {
+      "title": "Support, don't direct",
+      "description": "Share your own experience, not medical or legal advice. Listening is always enough."
+    },
+    "reportOrLeave": {
+      "title": "Report or leave anytime",
+      "description": "If something feels wrong, or you're in crisis, use Report or Crisis resources right away. Nobody has to explain why they left."
+    }
+  },
+  "guidelinesModal": {
+    "stepOf": "Step {{step}} of {{total}}",
+    "beforeYouJoin": "Before you join",
+    "nonNegotiable": "These rules are non-negotiable and apply to every circle. Breaking them can get a session ended or an account removed.",
+    "understandAnonymous": "I understand circles are anonymous by default",
+    "readAndAgreeToThePrefix": "I have read and agree to the",
+    "communityGuidelines": "community guidelines",
+    "and": "and",
+    "privacyPolicy": "privacy policy",
+    "agreeToThePrefix": "I agree to the",
+    "termsOfService": "terms of service",
+    "liabilityNote": "and accept that MinCirklen is not liable for advice or outcomes shared in a circle",
+    "back": "Back",
+    "continue": "Continue",
+    "next": "Next",
+    "saving": "Saving…",
+    "agreeAndContinue": "Agree and continue"
+  },
+  "member": {
+    "onlineNow": "{{name}} · online now"
+  },
+  "reportModal": {
+    "title": "Report this session",
+    "description": "Tell us what happened. Your report goes to a moderator and stays anonymous — nobody in the circle is notified.",
+    "whoIsThisAbout": "Who is this about?",
+    "selectAllThatApply": "(select all that apply)",
+    "nobodyElseJoined": "Nobody else has joined this session yet.",
+    "whatsGoingOn": "What's going on?",
+    "describePlaceholder": "Describe what happened...",
+    "cancel": "Cancel",
+    "submitted": "Report about {{about}} submitted — a moderator will review it.",
+    "submitError": "Something went wrong submitting your report. Please try again.",
+    "submit": "Submit report"
+  },
+  "newSessionModal": {
+    "title": "New session",
+    "tabListLabel": "Join or start a circle",
+    "joinTab": "Join a circle",
+    "createTab": "Start a circle"
+  },
+  "accountModal": {
+    "back": "Back",
+    "profile": "Profile",
+    "profileUnavailable": "Your profile isn't available right now.",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "gender": "Gender",
+    "genderPlaceholder": "Select your gender",
+    "gender_male": "Male",
+    "gender_female": "Female",
+    "gender_other": "Other",
+    "country": "Country",
+    "countryPlaceholder": "Select your country",
+    "mobileNumber": "Mobile number",
+    "mobileHint": "Mobile number is used only for account safety — never shown in a circle.",
+    "stayAnonymous": "Stay anonymous in circles",
+    "stayAnonymousHint": "Other users see \"Anonymous,\" not your name",
+    "appearance": "Appearance",
+    "appearanceHint": "Switch between light and dark",
+    "privacyNote": "Your name and contact details are encrypted at rest and never shown to other members — circles only ever see an anonymous label unless you've chosen to show your name.",
+    "readFullPrivacyPolicy": "Read the full privacy policy",
+    "trainingConsent": "Allow AI training",
+    "trainingConsentHint": "Off by default — turn this on only if you're comfortable with your messages being used to train our AI",
+    "trainingConsentInfoLabel": "Why we ask this",
+    "trainingConsentInfo": "We use anonymized messages to train and improve our AI moderation — this helps us catch what matters and makes the platform safer and better for everyone here, not just you.",
+    "dataExport": "Download your data",
+    "dataExportHint": "Get a copy of your profile, messages, and account activity in a machine-readable format.",
+    "dataExportRequest": "Request my data",
+    "dataExportPreparing": "Preparing your export — this can take a few minutes.",
+    "dataExportDownload": "Download",
+    "dataExportExpiresOn": "Available until {{date}}",
+    "dataExportExpired": "No longer available",
+    "dataExportFailed": "Something went wrong preparing this export.",
+    "dataExportRequestFailed": "Something went wrong requesting your data. Please try again.",
+    "dataExportDownloadFailed": "Something went wrong starting the download. Please try again.",
+    "deleteAccount": "Delete account",
+    "deleteAccountHint": "Permanently delete your account and everything tied to it. This can't be undone.",
+    "deleteAccountButton": "Delete my account",
+    "deleteAccountConfirmTitle": "Delete your account?",
+    "deleteAccountConfirmBody": "This permanently deletes your profile, messages, and account activity. This cannot be undone.",
+    "deleteAccountConfirmLabel": "Type DELETE to confirm",
+    "deleteAccountConfirmCancel": "Cancel",
+    "deleteAccountConfirmAccept": "Permanently delete my account",
+    "deleteAccountFailed": "Something went wrong deleting your account. Please try again.",
+    "preferencesUnavailable": "Your preferences aren't available right now.",
+    "language": "Language",
+    "timezone": "Timezone",
+    "systemDefaultShort": "System default",
+    "systemDefault": "System default — {{zone}} ({{offset}})"
+  },
+  "status": {
+    "ended": "This session has ended",
+    "startsAt": "Starts {{time}} · anonymous by default"
+  },
+  "emptyState": {
+    "ended": "This session has ended. Transcripts are only visible to users during the live round.",
+    "forming": "This circle has not started yet. You will be notified when the round begins.",
+    "waitingForFirstMessage": "Waiting for the first message."
+  },
+  "sidebar": {
+    "liveNow": "Live now",
+    "ended": "Ended",
+    "notStarted": "Not started",
+    "account": "Account",
+    "newSession": "New session",
+    "searchSessions": "Search sessions",
+    "noSessionsMatch": "No sessions match that search",
+    "loadMore": "Load more"
+  },
+  "panel": {
+    "toggleMenu": "Toggle menu",
+    "showOfflineParticipants_one": "Show {{count}} offline participant",
+    "showOfflineParticipants_other": "Show {{count}} offline participants",
+    "notCurrentlyOnline": "Not currently online",
+    "userCount_one": "{{count}} user",
+    "userCount_other": "{{count}} users",
+    "participantsButton_one": "Participants, {{count}} online",
+    "participantsButton_other": "Participants, {{count}} online",
+    "onlineSectionLabel": "Online",
+    "offlineToggle_one": "Offline ({{count}})",
+    "offlineToggle_other": "Offline ({{count}})",
+    "participantsTitle": "Participants",
+    "closeParticipants": "Close"
+  },
+  "composer": {
+    "memberJoined": "{{name}} joined the circle",
+    "newMessages_one": "{{count}} new message",
+    "newMessages_other": "{{count}} new messages",
+    "sendingIn": "Sending in {{count}}s",
+    "skippingIn": "Skipping in {{count}}s",
+    "keepTypingToPause": "keep typing to pause",
+    "placeholder": "Type...",
+    "send": "Send",
+    "sendOptions": "Send options",
+    "autoSendToggle": "Auto-send when time runs out",
+    "sessionNotActive": "Session not active",
+    "itsYourTurn": "It's your turn",
+    "hasTheFloor": "{{name}} has the floor",
+    "waitingForNextUser": "Waiting for the next user",
+    "onlyYouCanSeeThis": "Only you can see this",
+    "reportFalsePositive": "Ask for another look",
+    "falsePositiveReported": "We'll take another look",
+    "falsePositiveReportedNotice": "Thanks — we're looking into it."
+  },
+  "rightPanel": {
+    "essentialPages": "Essential pages",
+    "transparency": "Transparency",
+    "ifInCrisis": "If you're in crisis",
+    "crisisResources": "Crisis resources",
+    "reportThisSession": "Report this session"
+  },
+  "crisisModal": {
+    "title": "You're not alone right now",
+    "notice": "What you shared here stays between you and our team — nobody else in the group will see it. Someone will take a look afterward, in case this didn't need to be held back."
+  },
+  "centerPanelError": {
+    "errorCode": "ERROR {{code}}",
+    "notFoundTitle": "Session not found",
+    "notFoundMessage": "That session doesn't exist, or it may have been removed.",
+    "fullTitle": "This circle is full",
+    "fullMessage": "This circle has already reached its capacity.",
+    "genericTitle": "Something went wrong",
+    "genericMessage": "We couldn't load this session right now. Please try again."
+  },
+  "errors": {
+    "agreementFailed": "Something went wrong recording your agreement. Please try again.",
+    "messageHeld": "Your message was held for review and was not sent to the circle.",
+    "sendFailed": "Something went wrong sending that message.",
+    "skipFailed": "Something went wrong skipping your turn.",
+    "recentSessionsLoadFailed": "Could not load recent sessions",
+    "moreRecentSessionsLoadFailed": "Could not load more sessions",
+    "sessionLoadFailed": "Could not load this session right now.",
+    "earlierMessagesLoadFailed": "Could not load earlier messages right now."
+  }
+}

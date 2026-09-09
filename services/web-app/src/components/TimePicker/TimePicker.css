@@ -1,0 +1,51 @@
+.ds-timepicker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-family: var(--font-family-base);
+}
+
+.ds-timepicker__label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.ds-timepicker__group {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+  transition: border-color var(--duration-fast) var(--easing-standard);
+}
+
+.ds-timepicker__group[data-focus-within] {
+  border-color: var(--accent-safe);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-timepicker__input {
+  display: flex;
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+}
+
+.ds-timepicker__segment {
+  padding: 0 1px;
+  outline: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-timepicker__segment[data-placeholder] {
+  color: var(--text-secondary);
+}
+
+.ds-timepicker__segment[data-focused] {
+  background: var(--accent-safe-surface);
+  color: var(--accent-safe);
+  border-radius: 2px;
+}

@@ -1,0 +1,36 @@
+.ds-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-overlay);
+  padding: var(--space-5);
+}
+
+.ds-modal {
+  width: 90vw;
+  max-width: 480px;
+  max-height: 85vh;
+  overflow: auto;
+  background: var(--surface-raised);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.ds-modal__dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  outline: none;
+  font-family: var(--font-family-base);
+  color: var(--text-primary);
+}
+
+.ds-modal__title {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+}

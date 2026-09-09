@@ -1,0 +1,8 @@
+/* Matches this panel's other compact filter inputs (height 34px, xs font)
+   — scoped so it doesn't affect the design system's default Select sizing
+   used everywhere else (forms, Preferences). */
+.start-join-filter-select .ds-select__trigger {
+  height: 34px;
+  padding: 0 8px;
+  font-size: var(--font-size-xs);
+}

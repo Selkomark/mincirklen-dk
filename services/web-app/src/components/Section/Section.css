@@ -1,0 +1,23 @@
+.ds-section--app {
+  background: var(--surface-app);
+}
+
+.ds-section--raised {
+  background: var(--surface-raised);
+}
+
+.ds-section--sunken {
+  background: var(--surface-sunken);
+}
+
+.ds-section--md {
+  padding-block: var(--space-6);
+}
+
+.ds-section--lg {
+  padding-block: var(--space-7);
+}
+
+.ds-section--xl {
+  padding-block: var(--space-8);
+}

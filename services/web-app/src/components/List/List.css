@@ -1,0 +1,17 @@
+.ds-list {
+  margin: 0;
+  padding-left: var(--space-6);
+  color: var(--text-primary);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-base);
+}
+
+.ds-list > li + li {
+  margin-top: var(--space-2);
+}
+
+.ds-list--unstyled {
+  list-style: none;
+  padding-left: 0;
+}

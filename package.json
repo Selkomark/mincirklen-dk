@@ -1,0 +1,16 @@
+{
+  "name": "mincirklen",
+  "private": true,
+  "workspaces": [
+    "packages/proto",
+    "packages/shared",
+    "services/trpc-api",
+    "services/websocket-service",
+    "services/data-export-service"
+  ],
+  "scripts": {
+    "typecheck": "bun run --filter='*' typecheck",
+    "test": "bun test",
+    "migrate": "bun packages/shared/src/db/migrate.ts"
+  }
+}

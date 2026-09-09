@@ -1,0 +1,86 @@
+{
+  "shared": {
+    "stepOf": "Step {{step}} of {{total}}",
+    "minutesShort": "{{count}} min",
+    "hours_one": "{{count}} hour",
+    "hours_other": "{{count}} hours",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days",
+    "startsIn": "Starts in {{duration}}",
+    "live": "Live",
+    "startingSoon": "Starting soon",
+    "open": "Open",
+    "openCalendar": "Open calendar"
+  },
+  "sizes": {
+    "upTo": "Up to {{count}}"
+  },
+  "durations": {
+    "openEnded": "Open-ended"
+  },
+  "errors": {
+    "topicsLoadFailed": "Could not load topics",
+    "sessionsLoadFailed": "Could not load open circles",
+    "moreSessionsLoadFailed": "Could not load more circles",
+    "previousSessionsLoadFailed": "Could not load previous circles"
+  },
+  "choose": {
+    "documentTitle": "Start a circle — MinCirklen",
+    "title": "New session",
+    "subtitle": "How would you like to begin",
+    "joinTitle": "Join an existing circle",
+    "joinSubtitle": "Browse circles already forming",
+    "newTitle": "Start a new circle",
+    "newSubtitle": "Set topic, time, and length"
+  },
+  "joinPage": {
+    "documentTitle": "Join a circle — MinCirklen",
+    "title": "Join a circle",
+    "subtitle": "Pick a circle that fits your schedule",
+    "searchPlaceholder": "Search circles by name",
+    "showFilters": "Show filters",
+    "topic": "Topic",
+    "any": "Any",
+    "groupSize": "Group size",
+    "date": "Date",
+    "duration": "Duration",
+    "clear": "Clear",
+    "search": "Search",
+    "scrollUpHint": "Scroll up for later circles",
+    "scrollDownHint": "Scroll down for earlier circles",
+    "noMatches": "No open circles match those filters",
+    "sessionMeta": "{{timing}} · {{duration}} · {{joined}}/{{capacity}}",
+    "circleFilledUp": "That circle just filled up — pick another.",
+    "joinFailed": "Something went wrong joining this circle.",
+    "cancel": "Cancel",
+    "back": "Back"
+  },
+  "newPage": {
+    "documentTitle": "Start a new circle — MinCirklen",
+    "title": "Start a new circle",
+    "subtitle": "Set the topic, time, and how many can join",
+    "circleName": "Circle name",
+    "circleNameHint": "Shown to others browsing circles to join — make it your own",
+    "circleNamePlaceholder": "e.g. Sunday evening check-in",
+    "topic": "Topic",
+    "dateAndTime": "Date and time",
+    "date": "Date",
+    "time": "Time",
+    "length": "Length",
+    "groupSize": "Group size",
+    "cancel": "Cancel",
+    "back": "Back",
+    "continue": "Continue",
+    "beforeYouBegin": "Before you begin",
+    "startingName": "Starting \"{{name}}\"",
+    "anonymousNote": "You'll appear to others only as an anonymous user. Nobody in this circle will see your name, photo, or account details.",
+    "understandAnonymous": "I understand this circle is anonymous by default",
+    "agreeToThePrefix": "I agree to the",
+    "communityGuidelines": "community guidelines",
+    "termsOfService": "terms of service",
+    "liabilityNote": "and accept that MinCirklen is not liable for advice or outcomes shared in this circle",
+    "startCircle": "Start circle",
+    "createFailed": "Something went wrong starting this circle.",
+    "createdButJoinFailed": "Your circle was created, but joining it failed — try again."
+  }
+}

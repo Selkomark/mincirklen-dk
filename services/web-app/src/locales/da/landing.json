@@ -1,0 +1,86 @@
+{
+  "meta": {
+    "title": "MinCirklen — Anonyme, modererede peer-support-cirkler",
+    "description": "MinCirklen er en anonym, AI-modereret platform for peer-support. Ingen profiler, ingen katalog, ingen måde at slå nogen op på — kun små, modererede cirkler at blive hørt i."
+  },
+  "header": {
+    "about": "Om",
+    "safety": "Sikkerhed",
+    "joinNow": "Bliv medlem nu",
+    "logOut": "Log ud"
+  },
+  "errors": {
+    "logoutFailed": "Der opstod en fejl under log ud."
+  },
+  "footer": {
+    "copyright": "© 2026 Selkomark. Alle rettigheder forbeholdes.",
+    "cookiePreferences": "Cookie-indstillinger",
+    "product": "Produkt",
+    "circles": "Cirkler",
+    "howItWorks": "Sådan fungerer det",
+    "pricing": "Priser",
+    "safety": "Sikkerhed",
+    "moderationTransparency": "Moderation og gennemsigtighed",
+    "company": "Virksomhed",
+    "about": "Om",
+    "facilitators": "Facilitatorer",
+    "support": "Support",
+    "crisisResources": "Kriseressourcer",
+    "accountAndData": "Konto og data",
+    "contact": "Kontakt",
+    "legal": "Juridisk",
+    "privacyPolicy": "Privatlivspolitik",
+    "communityGuidelines": "Fællesskabsregler",
+    "termsAndConditions": "Vilkår og betingelser"
+  },
+  "hero": {
+    "imageAlt": "Illustration af mennesker i en MinCirklen-peer-support-cirkel, der taler anonymt og afslappet",
+    "badge": "Netop lanceret — tidlig pilot",
+    "title": "Et sted at blive hørt, uden fordømmelse",
+    "lead": "Anonyme, modererede peer-support-cirkler. Vi er helt nye — bliv medlem af en af vores første cirkler og vær med til at forme, hvad dette bliver.",
+    "joinCircle": "Bliv medlem af en cirkel",
+    "learnMore": "Læs mere"
+  },
+  "stats": {
+    "anonymousValue": "Anonymt",
+    "anonymousLabel": "Som standard, hver cirkel",
+    "zeroValue": "Nul",
+    "zeroLabel": "Profiler, kataloger eller måder at slå nogen op på"
+  },
+  "features": {
+    "title": "Bygget omkring sikkerhed",
+    "lead": "Hver del af oplevelsen er designet til at beskytte dig først.",
+    "moderatedTitle": "Modereret",
+    "moderatedBody": "En trænet facilitator er til stede i hver session, og du kan forlade eller anmelde når som helst.",
+    "anonymousTitle": "Anonymt som standard",
+    "anonymousBody": "Del så meget eller så lidt du vil — ingen ser dit rigtige navn, medmindre du vælger at dele det.",
+    "noPressureTitle": "Intet pres",
+    "noPressureBody": "Det er altid velkomment kun at lytte. Der er ingen forpligtelse til at tale, og ingen rådgivning gives, medmindre den bliver bedt om."
+  },
+  "testimonial": {
+    "title": "Hvorfor vi bygger dette",
+    "quote": "Skab et trygt og hyggeligt sted på internettet, hvor folk endelig kan åbne sig. Det er hele idéen — vi er lige startet, og vi vil hellere vokse langsomt og sikkert end hurtigt og hensynsløst.",
+    "role": "Stifter, MinCirklen"
+  },
+  "pricing": {
+    "title": "Enkel, ærlig prissætning",
+    "lead": "Vi er i tidlig pilot og har endnu ikke fastsat priser — der vil altid være en gratis vej ind.",
+    "freeName": "Gratis, under piloten",
+    "freePrice": "Gratis",
+    "freeFeature1": "Ubegrænsede sessioner",
+    "freeFeature2": "Anonymt som standard",
+    "freeFeature3": "Ingen grænse for samtalens længde",
+    "supportName": "Støt MinCirklen",
+    "supportPrice": "Ikke fastsat",
+    "supportPeriod": "pris endnu ikke besluttet",
+    "supportFeature1": "En måde at hjælpe med at finansiere hosting og sikkerhedsgennemgang",
+    "supportFeature2": "Samme turlængde og skrivetid som gratis",
+    "supportFeature3": "Vi annoncerer detaljer, før noget ændres",
+    "getStarted": "Kom i gang"
+  },
+  "cta": {
+    "title": "Klar til at blive medlem af en cirkel?",
+    "action": "Kom i gang — det er gratis",
+    "body": "Det tager kun et minut, og du kan forblive anonym hele vejen."
+  }
+}

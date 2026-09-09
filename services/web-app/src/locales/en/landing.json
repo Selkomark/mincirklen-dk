@@ -1,0 +1,86 @@
+{
+  "meta": {
+    "title": "MinCirklen — Anonymous, moderated peer-support circles",
+    "description": "MinCirklen is an anonymous, AI-moderated peer-support platform. No profiles, no directory, no way to look anyone up — just small, moderated circles to be heard in."
+  },
+  "header": {
+    "about": "About",
+    "safety": "Safety",
+    "joinNow": "Join now",
+    "logOut": "Log out"
+  },
+  "errors": {
+    "logoutFailed": "Something went wrong logging out."
+  },
+  "footer": {
+    "copyright": "© 2026 Selkomark. All rights reserved.",
+    "cookiePreferences": "Cookie preferences",
+    "product": "Product",
+    "circles": "Circles",
+    "howItWorks": "How it works",
+    "pricing": "Pricing",
+    "safety": "Safety",
+    "moderationTransparency": "Moderation & transparency",
+    "company": "Company",
+    "about": "About",
+    "facilitators": "Facilitators",
+    "support": "Support",
+    "crisisResources": "Crisis resources",
+    "accountAndData": "Account and data",
+    "contact": "Contact",
+    "legal": "Legal",
+    "privacyPolicy": "Privacy policy",
+    "communityGuidelines": "Community guidelines",
+    "termsAndConditions": "Terms and conditions"
+  },
+  "hero": {
+    "imageAlt": "Illustration of people in a MinCirklen peer-support circle, talking anonymously and at ease",
+    "badge": "Just launched — early pilot",
+    "title": "A space to be heard, without judgment",
+    "lead": "Anonymous, moderated peer-support circles. We're brand new — join one of our first circles and help shape what this becomes.",
+    "joinCircle": "Join a circle",
+    "learnMore": "Learn more"
+  },
+  "stats": {
+    "anonymousValue": "Anonymous",
+    "anonymousLabel": "By default, every circle",
+    "zeroValue": "Zero",
+    "zeroLabel": "Profiles, directories, or ways to look someone up"
+  },
+  "features": {
+    "title": "Built around safety",
+    "lead": "Every part of the experience is designed to protect you first.",
+    "moderatedTitle": "Moderated",
+    "moderatedBody": "A trained facilitator is present in every session, and you can leave or report at any time.",
+    "anonymousTitle": "Anonymous by default",
+    "anonymousBody": "Share as much or as little as you want — nobody sees your real name unless you choose to share it.",
+    "noPressureTitle": "No pressure",
+    "noPressureBody": "Listen-only is always welcome. There's no obligation to speak, and no advice-giving unless it's asked for."
+  },
+  "testimonial": {
+    "title": "Why we're building this",
+    "quote": "Make a safe and cosy place on the internet where people can finally open up. That's the whole idea — we're just getting started, and we'd rather grow slowly and safely than fast and reckless.",
+    "role": "Founder, MinCirklen"
+  },
+  "pricing": {
+    "title": "Simple, honest pricing",
+    "lead": "We're in early pilot and haven't set pricing yet — there will always be a free way in.",
+    "freeName": "Free, during pilot",
+    "freePrice": "Free",
+    "freeFeature1": "Unlimited sessions",
+    "freeFeature2": "Anonymous by default",
+    "freeFeature3": "No limit on conversation length",
+    "supportName": "Support MinCirklen",
+    "supportPrice": "TBD",
+    "supportPeriod": "pricing to be decided",
+    "supportFeature1": "A way to help fund hosting and safety review",
+    "supportFeature2": "Same turn length and typing time as free",
+    "supportFeature3": "We'll announce details before anything changes",
+    "getStarted": "Get started"
+  },
+  "cta": {
+    "title": "Ready to join a circle?",
+    "action": "Get started — it's free",
+    "body": "It only takes a minute, and you can stay anonymous the whole way."
+  }
+}

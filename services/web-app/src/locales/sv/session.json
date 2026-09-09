@@ -1,0 +1,198 @@
+{
+  "communityRules": {
+    "anonymity": {
+      "title": "Skydda din anonymitet",
+      "description": "Dela aldrig ditt fullständiga namn, telefonnummer, adress, e-post eller andra identifierande uppgifter i en cirkel — varken dina egna eller någon annans."
+    },
+    "noAdvertising": {
+      "title": "Ingen reklam eller uppvaktning",
+      "description": "Marknadsför inte ett företag, en tjänst eller en produkt, och be inte andra användare betala för något."
+    },
+    "noEndorsements": {
+      "title": "Inga rekommendationer eller godkännanden",
+      "description": "Rekommendera eller godkänn inte specifika utövare, behandlingar eller externa tjänster. Det här är inte en plats för hänvisningar."
+    },
+    "supportDontDirect": {
+      "title": "Stötta, styr inte",
+      "description": "Dela din egen erfarenhet, inte medicinska eller juridiska råd. Att lyssna räcker alltid."
+    },
+    "reportOrLeave": {
+      "title": "Rapportera eller lämna när som helst",
+      "description": "Om något känns fel, eller du är i kris, använd Rapportera eller Krisresurser direkt. Ingen behöver förklara varför de lämnade."
+    }
+  },
+  "guidelinesModal": {
+    "stepOf": "Steg {{step}} av {{total}}",
+    "beforeYouJoin": "Innan du går med",
+    "nonNegotiable": "Dessa regler är inte förhandlingsbara och gäller för varje cirkel. Att bryta mot dem kan avsluta en session eller ta bort ett konto.",
+    "understandAnonymous": "Jag förstår att cirklar är anonyma som standard",
+    "readAndAgreeToThePrefix": "Jag har läst och godkänner",
+    "communityGuidelines": "communityreglerna",
+    "and": "och",
+    "privacyPolicy": "integritetspolicyn",
+    "agreeToThePrefix": "Jag godkänner",
+    "termsOfService": "användarvillkoren",
+    "liabilityNote": "och accepterar att MinCirklen inte ansvarar för råd eller resultat som delas i en cirkel",
+    "back": "Tillbaka",
+    "continue": "Fortsätt",
+    "next": "Nästa",
+    "saving": "Sparar…",
+    "agreeAndContinue": "Godkänn och fortsätt"
+  },
+  "member": {
+    "onlineNow": "{{name}} · online nu"
+  },
+  "reportModal": {
+    "title": "Rapportera denna session",
+    "description": "Berätta vad som hände. Din rapport går till en moderator och förblir anonym — ingen i cirkeln meddelas.",
+    "whoIsThisAbout": "Vem gäller detta?",
+    "selectAllThatApply": "(välj alla som gäller)",
+    "nobodyElseJoined": "Ingen annan har gått med i den här sessionen än.",
+    "whatsGoingOn": "Vad händer?",
+    "describePlaceholder": "Beskriv vad som hände...",
+    "cancel": "Avbryt",
+    "submitted": "Rapport om {{about}} skickad — en moderator kommer att granska den.",
+    "submitError": "Något gick fel när rapporten skulle skickas. Försök igen.",
+    "submit": "Skicka rapport"
+  },
+  "newSessionModal": {
+    "title": "Ny session",
+    "tabListLabel": "Gå med i eller starta en cirkel",
+    "joinTab": "Gå med i en cirkel",
+    "createTab": "Starta en cirkel"
+  },
+  "accountModal": {
+    "back": "Tillbaka",
+    "profile": "Profil",
+    "profileUnavailable": "Din profil är inte tillgänglig just nu.",
+    "firstName": "Förnamn",
+    "lastName": "Efternamn",
+    "gender": "Kön",
+    "genderPlaceholder": "Välj ditt kön",
+    "gender_male": "Man",
+    "gender_female": "Kvinna",
+    "gender_other": "Annat",
+    "country": "Land",
+    "countryPlaceholder": "Välj ditt land",
+    "mobileNumber": "Mobilnummer",
+    "mobileHint": "Mobilnumret används endast för kontosäkerhet — visas aldrig i en cirkel.",
+    "stayAnonymous": "Var anonym i cirklar",
+    "stayAnonymousHint": "Andra användare ser \"Anonym\", inte ditt namn",
+    "appearance": "Utseende",
+    "appearanceHint": "Växla mellan ljust och mörkt läge",
+    "privacyNote": "Ditt namn och dina kontaktuppgifter är krypterade i vila och visas aldrig för andra medlemmar — cirklar ser alltid bara en anonym etikett om du inte har valt att visa ditt namn.",
+    "readFullPrivacyPolicy": "Läs hela integritetspolicyn",
+    "trainingConsent": "Tillåt AI-träning",
+    "trainingConsentHint": "Avstängt som standard — slå bara på detta om du är bekväm med att dina meddelanden används för att träna vår AI",
+    "trainingConsentInfoLabel": "Varför vi frågar om detta",
+    "trainingConsentInfo": "Vi använder anonymiserade meddelanden för att träna och förbättra vår AI-moderering — det hjälper oss att fånga det som är viktigt och gör plattformen säkrare och bättre för alla här, inte bara dig.",
+    "dataExport": "Ladda ner dina data",
+    "dataExportHint": "Få en kopia av din profil, dina meddelanden och din kontoaktivitet i ett maskinläsbart format.",
+    "dataExportRequest": "Begär mina data",
+    "dataExportPreparing": "Förbereder din export — det kan ta några minuter.",
+    "dataExportDownload": "Ladda ner",
+    "dataExportExpiresOn": "Tillgänglig till {{date}}",
+    "dataExportExpired": "Inte längre tillgänglig",
+    "dataExportFailed": "Något gick fel med den här exporten.",
+    "dataExportRequestFailed": "Något gick fel när dina data skulle begäras. Försök igen.",
+    "dataExportDownloadFailed": "Något gick fel när nedladdningen skulle startas. Försök igen.",
+    "deleteAccount": "Ta bort konto",
+    "deleteAccountHint": "Ta bort ditt konto och allt kopplat till det permanent. Detta kan inte ångras.",
+    "deleteAccountButton": "Ta bort mitt konto",
+    "deleteAccountConfirmTitle": "Ta bort ditt konto?",
+    "deleteAccountConfirmBody": "Detta tar permanent bort din profil, dina meddelanden och din kontoaktivitet. Detta kan inte ångras.",
+    "deleteAccountConfirmLabel": "Skriv DELETE för att bekräfta",
+    "deleteAccountConfirmCancel": "Avbryt",
+    "deleteAccountConfirmAccept": "Ta bort mitt konto permanent",
+    "deleteAccountFailed": "Något gick fel när ditt konto skulle tas bort. Försök igen.",
+    "preferencesUnavailable": "Dina preferenser är inte tillgängliga just nu.",
+    "language": "Språk",
+    "timezone": "Tidszon",
+    "systemDefaultShort": "Systemstandard",
+    "systemDefault": "Systemstandard — {{zone}} ({{offset}})"
+  },
+  "status": {
+    "ended": "Den här sessionen har avslutats",
+    "startsAt": "Börjar {{time}} · anonymt som standard"
+  },
+  "emptyState": {
+    "ended": "Den här sessionen har avslutats. Transkript är endast synliga för användare under den pågående omgången.",
+    "forming": "Den här cirkeln har inte startat än. Du meddelas när omgången börjar.",
+    "waitingForFirstMessage": "Väntar på det första meddelandet."
+  },
+  "sidebar": {
+    "liveNow": "Live nu",
+    "ended": "Avslutad",
+    "notStarted": "Inte startad",
+    "account": "Konto",
+    "newSession": "Ny session",
+    "searchSessions": "Sök sessioner",
+    "noSessionsMatch": "Inga sessioner matchar den sökningen",
+    "loadMore": "Ladda fler"
+  },
+  "panel": {
+    "toggleMenu": "Växla meny",
+    "showOfflineParticipants_one": "Visa {{count}} offline-deltagare",
+    "showOfflineParticipants_other": "Visa {{count}} offline-deltagare",
+    "notCurrentlyOnline": "Inte online just nu",
+    "userCount_one": "{{count}} användare",
+    "userCount_other": "{{count}} användare",
+    "participantsButton_one": "Deltagare, {{count}} online",
+    "participantsButton_other": "Deltagare, {{count}} online",
+    "onlineSectionLabel": "Online",
+    "offlineToggle_one": "Offline ({{count}})",
+    "offlineToggle_other": "Offline ({{count}})",
+    "participantsTitle": "Deltagare",
+    "closeParticipants": "Stäng"
+  },
+  "composer": {
+    "memberJoined": "{{name}} gick med i cirkeln",
+    "newMessages_one": "{{count}} nytt meddelande",
+    "newMessages_other": "{{count}} nya meddelanden",
+    "sendingIn": "Skickar om {{count}}s",
+    "skippingIn": "Hoppar över om {{count}}s",
+    "keepTypingToPause": "fortsätt skriva för att pausa",
+    "placeholder": "Skriv...",
+    "send": "Skicka",
+    "sendOptions": "Skickalternativ",
+    "autoSendToggle": "Skicka automatiskt när tiden tar slut",
+    "sessionNotActive": "Sessionen är inte aktiv",
+    "itsYourTurn": "Det är din tur",
+    "hasTheFloor": "{{name}} har ordet",
+    "waitingForNextUser": "Väntar på nästa användare",
+    "onlyYouCanSeeThis": "Bara du kan se detta",
+    "reportFalsePositive": "Be om en ny titt",
+    "falsePositiveReported": "Vi tar en ny titt",
+    "falsePositiveReportedNotice": "Tack — vi tittar på det."
+  },
+  "rightPanel": {
+    "essentialPages": "Viktiga sidor",
+    "transparency": "Transparens",
+    "ifInCrisis": "Om du är i kris",
+    "crisisResources": "Krisresurser",
+    "reportThisSession": "Rapportera denna session"
+  },
+  "crisisModal": {
+    "title": "Du är inte ensam just nu",
+    "notice": "Det du skrev här stannar mellan dig och oss — resten av gruppen ser det inte. Någon tar en titt på det efteråt, ifall det inte behövde hållas tillbaka."
+  },
+  "centerPanelError": {
+    "errorCode": "FEL {{code}}",
+    "notFoundTitle": "Sessionen hittades inte",
+    "notFoundMessage": "Den sessionen finns inte, eller så kan den ha tagits bort.",
+    "fullTitle": "Den här cirkeln är full",
+    "fullMessage": "Den här cirkeln har redan nått sin kapacitet.",
+    "genericTitle": "Något gick fel",
+    "genericMessage": "Vi kunde inte läsa in den här sessionen just nu. Försök igen."
+  },
+  "errors": {
+    "agreementFailed": "Något gick fel när ditt godkännande skulle registreras. Försök igen.",
+    "messageHeld": "Ditt meddelande hölls kvar för granskning och skickades inte till cirkeln.",
+    "sendFailed": "Något gick fel när meddelandet skulle skickas.",
+    "skipFailed": "Något gick fel när din tur skulle hoppas över.",
+    "recentSessionsLoadFailed": "Kunde inte läsa in senaste sessionerna",
+    "moreRecentSessionsLoadFailed": "Kunde inte läsa in fler sessioner",
+    "sessionLoadFailed": "Kunde inte läsa in den här sessionen just nu.",
+    "earlierMessagesLoadFailed": "Kunde inte läsa in tidigare meddelanden just nu."
+  }
+}

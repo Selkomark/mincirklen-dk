@@ -1,0 +1,91 @@
+.ds-select {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-family: var(--font-family-base);
+}
+
+.ds-select__label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.ds-select__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  height: 44px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: var(--font-size-md);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--easing-standard);
+}
+
+.ds-select__trigger:hover {
+  border-color: var(--border-strong);
+}
+
+.ds-select[data-focus-visible] .ds-select__trigger {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-color: var(--accent-safe);
+}
+
+.ds-select__value[data-placeholder] {
+  color: var(--text-secondary);
+}
+
+.ds-select__chevron {
+  color: var(--text-secondary);
+  transition: transform var(--duration-fast) var(--easing-standard);
+}
+
+.ds-select[data-open] .ds-select__chevron {
+  transform: rotate(180deg);
+}
+
+.ds-select__popover {
+  min-width: var(--trigger-width);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-md);
+  overflow: auto;
+}
+
+.ds-select__listbox {
+  padding: var(--space-1);
+  outline: none;
+}
+
+.ds-select__item {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  outline: none;
+}
+
+.ds-select__item[data-hovered],
+.ds-select__item[data-focused] {
+  background: var(--surface-sunken);
+}
+
+.ds-select__item[data-selected] {
+  background: var(--accent-safe-surface);
+  color: var(--accent-safe);
+  font-weight: var(--font-weight-medium);
+}
+
+.ds-select[data-disabled] .ds-select__trigger {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
