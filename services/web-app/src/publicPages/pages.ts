@@ -1,3 +1,5 @@
+import { formatLocaleSegment, type Locale } from '../locale'
+
 export type PublicPageId =
   | 'how-it-works'
   | 'safety-and-moderation'
@@ -19,13 +21,14 @@ export interface PublicPageData {
   urgent?: boolean
 }
 
-// Builds a real, shareable path for a public page — e.g. "/privacy-policy" in dev,
-// "/MinCirklen.dk/privacy-policy" once deployed. Always use this instead of a raw
-// string so links keep working under the GitHub Pages base path. Page ids live at the
-// top level (not under "/p/") — App.tsx guards against them colliding with the app's
-// own reserved routes (system-design, new, s).
-export function publicPagePath(id: PublicPageId): string {
-  return `${import.meta.env.BASE_URL}${id}`
+// Builds a real, shareable path for a public page — e.g. "/en-DK/privacy-policy" in
+// dev, "/MinCirklen.dk/en-DK/privacy-policy" once deployed. Always use this instead of
+// a raw string so links keep working under the GitHub Pages base path and carry the
+// current locale segment. Page ids live directly under the locale segment (not under
+// "/p/") — App.tsx guards against them colliding with the app's own reserved routes
+// (system-design, p, s).
+export function publicPagePath(id: PublicPageId, locale: Locale): string {
+  return `${import.meta.env.BASE_URL}${formatLocaleSegment(locale)}/${id}`
 }
 
 export const PUBLIC_PAGE_ORDER: PublicPageId[] = [

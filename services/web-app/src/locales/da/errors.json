@@ -12,5 +12,10 @@
   "boundary": {
     "title": "Der opstod en fejl",
     "message": "Der opstod en uventet fejl. Prøv igen."
+  },
+  "marketUnavailable": {
+    "title": "Ikke tilgængelig i din region",
+    "message": "MinCirklen er ikke åbnet i {{market}} endnu.",
+    "contactCta": "Bed os åbne din region"
   }
 }

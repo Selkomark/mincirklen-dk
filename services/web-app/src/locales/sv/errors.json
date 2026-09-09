@@ -12,5 +12,10 @@
   "boundary": {
     "title": "Något gick fel",
     "message": "Ett oväntat fel inträffade. Försök igen."
+  },
+  "marketUnavailable": {
+    "title": "Inte tillgängligt i din region",
+    "message": "MinCirklen är inte öppet i {{market}} än.",
+    "contactCta": "Be oss öppna din region"
   }
 }

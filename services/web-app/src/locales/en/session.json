@@ -55,12 +55,6 @@
     "submitError": "Something went wrong submitting your report. Please try again.",
     "submit": "Submit report"
   },
-  "newSessionModal": {
-    "title": "New session",
-    "tabListLabel": "Join or start a circle",
-    "joinTab": "Join a circle",
-    "createTab": "Start a circle"
-  },
   "accountModal": {
     "back": "Back",
     "profile": "Profile",

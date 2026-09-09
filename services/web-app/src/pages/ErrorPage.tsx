@@ -2,15 +2,21 @@ import { useTranslation } from 'react-i18next'
 import { LinkButton } from '../LinkButton'
 import { SiteHeader } from '../SiteHeader'
 import { SiteFooter } from '../SiteFooter'
-import { landingPath } from '../App'
+import { landingPath, useOptionalLocale } from '../App'
+import { fallbackLocale } from '../locale'
 import { useDocumentTitle } from '../useDocumentTitle'
 
-// Shared shell for every full-page error state (404 not-found, the 500
-// ErrorBoundary catches, and any future status the app needs its own
-// page for) — one layout, one recovery action, so a new error case is a
-// one-line call site rather than a new near-duplicate page file.
+// Shared shell for every full-page error state (404 not-found, rendered
+// inside Shell's own LocaleContext, and the 500 ErrorBoundary catches,
+// rendered directly by ErrorBoundary with no route — and so no locale —
+// ever resolved) — one layout, one recovery action, so a new error case
+// is a one-line call site rather than a new near-duplicate page file.
+// useOptionalLocale() + a computed fallback (not useLocale()) is what
+// makes both cases safe: a locale-less crash rendering this page must
+// never itself throw trying to read a context that was never provided.
 export function ErrorPage({ code, title, message }: { code: number; title: string; message: string }) {
-  const { t } = useTranslation('errors')
+  const { t, i18n } = useTranslation('errors')
+  const locale = useOptionalLocale() ?? fallbackLocale(i18n.resolvedLanguage)
   useDocumentTitle(`${title} — MinCirklen`)
 
   return (
@@ -37,7 +43,7 @@ export function ErrorPage({ code, title, message }: { code: number; title: strin
           </div>
 
           <div>
-            <LinkButton href={landingPath()}>{t('backToHome')}</LinkButton>
+            <LinkButton href={landingPath(locale)}>{t('backToHome')}</LinkButton>
           </div>
         </div>
       </div>

@@ -31,7 +31,8 @@
     "joinTitle": "Gå med i en befintlig cirkel",
     "joinSubtitle": "Bläddra bland cirklar som redan bildas",
     "newTitle": "Starta en ny cirkel",
-    "newSubtitle": "Ange ämne, tid och längd"
+    "newSubtitle": "Ange ämne, tid och längd",
+    "toggleMenu": "Växla meny"
   },
   "joinPage": {
     "documentTitle": "Gå med i en cirkel — MinCirklen",

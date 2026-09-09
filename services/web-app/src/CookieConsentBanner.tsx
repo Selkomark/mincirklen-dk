@@ -4,6 +4,8 @@ import * as CookieConsent from 'vanilla-cookieconsent'
 import 'vanilla-cookieconsent/dist/cookieconsent.css'
 import './cookie-consent-theme.css'
 import { publicPagePath } from './publicPages/pages'
+import { DEFAULT_MARKET, getStoredMarket } from './locale'
+import type { SupportedLanguage } from './languages'
 
 // Mounted once at the app root. mode: 'opt-in' (the library default) means nothing
 // beyond strictly-necessary cookies is ever considered accepted until the visitor
@@ -18,7 +20,15 @@ export function CookieConsentBanner() {
   const { i18n } = useTranslation()
 
   useEffect(() => {
-    const privacyLink = `<a href="${publicPagePath('privacy-policy')}" class="cc__link">privacy policy</a>`
+    // No useLocale() here — this banner mounts at the App root, a sibling
+    // of Shell rather than inside its LocaleContext.Provider (see
+    // App.tsx), so it can render through Shell's brief pre-redirect
+    // "no locale resolved yet" tick too. Same fallback the redirect
+    // effect itself uses: stored/detected language, stored/default
+    // market — this link only ever needs *a* working locale, not
+    // necessarily this exact render's.
+    const locale = { language: (i18n.resolvedLanguage as SupportedLanguage | undefined) ?? 'en', market: getStoredMarket() ?? DEFAULT_MARKET }
+    const privacyLink = `<a href="${publicPagePath('privacy-policy', locale)}" class="cc__link">privacy policy</a>`
 
     CookieConsent.run({
       guiOptions: {

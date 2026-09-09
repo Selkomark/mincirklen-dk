@@ -12,5 +12,10 @@
   "boundary": {
     "title": "Something went wrong",
     "message": "An unexpected error occurred. Please try again."
+  },
+  "marketUnavailable": {
+    "title": "Not available in your region",
+    "message": "MinCirklen isn't open in {{market}} yet.",
+    "contactCta": "Ask us to open your region"
   }
 }

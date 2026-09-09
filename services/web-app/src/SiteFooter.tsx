@@ -1,11 +1,12 @@
 import { useTranslation } from 'react-i18next'
 import { Footer, FooterColumn } from './components/Footer'
 import { publicPagePath } from './publicPages/pages'
-import { startPath, moderationTransparencyPath } from './App'
+import { pPath, moderationTransparencyPath, useLocale } from './App'
 import { showCookiePreferences } from './CookieConsentBanner'
 
 export function SiteFooter() {
   const { t } = useTranslation('landing')
+  const locale = useLocale()
   return (
     <Footer
       bottom={
@@ -23,25 +24,25 @@ export function SiteFooter() {
       }
     >
       <FooterColumn title={t('footer.product')}>
-        <a href={startPath()}>{t('footer.circles')}</a>
-        <a href={publicPagePath('how-it-works')}>{t('footer.howItWorks')}</a>
-        <a href={publicPagePath('pricing')}>{t('footer.pricing')}</a>
-        <a href={publicPagePath('safety-and-moderation')}>{t('footer.safety')}</a>
-        <a href={moderationTransparencyPath()}>{t('footer.moderationTransparency')}</a>
+        <a href={pPath(locale)}>{t('footer.circles')}</a>
+        <a href={publicPagePath('how-it-works', locale)}>{t('footer.howItWorks')}</a>
+        <a href={publicPagePath('pricing', locale)}>{t('footer.pricing')}</a>
+        <a href={publicPagePath('safety-and-moderation', locale)}>{t('footer.safety')}</a>
+        <a href={moderationTransparencyPath(locale)}>{t('footer.moderationTransparency')}</a>
       </FooterColumn>
       <FooterColumn title={t('footer.company')}>
-        <a href={publicPagePath('about')}>{t('footer.about')}</a>
-        <a href={publicPagePath('facilitators')}>{t('footer.facilitators')}</a>
+        <a href={publicPagePath('about', locale)}>{t('footer.about')}</a>
+        <a href={publicPagePath('facilitators', locale)}>{t('footer.facilitators')}</a>
       </FooterColumn>
       <FooterColumn title={t('footer.support')}>
-        <a href={publicPagePath('crisis-resources')}>{t('footer.crisisResources')}</a>
-        <a href={publicPagePath('account-and-data')}>{t('footer.accountAndData')}</a>
-        <a href={publicPagePath('contact')}>{t('footer.contact')}</a>
+        <a href={publicPagePath('crisis-resources', locale)}>{t('footer.crisisResources')}</a>
+        <a href={publicPagePath('account-and-data', locale)}>{t('footer.accountAndData')}</a>
+        <a href={publicPagePath('contact', locale)}>{t('footer.contact')}</a>
       </FooterColumn>
       <FooterColumn title={t('footer.legal')}>
-        <a href={publicPagePath('privacy-policy')}>{t('footer.privacyPolicy')}</a>
-        <a href={publicPagePath('community-guidelines')}>{t('footer.communityGuidelines')}</a>
-        <a href={publicPagePath('terms-and-conditions')}>{t('footer.termsAndConditions')}</a>
+        <a href={publicPagePath('privacy-policy', locale)}>{t('footer.privacyPolicy')}</a>
+        <a href={publicPagePath('community-guidelines', locale)}>{t('footer.communityGuidelines')}</a>
+        <a href={publicPagePath('terms-and-conditions', locale)}>{t('footer.termsAndConditions')}</a>
       </FooterColumn>
     </Footer>
   )

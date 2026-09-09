@@ -11,18 +11,18 @@ import { Skeleton } from '../../components/Skeleton'
 import { publicPagePath } from '../../publicPages/pages'
 import { SiteHeader } from '../../SiteHeader'
 import { SiteFooter } from '../../SiteFooter'
+import { useLocale } from '../../App'
 import { useDocumentTitle } from '../../useDocumentTitle'
 import { Chip, DURATIONS, SIZES, StepBar, durationLabel, useTopics } from './shared'
 
 export interface StartNewPageProps {
   onBack: () => void
   onComplete: (sessionId: string) => void
-  // SessionPage.tsx's "New session" opens this same flow in a Modal
-  // (alongside StartJoinPage, as a second tab) instead of navigating to
-  // the /start/new route — embedded skips the full-page chrome
-  // (SiteHeader/SiteFooter, the centered/padded page wrapper) and just
-  // renders the step content, since the Modal already provides its own
-  // dialog chrome. Mirrors StartJoinPage.tsx's identical `embedded` prop.
+  // pages/start/StartPage.tsx's /p center panel renders this flow
+  // embedded (skips the full-page chrome — SiteHeader/SiteFooter, the
+  // centered/padded page wrapper — and just renders the step content,
+  // since DashShell already provides the surrounding chrome). Mirrors
+  // StartJoinPage.tsx's identical `embedded` prop.
   embedded?: boolean
 }
 
@@ -32,6 +32,7 @@ function combineToISOString(date: CalendarDate, time: Time): string {
 
 export function StartNewPage({ onBack, onComplete, embedded = false }: StartNewPageProps) {
   const { t } = useTranslation('start')
+  const locale = useLocale()
   useDocumentTitle(t('newPage.documentTitle'))
 
   const { topics, loading: topicsLoading, error: topicsError } = useTopics()
@@ -208,7 +209,7 @@ export function StartNewPage({ onBack, onComplete, embedded = false }: StartNewP
                     <Checkbox isSelected={guidelinesChecked} onChange={setGuidelinesChecked} />
                     <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-primary)' }}>
                       {t('newPage.agreeToThePrefix')}{' '}
-                      <a href={publicPagePath('community-guidelines')} target="_blank" rel="noopener noreferrer" className="ds-inline-link">
+                      <a href={publicPagePath('community-guidelines', locale)} target="_blank" rel="noopener noreferrer" className="ds-inline-link">
                         {t('newPage.communityGuidelines')}
                       </a>
                     </span>
@@ -217,7 +218,7 @@ export function StartNewPage({ onBack, onComplete, embedded = false }: StartNewP
                     <Checkbox isSelected={termsChecked} onChange={setTermsChecked} />
                     <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-primary)' }}>
                       {t('newPage.agreeToThePrefix')}{' '}
-                      <a href={publicPagePath('terms-and-conditions')} target="_blank" rel="noopener noreferrer" className="ds-inline-link">
+                      <a href={publicPagePath('terms-and-conditions', locale)} target="_blank" rel="noopener noreferrer" className="ds-inline-link">
                         {t('newPage.termsOfService')}
                       </a>{' '}
                       {t('newPage.liabilityNote')}

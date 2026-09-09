@@ -3,16 +3,19 @@ import { SiteFooter } from '../SiteFooter'
 import { usePageMeta } from '../usePageMeta'
 import { useJsonLd } from '../useJsonLd'
 import { SITE_ORIGIN } from '../siteConfig'
+import { useLocale } from '../App'
 import { PUBLIC_PAGES, publicPagePath, type PublicPageId } from './pages'
 
 export function PublicPageView({ id }: { id: PublicPageId }) {
+  const locale = useLocale()
   const page = PUBLIC_PAGES[id]
-  const path = publicPagePath(id)
+  const path = publicPagePath(id, locale)
 
   usePageMeta({
     title: `${page.title} — MinCirklen`,
     description: page.intro,
-    path,
+    locale,
+    pagePath: id,
     type: 'article',
   })
 

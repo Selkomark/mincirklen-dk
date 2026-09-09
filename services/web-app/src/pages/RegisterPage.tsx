@@ -13,6 +13,7 @@ import { SiteFooter } from '../SiteFooter'
 import { COUNTRIES } from '../countries'
 import { GENDERS } from '../genders'
 import { useDocumentTitle } from '../useDocumentTitle'
+import { useLocale } from '../App'
 
 export interface RegisterPageProps {
   onComplete: () => void
@@ -20,6 +21,7 @@ export interface RegisterPageProps {
 
 export function RegisterPage({ onComplete }: RegisterPageProps) {
   const { t } = useTranslation('auth')
+  const locale = useLocale()
   useDocumentTitle(t('register.documentTitle'))
 
   const [firstName, setFirstName] = useState('')
@@ -194,11 +196,11 @@ export function RegisterPage({ onComplete }: RegisterPageProps) {
                 <Checkbox isSelected={termsChecked} onChange={setTermsChecked} />
                 <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-primary)' }}>
                   {t('register.agreeToThePrefix')}{' '}
-                  <a href={publicPagePath('terms-and-conditions')} target="_blank" rel="noopener noreferrer" className="ds-inline-link">
+                  <a href={publicPagePath('terms-and-conditions', locale)} target="_blank" rel="noopener noreferrer" className="ds-inline-link">
                     {t('register.termsAndConditions')}
                   </a>{' '}
                   {t('register.and')}{' '}
-                  <a href={publicPagePath('privacy-policy')} target="_blank" rel="noopener noreferrer" className="ds-inline-link">
+                  <a href={publicPagePath('privacy-policy', locale)} target="_blank" rel="noopener noreferrer" className="ds-inline-link">
                     {t('register.privacyPolicy')}
                   </a>
                 </span>

@@ -7,7 +7,7 @@ import { GitHubIcon } from '../GitHubIcon'
 import { usePageMeta } from '../usePageMeta'
 import { useJsonLd } from '../useJsonLd'
 import { SITE_ORIGIN } from '../siteConfig'
-import { moderationTransparencyPath } from '../App'
+import { moderationTransparencyPath, useLocale } from '../App'
 
 interface TransparencyMetrics {
   falsePositiveRate: number | null
@@ -86,13 +86,15 @@ function Body({ children }: { children: ReactNode }) {
 }
 
 export function ModerationTransparencyPage() {
-  const path = moderationTransparencyPath()
+  const locale = useLocale()
+  const path = moderationTransparencyPath(locale)
   const metrics = useTransparencyMetrics()
 
   usePageMeta({
     title: 'Moderation & Transparency — MinCirklen',
     description: DESCRIPTION,
-    path,
+    locale,
+    pagePath: 'moderation-transparency',
     type: 'article',
   })
 

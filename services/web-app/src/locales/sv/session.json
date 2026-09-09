@@ -55,12 +55,6 @@
     "submitError": "Något gick fel när rapporten skulle skickas. Försök igen.",
     "submit": "Skicka rapport"
   },
-  "newSessionModal": {
-    "title": "Ny session",
-    "tabListLabel": "Gå med i eller starta en cirkel",
-    "joinTab": "Gå med i en cirkel",
-    "createTab": "Starta en cirkel"
-  },
   "accountModal": {
     "back": "Tillbaka",
     "profile": "Profil",

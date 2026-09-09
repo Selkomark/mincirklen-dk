@@ -12,7 +12,7 @@ import { Stat } from './components/Stat'
 import { CTASection } from './components/CTASection'
 import { PricingCard } from './components/PricingCard'
 import { publicPagePath } from './publicPages/pages'
-import { loginPath, landingPath } from './App'
+import { loginPath, landingPath, useLocale } from './App'
 import { SiteHeader } from './SiteHeader'
 import { SiteFooter } from './SiteFooter'
 import { LinkButton } from './LinkButton'
@@ -23,20 +23,21 @@ import heroImage from './assets/hero-circle.webp'
 
 export function LandingPage() {
   const { t } = useTranslation('landing')
-  const pageUrl = `${SITE_ORIGIN}${landingPath()}`
+  const locale = useLocale()
+  const pageUrl = `${SITE_ORIGIN}${landingPath(locale)}`
   const imageUrl = `${SITE_ORIGIN}${heroImage}`
-  // No hreflang routing (one canonical URL for every language), so a
-  // crawler doing a single fetch still only ever sees whichever language
-  // it happened to request — but a real visitor's browser tab
-  // title/meta should match whatever language they're actually looking
-  // at, so this is translated the same as the page body rather than
-  // left as a permanent English snapshot.
+  // Real hreflang alternates now (see usePageMeta.ts) — a crawler
+  // fetching any one locale's URL can discover every other language's
+  // canonical URL for this same page. The tab title/meta description
+  // still tracks whatever language the current visitor is actually
+  // looking at, same as before.
   const description = t('meta.description')
 
   usePageMeta({
     title: t('meta.title'),
     description,
-    path: landingPath(),
+    locale,
+    pagePath: '',
     image: imageUrl,
   })
 
@@ -85,8 +86,8 @@ export function LandingPage() {
         <Heading level={1}>{t('hero.title')}</Heading>
         <Text variant="lead">{t('hero.lead')}</Text>
         <div style={{ display: 'flex', gap: 12 }}>
-          <LinkButton href={loginPath()}>{t('hero.joinCircle')}</LinkButton>
-          <LinkButton href={publicPagePath('how-it-works')} variant="secondary">
+          <LinkButton href={loginPath(locale)}>{t('hero.joinCircle')}</LinkButton>
+          <LinkButton href={publicPagePath('how-it-works', locale)} variant="secondary">
             {t('hero.learnMore')}
           </LinkButton>
         </div>
@@ -154,7 +155,7 @@ export function LandingPage() {
               price={t('pricing.freePrice')}
               features={[t('pricing.freeFeature1'), t('pricing.freeFeature2'), t('pricing.freeFeature3')]}
               cta={
-                <LinkButton href={loginPath()} variant="secondary" style={{ width: '100%' }}>
+                <LinkButton href={loginPath(locale)} variant="secondary" style={{ width: '100%' }}>
                   {t('pricing.getStarted')}
                 </LinkButton>
               }
@@ -167,7 +168,7 @@ export function LandingPage() {
               period={t('pricing.supportPeriod')}
               features={[t('pricing.supportFeature1'), t('pricing.supportFeature2'), t('pricing.supportFeature3')]}
               cta={
-                <LinkButton href={loginPath()} style={{ width: '100%' }}>
+                <LinkButton href={loginPath(locale)} style={{ width: '100%' }}>
                   {t('pricing.getStarted')}
                 </LinkButton>
               }
@@ -180,7 +181,7 @@ export function LandingPage() {
       <CTASection
         title={t('cta.title')}
         actions={
-          <LinkButton href={loginPath()} variant="secondary">
+          <LinkButton href={loginPath(locale)} variant="secondary">
             {t('cta.action')}
           </LinkButton>
         }

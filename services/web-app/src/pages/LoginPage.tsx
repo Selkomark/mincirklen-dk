@@ -6,6 +6,7 @@ import { SiteHeader } from '../SiteHeader'
 import { SiteFooter } from '../SiteFooter'
 import { GoogleIcon } from '../GoogleIcon'
 import { useDocumentTitle } from '../useDocumentTitle'
+import { useLocale } from '../App'
 
 // oauthController.ts's callback redirects here with ?error=<code> instead
 // of ever showing its own error page — this is the only place that code
@@ -36,6 +37,7 @@ const OTHER_PROVIDERS = [
 
 export function LoginPage() {
   const { t } = useTranslation('auth')
+  const locale = useLocale()
   useDocumentTitle(t('login.documentTitle'))
   const errorKey = loginErrorKey()
 
@@ -105,11 +107,11 @@ export function LoginPage() {
 
           <div style={{ textAlign: 'center', fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>
             {t('login.agreeToTermsPrefix')}{' '}
-            <a href={publicPagePath('terms-and-conditions')} className="ds-inline-link">
+            <a href={publicPagePath('terms-and-conditions', locale)} className="ds-inline-link">
               {t('login.termsAndConditions')}
             </a>{' '}
             {t('login.and')}{' '}
-            <a href={publicPagePath('privacy-policy')} className="ds-inline-link">
+            <a href={publicPagePath('privacy-policy', locale)} className="ds-inline-link">
               {t('login.privacyPolicy')}
             </a>
             .

@@ -31,7 +31,8 @@
     "joinTitle": "Join an existing circle",
     "joinSubtitle": "Browse circles already forming",
     "newTitle": "Start a new circle",
-    "newSubtitle": "Set topic, time, and length"
+    "newSubtitle": "Set topic, time, and length",
+    "toggleMenu": "Toggle menu"
   },
   "joinPage": {
     "documentTitle": "Join a circle — MinCirklen",

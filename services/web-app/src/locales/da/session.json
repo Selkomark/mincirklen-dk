@@ -55,12 +55,6 @@
     "submitError": "Der gik noget galt under indsendelsen af din rapport. Prøv igen.",
     "submit": "Indsend rapport"
   },
-  "newSessionModal": {
-    "title": "Ny session",
-    "tabListLabel": "Bliv medlem af eller start en cirkel",
-    "joinTab": "Bliv medlem af en cirkel",
-    "createTab": "Start en cirkel"
-  },
   "accountModal": {
     "back": "Tilbage",
     "profile": "Profil",

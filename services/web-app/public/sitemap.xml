@@ -1,16 +1,133 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://selkomark.github.io/MinCirklen.dk/</loc></url>
-  <url><loc>https://selkomark.github.io/MinCirklen.dk/how-it-works</loc></url>
-  <url><loc>https://selkomark.github.io/MinCirklen.dk/safety-and-moderation</loc></url>
-  <url><loc>https://selkomark.github.io/MinCirklen.dk/account-and-data</loc></url>
-  <url><loc>https://selkomark.github.io/MinCirklen.dk/crisis-resources</loc></url>
-  <url><loc>https://selkomark.github.io/MinCirklen.dk/community-guidelines</loc></url>
-  <url><loc>https://selkomark.github.io/MinCirklen.dk/privacy-policy</loc></url>
-  <url><loc>https://selkomark.github.io/MinCirklen.dk/terms-and-conditions</loc></url>
-  <url><loc>https://selkomark.github.io/MinCirklen.dk/pricing</loc></url>
-  <url><loc>https://selkomark.github.io/MinCirklen.dk/facilitators</loc></url>
-  <url><loc>https://selkomark.github.io/MinCirklen.dk/about</loc></url>
-  <url><loc>https://selkomark.github.io/MinCirklen.dk/contact</loc></url>
-  <url><loc>https://selkomark.github.io/MinCirklen.dk/moderation-transparency</loc></url>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://selkomark.github.io/MinCirklen.dk/en-DK</loc>
+    <xhtml:link rel="alternate" hreflang="en-DK" href="https://selkomark.github.io/MinCirklen.dk/en-DK"/>
+    <xhtml:link rel="alternate" hreflang="en-SE" href="https://selkomark.github.io/MinCirklen.dk/en-SE"/>
+    <xhtml:link rel="alternate" hreflang="sv-DK" href="https://selkomark.github.io/MinCirklen.dk/sv-DK"/>
+    <xhtml:link rel="alternate" hreflang="sv-SE" href="https://selkomark.github.io/MinCirklen.dk/sv-SE"/>
+    <xhtml:link rel="alternate" hreflang="da-DK" href="https://selkomark.github.io/MinCirklen.dk/da-DK"/>
+    <xhtml:link rel="alternate" hreflang="da-SE" href="https://selkomark.github.io/MinCirklen.dk/da-SE"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://selkomark.github.io/MinCirklen.dk/en-DK"/>
+  </url>
+  <url>
+    <loc>https://selkomark.github.io/MinCirklen.dk/en-DK/how-it-works</loc>
+    <xhtml:link rel="alternate" hreflang="en-DK" href="https://selkomark.github.io/MinCirklen.dk/en-DK/how-it-works"/>
+    <xhtml:link rel="alternate" hreflang="en-SE" href="https://selkomark.github.io/MinCirklen.dk/en-SE/how-it-works"/>
+    <xhtml:link rel="alternate" hreflang="sv-DK" href="https://selkomark.github.io/MinCirklen.dk/sv-DK/how-it-works"/>
+    <xhtml:link rel="alternate" hreflang="sv-SE" href="https://selkomark.github.io/MinCirklen.dk/sv-SE/how-it-works"/>
+    <xhtml:link rel="alternate" hreflang="da-DK" href="https://selkomark.github.io/MinCirklen.dk/da-DK/how-it-works"/>
+    <xhtml:link rel="alternate" hreflang="da-SE" href="https://selkomark.github.io/MinCirklen.dk/da-SE/how-it-works"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://selkomark.github.io/MinCirklen.dk/en-DK/how-it-works"/>
+  </url>
+  <url>
+    <loc>https://selkomark.github.io/MinCirklen.dk/en-DK/safety-and-moderation</loc>
+    <xhtml:link rel="alternate" hreflang="en-DK" href="https://selkomark.github.io/MinCirklen.dk/en-DK/safety-and-moderation"/>
+    <xhtml:link rel="alternate" hreflang="en-SE" href="https://selkomark.github.io/MinCirklen.dk/en-SE/safety-and-moderation"/>
+    <xhtml:link rel="alternate" hreflang="sv-DK" href="https://selkomark.github.io/MinCirklen.dk/sv-DK/safety-and-moderation"/>
+    <xhtml:link rel="alternate" hreflang="sv-SE" href="https://selkomark.github.io/MinCirklen.dk/sv-SE/safety-and-moderation"/>
+    <xhtml:link rel="alternate" hreflang="da-DK" href="https://selkomark.github.io/MinCirklen.dk/da-DK/safety-and-moderation"/>
+    <xhtml:link rel="alternate" hreflang="da-SE" href="https://selkomark.github.io/MinCirklen.dk/da-SE/safety-and-moderation"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://selkomark.github.io/MinCirklen.dk/en-DK/safety-and-moderation"/>
+  </url>
+  <url>
+    <loc>https://selkomark.github.io/MinCirklen.dk/en-DK/account-and-data</loc>
+    <xhtml:link rel="alternate" hreflang="en-DK" href="https://selkomark.github.io/MinCirklen.dk/en-DK/account-and-data"/>
+    <xhtml:link rel="alternate" hreflang="en-SE" href="https://selkomark.github.io/MinCirklen.dk/en-SE/account-and-data"/>
+    <xhtml:link rel="alternate" hreflang="sv-DK" href="https://selkomark.github.io/MinCirklen.dk/sv-DK/account-and-data"/>
+    <xhtml:link rel="alternate" hreflang="sv-SE" href="https://selkomark.github.io/MinCirklen.dk/sv-SE/account-and-data"/>
+    <xhtml:link rel="alternate" hreflang="da-DK" href="https://selkomark.github.io/MinCirklen.dk/da-DK/account-and-data"/>
+    <xhtml:link rel="alternate" hreflang="da-SE" href="https://selkomark.github.io/MinCirklen.dk/da-SE/account-and-data"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://selkomark.github.io/MinCirklen.dk/en-DK/account-and-data"/>
+  </url>
+  <url>
+    <loc>https://selkomark.github.io/MinCirklen.dk/en-DK/crisis-resources</loc>
+    <xhtml:link rel="alternate" hreflang="en-DK" href="https://selkomark.github.io/MinCirklen.dk/en-DK/crisis-resources"/>
+    <xhtml:link rel="alternate" hreflang="en-SE" href="https://selkomark.github.io/MinCirklen.dk/en-SE/crisis-resources"/>
+    <xhtml:link rel="alternate" hreflang="sv-DK" href="https://selkomark.github.io/MinCirklen.dk/sv-DK/crisis-resources"/>
+    <xhtml:link rel="alternate" hreflang="sv-SE" href="https://selkomark.github.io/MinCirklen.dk/sv-SE/crisis-resources"/>
+    <xhtml:link rel="alternate" hreflang="da-DK" href="https://selkomark.github.io/MinCirklen.dk/da-DK/crisis-resources"/>
+    <xhtml:link rel="alternate" hreflang="da-SE" href="https://selkomark.github.io/MinCirklen.dk/da-SE/crisis-resources"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://selkomark.github.io/MinCirklen.dk/en-DK/crisis-resources"/>
+  </url>
+  <url>
+    <loc>https://selkomark.github.io/MinCirklen.dk/en-DK/community-guidelines</loc>
+    <xhtml:link rel="alternate" hreflang="en-DK" href="https://selkomark.github.io/MinCirklen.dk/en-DK/community-guidelines"/>
+    <xhtml:link rel="alternate" hreflang="en-SE" href="https://selkomark.github.io/MinCirklen.dk/en-SE/community-guidelines"/>
+    <xhtml:link rel="alternate" hreflang="sv-DK" href="https://selkomark.github.io/MinCirklen.dk/sv-DK/community-guidelines"/>
+    <xhtml:link rel="alternate" hreflang="sv-SE" href="https://selkomark.github.io/MinCirklen.dk/sv-SE/community-guidelines"/>
+    <xhtml:link rel="alternate" hreflang="da-DK" href="https://selkomark.github.io/MinCirklen.dk/da-DK/community-guidelines"/>
+    <xhtml:link rel="alternate" hreflang="da-SE" href="https://selkomark.github.io/MinCirklen.dk/da-SE/community-guidelines"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://selkomark.github.io/MinCirklen.dk/en-DK/community-guidelines"/>
+  </url>
+  <url>
+    <loc>https://selkomark.github.io/MinCirklen.dk/en-DK/privacy-policy</loc>
+    <xhtml:link rel="alternate" hreflang="en-DK" href="https://selkomark.github.io/MinCirklen.dk/en-DK/privacy-policy"/>
+    <xhtml:link rel="alternate" hreflang="en-SE" href="https://selkomark.github.io/MinCirklen.dk/en-SE/privacy-policy"/>
+    <xhtml:link rel="alternate" hreflang="sv-DK" href="https://selkomark.github.io/MinCirklen.dk/sv-DK/privacy-policy"/>
+    <xhtml:link rel="alternate" hreflang="sv-SE" href="https://selkomark.github.io/MinCirklen.dk/sv-SE/privacy-policy"/>
+    <xhtml:link rel="alternate" hreflang="da-DK" href="https://selkomark.github.io/MinCirklen.dk/da-DK/privacy-policy"/>
+    <xhtml:link rel="alternate" hreflang="da-SE" href="https://selkomark.github.io/MinCirklen.dk/da-SE/privacy-policy"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://selkomark.github.io/MinCirklen.dk/en-DK/privacy-policy"/>
+  </url>
+  <url>
+    <loc>https://selkomark.github.io/MinCirklen.dk/en-DK/terms-and-conditions</loc>
+    <xhtml:link rel="alternate" hreflang="en-DK" href="https://selkomark.github.io/MinCirklen.dk/en-DK/terms-and-conditions"/>
+    <xhtml:link rel="alternate" hreflang="en-SE" href="https://selkomark.github.io/MinCirklen.dk/en-SE/terms-and-conditions"/>
+    <xhtml:link rel="alternate" hreflang="sv-DK" href="https://selkomark.github.io/MinCirklen.dk/sv-DK/terms-and-conditions"/>
+    <xhtml:link rel="alternate" hreflang="sv-SE" href="https://selkomark.github.io/MinCirklen.dk/sv-SE/terms-and-conditions"/>
+    <xhtml:link rel="alternate" hreflang="da-DK" href="https://selkomark.github.io/MinCirklen.dk/da-DK/terms-and-conditions"/>
+    <xhtml:link rel="alternate" hreflang="da-SE" href="https://selkomark.github.io/MinCirklen.dk/da-SE/terms-and-conditions"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://selkomark.github.io/MinCirklen.dk/en-DK/terms-and-conditions"/>
+  </url>
+  <url>
+    <loc>https://selkomark.github.io/MinCirklen.dk/en-DK/pricing</loc>
+    <xhtml:link rel="alternate" hreflang="en-DK" href="https://selkomark.github.io/MinCirklen.dk/en-DK/pricing"/>
+    <xhtml:link rel="alternate" hreflang="en-SE" href="https://selkomark.github.io/MinCirklen.dk/en-SE/pricing"/>
+    <xhtml:link rel="alternate" hreflang="sv-DK" href="https://selkomark.github.io/MinCirklen.dk/sv-DK/pricing"/>
+    <xhtml:link rel="alternate" hreflang="sv-SE" href="https://selkomark.github.io/MinCirklen.dk/sv-SE/pricing"/>
+    <xhtml:link rel="alternate" hreflang="da-DK" href="https://selkomark.github.io/MinCirklen.dk/da-DK/pricing"/>
+    <xhtml:link rel="alternate" hreflang="da-SE" href="https://selkomark.github.io/MinCirklen.dk/da-SE/pricing"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://selkomark.github.io/MinCirklen.dk/en-DK/pricing"/>
+  </url>
+  <url>
+    <loc>https://selkomark.github.io/MinCirklen.dk/en-DK/facilitators</loc>
+    <xhtml:link rel="alternate" hreflang="en-DK" href="https://selkomark.github.io/MinCirklen.dk/en-DK/facilitators"/>
+    <xhtml:link rel="alternate" hreflang="en-SE" href="https://selkomark.github.io/MinCirklen.dk/en-SE/facilitators"/>
+    <xhtml:link rel="alternate" hreflang="sv-DK" href="https://selkomark.github.io/MinCirklen.dk/sv-DK/facilitators"/>
+    <xhtml:link rel="alternate" hreflang="sv-SE" href="https://selkomark.github.io/MinCirklen.dk/sv-SE/facilitators"/>
+    <xhtml:link rel="alternate" hreflang="da-DK" href="https://selkomark.github.io/MinCirklen.dk/da-DK/facilitators"/>
+    <xhtml:link rel="alternate" hreflang="da-SE" href="https://selkomark.github.io/MinCirklen.dk/da-SE/facilitators"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://selkomark.github.io/MinCirklen.dk/en-DK/facilitators"/>
+  </url>
+  <url>
+    <loc>https://selkomark.github.io/MinCirklen.dk/en-DK/about</loc>
+    <xhtml:link rel="alternate" hreflang="en-DK" href="https://selkomark.github.io/MinCirklen.dk/en-DK/about"/>
+    <xhtml:link rel="alternate" hreflang="en-SE" href="https://selkomark.github.io/MinCirklen.dk/en-SE/about"/>
+    <xhtml:link rel="alternate" hreflang="sv-DK" href="https://selkomark.github.io/MinCirklen.dk/sv-DK/about"/>
+    <xhtml:link rel="alternate" hreflang="sv-SE" href="https://selkomark.github.io/MinCirklen.dk/sv-SE/about"/>
+    <xhtml:link rel="alternate" hreflang="da-DK" href="https://selkomark.github.io/MinCirklen.dk/da-DK/about"/>
+    <xhtml:link rel="alternate" hreflang="da-SE" href="https://selkomark.github.io/MinCirklen.dk/da-SE/about"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://selkomark.github.io/MinCirklen.dk/en-DK/about"/>
+  </url>
+  <url>
+    <loc>https://selkomark.github.io/MinCirklen.dk/en-DK/contact</loc>
+    <xhtml:link rel="alternate" hreflang="en-DK" href="https://selkomark.github.io/MinCirklen.dk/en-DK/contact"/>
+    <xhtml:link rel="alternate" hreflang="en-SE" href="https://selkomark.github.io/MinCirklen.dk/en-SE/contact"/>
+    <xhtml:link rel="alternate" hreflang="sv-DK" href="https://selkomark.github.io/MinCirklen.dk/sv-DK/contact"/>
+    <xhtml:link rel="alternate" hreflang="sv-SE" href="https://selkomark.github.io/MinCirklen.dk/sv-SE/contact"/>
+    <xhtml:link rel="alternate" hreflang="da-DK" href="https://selkomark.github.io/MinCirklen.dk/da-DK/contact"/>
+    <xhtml:link rel="alternate" hreflang="da-SE" href="https://selkomark.github.io/MinCirklen.dk/da-SE/contact"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://selkomark.github.io/MinCirklen.dk/en-DK/contact"/>
+  </url>
+  <url>
+    <loc>https://selkomark.github.io/MinCirklen.dk/en-DK/moderation-transparency</loc>
+    <xhtml:link rel="alternate" hreflang="en-DK" href="https://selkomark.github.io/MinCirklen.dk/en-DK/moderation-transparency"/>
+    <xhtml:link rel="alternate" hreflang="en-SE" href="https://selkomark.github.io/MinCirklen.dk/en-SE/moderation-transparency"/>
+    <xhtml:link rel="alternate" hreflang="sv-DK" href="https://selkomark.github.io/MinCirklen.dk/sv-DK/moderation-transparency"/>
+    <xhtml:link rel="alternate" hreflang="sv-SE" href="https://selkomark.github.io/MinCirklen.dk/sv-SE/moderation-transparency"/>
+    <xhtml:link rel="alternate" hreflang="da-DK" href="https://selkomark.github.io/MinCirklen.dk/da-DK/moderation-transparency"/>
+    <xhtml:link rel="alternate" hreflang="da-SE" href="https://selkomark.github.io/MinCirklen.dk/da-SE/moderation-transparency"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://selkomark.github.io/MinCirklen.dk/en-DK/moderation-transparency"/>
+  </url>
 </urlset>

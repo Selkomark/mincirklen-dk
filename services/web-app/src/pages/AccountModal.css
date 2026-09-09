@@ -1,0 +1,165 @@
+/* Wider than the default .ds-modal (480px) to fit the two-column
+   nav + content layout — see AccountModal.tsx. */
+.dash-account-modal {
+  max-width: 640px;
+}
+
+/* Modal.tsx still renders this (via the `title` prop) purely so the
+   Dialog keeps an accessible name (RAC wires aria-labelledby to it) —
+   the *visible* heading is .dash-account-modal__nav-title below instead,
+   so it lives inside the sliding nav panel and moves off-screen with it
+   on mobile step 2, rather than staying pinned above the Back button. */
+.dash-account-modal .ds-modal__title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.dash-account-modal__nav-title {
+  margin-bottom: var(--space-2);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+}
+
+/* Clips the slide transition below — without this, the (mobile-only)
+   200%-wide .dash-account-modal__body would overflow the dialog and
+   either get clipped oddly by .ds-modal's own overflow:auto or grow the
+   modal itself. Inert on desktop (nothing overflows it there). */
+.dash-account-modal__viewport {
+  overflow: hidden;
+}
+
+.dash-account-modal__body {
+  display: flex;
+  gap: var(--space-5);
+  min-height: 320px;
+}
+
+.dash-account-modal__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 160px;
+  flex-shrink: 0;
+  border-right: 0.5px solid var(--border-subtle);
+  padding-right: var(--space-4);
+}
+
+.dash-account-modal__content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* The mobile-only "step 2 back to step 1" control — see AccountModal.tsx's
+   mobileDetailOpen state. Hidden by default (desktop shows nav + content
+   side by side, so there's no "back" to go to); the mobile media query
+   below both reveals it and turns .dash-account-modal__body into a
+   two-panel slider. */
+.dash-account-modal__back {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .dash-account-modal__body {
+    width: 200%;
+    gap: 0;
+    transition: transform var(--duration-base) var(--easing-standard);
+  }
+
+  .dash-account-modal__body--detail {
+    transform: translateX(-50%);
+  }
+
+  .dash-account-modal__nav,
+  .dash-account-modal__content {
+    width: 50%;
+    flex-shrink: 0;
+    box-sizing: border-box;
+  }
+
+  .dash-account-modal__nav {
+    border-right: none;
+    padding-right: 0;
+  }
+
+  .dash-account-modal__content {
+    padding-left: var(--space-2);
+  }
+
+  .dash-account-modal__back {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: none;
+    background: none;
+    padding: 0;
+    margin-bottom: var(--space-1);
+    font-family: var(--font-family-base);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+}
+
+.dash-account-modal__nav-item {
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.dash-account-modal__nav-item:hover {
+  background: var(--surface-sunken);
+}
+
+.dash-account-modal__nav-item[aria-current='true'] {
+  background: var(--accent-safe-surface);
+  color: var(--accent-safe);
+  font-weight: var(--font-weight-medium);
+}
+
+.dash-account-modal__nav-item--urgent {
+  width: 100%;
+  color: var(--signal-urgent);
+}
+
+.dash-account-modal__nav-item--urgent:hover {
+  background: var(--signal-urgent-surface);
+}
+
+/* Smaller than these components' shared default sizing (44px/font-size-md)
+   — scoped to just the profile edit form via this class, rather than
+   changing TextField/Select everywhere else they're used (RegisterPage,
+   StartNewPage, etc.). */
+.dash-account-modal__field .ds-textfield__input,
+.dash-account-modal__field .ds-select__trigger {
+  height: 36px;
+  padding: 0 var(--space-3);
+  font-size: var(--font-size-sm);
+}
+
+.dash-account-modal__field .ds-textfield__label,
+.dash-account-modal__field .ds-select__label {
+  font-size: var(--font-size-xs);
+}
+
+.dash-account-modal__save-btn {
+  height: 36px;
+  padding: 0 var(--space-4);
+  font-size: var(--font-size-sm);
+}

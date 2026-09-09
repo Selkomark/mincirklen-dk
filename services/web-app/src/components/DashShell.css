@@ -1,0 +1,98 @@
+.dash-mobile-toggle {
+  display: none;
+}
+
+.dash-panel-header {
+  padding: var(--space-4) var(--space-6);
+}
+
+.dash-drawer-backdrop {
+  display: none;
+}
+
+.dash-drawer {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .dash-sidebar,
+  .dash-right {
+    display: none !important;
+  }
+
+  .dash-mobile-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex: none;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+
+  /* Tighter than the desktop --space-6 (32px) horizontal gutters — on a
+     narrow phone viewport that much padding on both sides reads as wasted
+     space around content that's already narrow. */
+  .dash-panel-header {
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+  }
+
+  .dash-drawer-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgb(0 0 0 / 0.4);
+    z-index: 45;
+  }
+
+  .dash-drawer {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(300px, 85vw);
+    background: var(--surface-raised);
+    border-right: 0.5px solid var(--border-subtle);
+    box-sizing: border-box;
+    overflow: hidden;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform var(--duration-base) var(--easing-standard);
+  }
+
+  .dash-drawer--open {
+    transform: translateX(0);
+  }
+
+  .dash-drawer__header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    flex: none;
+    padding: var(--space-5) var(--space-4) var(--space-4);
+  }
+
+  .dash-drawer__list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    touch-action: pan-y;
+    padding: 0 var(--space-4);
+  }
+
+  .dash-drawer__footer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    flex: none;
+    padding: var(--space-4);
+    border-top: 0.5px solid var(--border-subtle);
+  }
+}

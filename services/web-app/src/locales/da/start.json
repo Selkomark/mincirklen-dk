@@ -31,7 +31,8 @@
     "joinTitle": "Bliv medlem af en eksisterende cirkel",
     "joinSubtitle": "Gennemse cirkler, der allerede dannes",
     "newTitle": "Start en ny cirkel",
-    "newSubtitle": "Angiv emne, tid og længde"
+    "newSubtitle": "Angiv emne, tid og længde",
+    "toggleMenu": "Skift menu"
   },
   "joinPage": {
     "documentTitle": "Bliv medlem af en cirkel — MinCirklen",

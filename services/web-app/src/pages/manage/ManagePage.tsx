@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Alert } from '../../components/Alert'
 import { Button } from '../../components/Button'
 import { Spinner } from '../../components/Spinner'
-import { landingPath, managePath, startPath, type ManageSection } from '../../App'
+import { landingPath, managePath, pPath, useLocale, type ManageSection } from '../../App'
 import { logout } from '../../logout'
 import { ThemeToggle } from '../../ThemeToggle'
 import { ErrorPage } from '../ErrorPage'
@@ -54,9 +54,10 @@ const NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap((group) => group.items)
 // Clicking the brand mark stays inside /manage — "back to the site itself"
 // is the sidebar's own dedicated link below, a different action.
 function LogoMark({ onClick }: { onClick: () => void }) {
+  const locale = useLocale()
   return (
     <a
-      href={managePath()}
+      href={managePath(locale)}
       onClick={(e) => {
         e.preventDefault()
         onClick()
@@ -70,9 +71,10 @@ function LogoMark({ onClick }: { onClick: () => void }) {
 }
 
 function NavLink({ item, isActive, onNavigate }: { item: NavItem; isActive: boolean; onNavigate: (section: ManageSection) => void }) {
+  const locale = useLocale()
   return (
     <a
-      href={managePath(item.section)}
+      href={managePath(locale, item.section)}
       onClick={(e) => {
         e.preventDefault()
         onNavigate(item.section)
@@ -95,6 +97,7 @@ function NavLink({ item, isActive, onNavigate }: { item: NavItem; isActive: bool
 
 function LogoutRow() {
   const { t } = useTranslation('landing')
+  const locale = useLocale()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -103,7 +106,7 @@ function LogoutRow() {
     setIsLoggingOut(true)
     try {
       await logout()
-      window.location.href = landingPath()
+      window.location.href = landingPath(locale)
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errors.logoutFailed'))
       setIsLoggingOut(false)
@@ -131,6 +134,7 @@ function Sidebar({
   onNavigate: (section: ManageSection) => void
   onLogoClick: () => void
 }) {
+  const locale = useLocale()
   const visibleGroups = NAV_GROUPS.map((group) => ({
     ...group,
     items: group.items.filter((item) => hasAccess(access, item.permission)),
@@ -196,7 +200,7 @@ function Sidebar({
             </span>
           ))}
         </div>
-        <a href={startPath()} style={{ fontSize: 'var(--font-size-sm)', color: SIDEBAR_TEXT, textDecoration: 'none' }}>
+        <a href={pPath(locale)} style={{ fontSize: 'var(--font-size-sm)', color: SIDEBAR_TEXT, textDecoration: 'none' }}>
           ← Back to site
         </a>
         <LogoutRow />
