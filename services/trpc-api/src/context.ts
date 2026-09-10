@@ -78,8 +78,10 @@ export interface AppEnv {
   // — separate from authSecret (key separation: a leak of one shouldn't
   // compromise the other).
   identityHashKey: string
-  // Optional — Google login is a layer on top of anonymous auth, not a
-  // requirement to boot (see oauthController.ts).
+  // Optional only in the sense that the app boots without them — trpc-api
+  // has no login path that doesn't go through Google (see
+  // oauthController.ts / googleAuthService.ts); a real deployment always
+  // sets these.
   googleClientId?: string
   googleClientSecret?: string
   // Test-only override — defaults to the real Google endpoints

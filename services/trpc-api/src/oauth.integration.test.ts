@@ -205,7 +205,7 @@ describe('GET /auth/callback/google', () => {
     expect(linked).toBeUndefined()
   })
 
-  test('a repeat login for the same subject reuses the user and redirects to /start once a profile exists', async () => {
+  test('a repeat login for the same subject reuses the user and redirects to /p once a profile exists', async () => {
     nextSubject = `subject-${crypto.randomUUID()}`
 
     const subjectHash = hashSubject(nextSubject)
@@ -239,7 +239,7 @@ describe('GET /auth/callback/google', () => {
     })
 
     expect(secondRes.status).toBe(302)
-    expect(secondRes.headers.get('location')).toBe(`${PUBLIC_BASE_URL}/start`)
+    expect(secondRes.headers.get('location')).toBe(`${PUBLIC_BASE_URL}/p`)
 
     const rows = await db
       .selectFrom('user_identities')
@@ -269,57 +269,14 @@ describe('GET /auth/callback/google', () => {
     expect(secondRes.headers.get('location')).toBe(`${PUBLIC_BASE_URL}/register?welcome=1`)
   })
 
-  test('an existing anonymous session gets upgraded on first Google login', async () => {
-    nextSubject = `subject-${crypto.randomUUID()}`
-    const anonymousUser = await db
-      .insertInto('users')
-      .defaultValues()
-      .returningAll()
-      .executeTakeFirstOrThrow()
-    const anonymousToken = createSessionToken(anonymousUser.id, AUTH_SECRET)
-    const subjectHash = hashSubject(nextSubject)
-
-    const { stateCookie, state } = await startLogin()
-    const res = await app.request(`/auth/callback/google?code=fake-code&state=${state}`, {
-      headers: { cookie: `${stateCookie}; mc_session=${anonymousToken}` },
-    })
-
-    expect(res.status).toBe(302)
-
-    const linked = await db
-      .selectFrom('user_identities')
-      .select('user_id')
-      .where('provider_subject_hash', '=', subjectHash)
-      .executeTakeFirstOrThrow()
-    expect(linked.user_id).toBe(anonymousUser.id)
-  })
-
-  test('a session cookie signed for a user that no longer exists falls back to creating a fresh user instead of 500ing', async () => {
-    nextSubject = `subject-${crypto.randomUUID()}`
-    // Signed as if a real user row existed, but none does — reproduces a
-    // real incident: an mc_session cookie left over in a browser from a
-    // deleted/reset account hit user_identities' foreign key constraint
-    // and crashed this callback with an unhandled 500.
-    const staleToken = createSessionToken(crypto.randomUUID(), AUTH_SECRET)
-    const subjectHash = hashSubject(nextSubject)
-
-    const { stateCookie, state } = await startLogin()
-    const res = await app.request(`/auth/callback/google?code=fake-code&state=${state}`, {
-      headers: { cookie: `${stateCookie}; mc_session=${staleToken}` },
-    })
-
-    expect(res.status).toBe(302)
-    expect(res.headers.get('location')).toBe(`${PUBLIC_BASE_URL}/register?welcome=1`)
-
-    const linked = await db
-      .selectFrom('user_identities')
-      .select('user_id')
-      .where('provider_subject_hash', '=', subjectHash)
-      .executeTakeFirstOrThrow()
-
-    const linkedUser = await db.selectFrom('users').select('id').where('id', '=', linked.user_id).executeTakeFirst()
-    expect(linkedUser).toBeDefined()
-  })
+  // The two cases previously here — an existing mc_session cookie
+  // "upgrading" to the Google-linked user, and a stale/deleted-account
+  // cookie falling back to a fresh user instead of 500ing — no longer
+  // apply: the callback doesn't read any incoming mc_session at all
+  // anymore (see resolveGoogleLogin's comment and SECURITY_FINDINGS.md
+  // H1/L3). Whatever cookie the browser walks in with is irrelevant to
+  // login and is only ever unconditionally cleared, never inspected —
+  // see the ban-rejection and failed-login tests below.
 
   test('a missing state redirects to the login page with an error, not a raw error page', async () => {
     const res = await app.request('/auth/callback/google?code=fake-code')
@@ -382,7 +339,7 @@ describe('GET /auth/callback/google', () => {
     // login-routing check went through findUserProfileByUserId (which
     // decrypts), so a KMS/Vault outage here would 500 the whole callback
     // and lock an already-registered user out. It's now decrypt-free, so
-    // login must succeed and route to /start exactly as if nothing were
+    // login must succeed and route to /p exactly as if nothing were
     // wrong — only *reading* the PII (auth.myProfile) degrades.
     await db
       .updateTable('user_profiles')
@@ -396,7 +353,7 @@ describe('GET /auth/callback/google', () => {
     })
 
     expect(secondRes.status).toBe(302)
-    expect(secondRes.headers.get('location')).toBe(`${PUBLIC_BASE_URL}/start`)
+    expect(secondRes.headers.get('location')).toBe(`${PUBLIC_BASE_URL}/p`)
   })
 
   test('a failed login clears any mc_session cookie the browser walked in with, so a retry starts clean', async () => {

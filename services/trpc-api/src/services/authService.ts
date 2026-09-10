@@ -1,21 +1,3 @@
-export interface CreateAnonymousSessionDeps {
-  insertUser: () => Promise<{ id: string }>
-  createToken: (userId: string) => string
-}
-
-export interface CreateAnonymousSessionResult {
-  userId: string
-  token: string
-}
-
-export async function createAnonymousSession(
-  deps: CreateAnonymousSessionDeps,
-): Promise<CreateAnonymousSessionResult> {
-  const user = await deps.insertUser()
-  const token = deps.createToken(user.id)
-  return { userId: user.id, token }
-}
-
 export interface ResolveSessionDeps {
   verifyToken: (token: string) => { userId: string } | null
   touchUser: (userId: string) => Promise<boolean>

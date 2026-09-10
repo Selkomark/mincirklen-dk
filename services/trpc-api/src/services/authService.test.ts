@@ -1,16 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { createAnonymousSession, resolveSession } from './authService'
-
-describe('createAnonymousSession', () => {
-  test('inserts a user and mints a token from its id', async () => {
-    const result = await createAnonymousSession({
-      insertUser: async () => ({ id: 'user-1' }),
-      createToken: (userId) => `token-for-${userId}`,
-    })
-
-    expect(result).toEqual({ userId: 'user-1', token: 'token-for-user-1' })
-  })
-})
+import { resolveSession } from './authService'
 
 describe('resolveSession', () => {
   test('returns null when no token is present', async () => {

@@ -18,25 +18,33 @@ Confidence tags: **[confirmed]** = verified in the code this pass;
 
 ## HIGH
 
-### H1. No rate limiting anywhere on the public API [confirmed]
-- **Where:** `services/trpc-api/src/controllers/authRouter.ts`
-  (`createAnonymousSession` is `publicProcedure`), `oauthController.ts`
-  (`/auth/google/start`, `/auth/callback/google`), `sessionRouter.ts`
-  (`sendMessage`). Redis is wired into `AppEnv` (`context.ts`, `index.ts`) but
-  used **only** for health checks (`healthService.ts`) — never for throttling.
-- **What:** `createAnonymousSession` mints a fresh signed session with zero
-  friction and no limit; every other endpoint is likewise uncapped. A script
-  can create unlimited sessions, hammer the OAuth callback, or flood
+### H1. No rate limiting anywhere on the public API [confirmed — partially resolved 2026-09-10]
+- **Resolved part:** `auth.createAnonymousSession` — the zero-credential,
+  publicProcedure endpoint that minted a fresh signed session for free —
+  has been **removed entirely**, not rate-limited. It turned out to serve
+  no product purpose: every real feature (`session.*`) already requires
+  `verifiedProcedure` (Google-linked + completed profile), and
+  `resolveGoogleLogin` (`services/googleAuthService.ts`) already creates a
+  user itself when a Google identity is first seen — the "anonymous
+  session, upgraded on first Google login" path it fed was optional
+  scaffolding, not load-bearing. See `docs/roadmap.md` §4.1's note on this
+  and `googleAuthService.ts`'s doc comment. This also resolved **L3**
+  below (the multi-tab identity-swap edge case), since the OAuth callback
+  no longer reads any incoming `mc_session` at all.
+- **Still open:** `oauthController.ts` (`/auth/google/start`,
+  `/auth/callback/google`) and `sessionRouter.ts` (`sendMessage`) remain
+  uncapped. Redis is wired into `AppEnv` (`context.ts`, `index.ts`) but
+  used **only** for health checks (`healthService.ts`) — never for
+  throttling. A script can still hammer the OAuth callback or flood
   `sendMessage`.
-- **Why it matters:** directly undermines the "real, traceable users" goal — a
-  bot can mint identities faster than moderation can act. `docs/roadmap.md` §4.1
-  explicitly calls for rate-limiting/shadow-throttling; `TODO.md` scopes a
-  CAPTCHA to *register/profile-completion only*, which misses the actual
-  zero-friction door (`createAnonymousSession` and the message pipeline).
-- **Direction:** per-IP + per-session rate limits (Redis is already available),
-  and widen the CAPTCHA/Turnstile plan to cover session creation and first
-  message, not just the profile step. Consider a cost/slow-down on
-  `createAnonymousSession` specifically.
+- **Why it matters:** a bot can still outpace moderation via the message
+  pipeline or the OAuth callback, even with the free-session door closed.
+  `TODO.md` scopes a CAPTCHA to *register/profile-completion only*, which
+  still misses both of these.
+- **Direction:** per-IP + per-account rate limits (Redis is already
+  available) on the OAuth callback and `sendMessage`; widen the
+  CAPTCHA/Turnstile plan to cover first message, not just the profile
+  step.
 
 ### H2. Message body length is unbounded [confirmed]
 - **Where:** `services/trpc-api/src/controllers/sessionRouter.ts` —
@@ -167,13 +175,16 @@ Confidence tags: **[confirmed]** = verified in the code this pass;
 - **Direction:** confirm log access controls; consider redacting/segregating
   crisis-path logs.
 
-### L3. Multi-tab identity-swap / session-confusion [confirmed — already known]
-- **Where:** documented in comments in `oauthController.ts` and
-  `googleAuthService.ts` as a deliberately-deferred edge case (an established
-  Google identity silently switches `mc_session` to a different user in a
-  multi-tab race). No cross-user data is exposed.
-- **Why it matters:** listed for completeness so the fixer knows it's a
-  conscious deferral, not an oversight — revisit if the threat model tightens.
+### L3. Multi-tab identity-swap / session-confusion [RESOLVED 2026-09-10 — by removing H1's `createAnonymousSession`]
+- **Was:** an established Google identity silently switching `mc_session`
+  to a different user in a multi-tab race, because the OAuth callback read
+  whatever `mc_session` the browser walked in with as an "upgrade target."
+  No cross-user data was ever exposed — this was session-confusion, not a
+  security hole — but it was a real, deferred edge case.
+- **Now:** the callback (`oauthController.ts`) no longer reads any
+  incoming `mc_session` at all — `resolveGoogleLogin` only ever looks up
+  or creates a user from the Google identity itself. There is no longer
+  an "upgrade target" for a race to confuse. See H1.
 
 ### L4. Dev-only secrets must never reach a shared/prod environment [confirmed — checklist]
 - **Where:** `docker-compose.yml` hardcodes `AUTH_SECRET`,

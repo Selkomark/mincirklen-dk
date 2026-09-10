@@ -205,8 +205,13 @@ export interface UserWithRoles {
   id: string
   createdAt: Date
   bannedAt: Date | null
-  // Masked (see maskEmail above), or null for a fully anonymous user who
-  // never linked Google. The unmasked address never leaves this process.
+  // Masked (see maskEmail above), or null for a row that never got as far
+  // as `setEmail` — the only way in today is oauthController.ts's
+  // Google callback, which inserts the user then sets the email in the
+  // same request, so null here means either a pre-launch/legacy row from
+  // before Google sign-in was mandatory, or that request failing/crashing
+  // between those two steps. The unmasked address never leaves this
+  // process.
   emailMasked: string | null
   roles: { id: string; name: string }[]
 }

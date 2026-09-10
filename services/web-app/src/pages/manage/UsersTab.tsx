@@ -11,8 +11,10 @@ interface UserWithRoles {
   createdAt: string
   bannedAt: string | null
   // Decrypted and masked server-side (rbacRepository.ts::maskEmail) — the
-  // unmasked address is never sent to the browser. Null for a fully
-  // anonymous user who never linked Google.
+  // unmasked address is never sent to the browser. Null means the row
+  // never got an email set — see UserWithRoles's comment in
+  // rbacRepository.ts for why that's a legacy/failure case, not a normal
+  // signed-up user, now that Google sign-in is the only way in.
   emailMasked: string | null
   roles: { id: string; name: string }[]
 }

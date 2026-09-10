@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, test } from 'bun:test'
-import { DEFAULT_LOCAL_DATABASE_URL, createDb, createPgPool, runMigrations } from '@mincirklen/shared'
+import { DEFAULT_LOCAL_DATABASE_URL, createDb, createPgPool, createSessionToken, runMigrations } from '@mincirklen/shared'
 import { createApp } from './app'
+import { insertUser } from './repositories/userRepository'
 import { linkIdentity } from './repositories/userIdentityRepository'
 
 const pool = createPgPool(
@@ -30,9 +31,11 @@ const fakePubSub = Bun.serve({
   },
 })
 
+const AUTH_SECRET = 'integration-test-secret'
+
 const app = createApp({
   db,
-  authSecret: 'integration-test-secret',
+  authSecret: AUTH_SECRET,
   moderationServiceUrl: 'http://unused.invalid',
   websocketServiceUrl: 'http://unused.invalid',
   internalServiceSecret: 'app-integration-test-internal-secret',
@@ -59,78 +62,36 @@ afterAll(async () => {
   await db.destroy()
 })
 
-function extractCookie(res: Response): string {
-  // Login/logout now emit a second set-cookie header alongside mc_session
-  // itself, clearing a legacy pre-Domain variant of the same name (see
-  // buildLegacySessionCookieClear in context.ts) — getSetCookie() (not the
-  // singular get(), which comma-joins multiple same-name headers into one
-  // unparseable string) plus an explicit non-empty-value match is what
-  // picks out the real cookie regardless of header order.
-  const setCookie = res.headers.getSetCookie().find((c) => c.startsWith('mc_session=') && !c.startsWith('mc_session=;'))
-  if (!setCookie) throw new Error('expected a set-cookie header')
-  return setCookie.split(';')[0] as string
+// Stand-in for the removed auth.createAnonymousSession endpoint (see
+// SECURITY_FINDINGS.md H1) — Google sign-in (oauth.integration.test.ts)
+// is this platform's only real login door, so these tests mint a bare,
+// unverified user directly against the repository/token layer instead of
+// through a public HTTP endpoint. The Domain-scoped cookie behavior this
+// used to assert on is exercised by oauth.integration.test.ts, which
+// still goes through the real login route end-to-end.
+async function mintBareUserCookie(): Promise<{ cookie: string; userId: string }> {
+  const user = await insertUser(db)
+  const token = createSessionToken(user.id, AUTH_SECRET)
+  return { cookie: `mc_session=${token}`, userId: user.id }
 }
 
 describe('auth flow through the Hono app', () => {
-  test('createAnonymousSession issues a cookie and a matching token', async () => {
-    const res = await app.request('/trpc/auth.createAnonymousSession', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({}),
-    })
-
-    expect(res.status).toBe(200)
-    const body = (await res.json()) as { result: { data: { userId: string; token: string } } }
-    expect(body.result.data.userId).toMatch(/^[0-9a-f-]{36}$/)
-
-    const cookie = extractCookie(res)
-    expect(cookie.startsWith('mc_session=')).toBe(true)
-
-    // Domain must be present (and scoped to the app's own base host, not a
-    // wildcard) so the browser also sends this cookie on a WebSocket
-    // handshake to a sibling subdomain like socket.dev-mincirklen.dk —
-    // without it the cookie is host-only to dev-mincirklen.dk and never
-    // reaches websocket-service at all. See publicBaseUrl above.
-    const setCookies = res.headers.getSetCookie()
-    const realCookie = setCookies.find((c) => c.startsWith('mc_session=') && !c.startsWith('mc_session=;'))
-    expect(realCookie).toContain('Domain=dev-mincirklen.dk')
-
-    // A second, no-Domain mc_session clear must ride along too — see
-    // buildLegacySessionCookieClear's comment in context.ts for why a
-    // browser holding a pre-Domain cookie under the same name would
-    // otherwise silently shadow this new one forever.
-    const legacyClear = setCookies.find((c) => c.startsWith('mc_session=;'))
-    expect(legacyClear).toContain('Max-Age=0')
-    expect(legacyClear).not.toContain('Domain=')
-  })
-
   test('whoAmI succeeds with the issued cookie and fails without it', async () => {
-    const created = await app.request('/trpc/auth.createAnonymousSession', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({}),
-    })
-    const cookie = extractCookie(created)
-    const { result } = (await created.json()) as { result: { data: { userId: string } } }
+    const { cookie, userId } = await mintBareUserCookie()
 
     const authed = await app.request('/trpc/auth.whoAmI', {
       headers: { cookie },
     })
     expect(authed.status).toBe(200)
     const authedBody = (await authed.json()) as { result: { data: { userId: string } } }
-    expect(authedBody.result.data.userId).toBe(result.data.userId)
+    expect(authedBody.result.data.userId).toBe(userId)
 
     const unauthed = await app.request('/trpc/auth.whoAmI')
     expect(unauthed.status).toBe(401)
   })
 
   test('logout clears the session cookie and works even with no session at all', async () => {
-    const created = await app.request('/trpc/auth.createAnonymousSession', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({}),
-    })
-    const cookie = extractCookie(created)
+    const { cookie } = await mintBareUserCookie()
 
     const res = await app.request('/trpc/auth.logout', {
       method: 'POST',
@@ -155,12 +116,7 @@ describe('auth flow through the Hono app', () => {
   })
 
   test('completeProfile rejects a session that has no linked Google identity', async () => {
-    const created = await app.request('/trpc/auth.createAnonymousSession', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({}),
-    })
-    const cookie = extractCookie(created)
+    const { cookie } = await mintBareUserCookie()
 
     const input = {
       firstName: 'Ada',
@@ -171,9 +127,9 @@ describe('auth flow through the Hono app', () => {
       stayAnonymous: true,
     }
 
-    // A bare anonymous session — no Google link yet — must never be able to
-    // "complete" a profile. Filling in name/mobile only counts once it's
-    // tied to a real, traceable Google identity.
+    // A bare unverified session — no Google link yet — must never be able
+    // to "complete" a profile. Filling in name/mobile only counts once
+    // it's tied to a real, traceable Google identity.
     const res = await app.request('/trpc/auth.completeProfile', {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
@@ -190,14 +146,8 @@ describe('auth flow through the Hono app', () => {
   })
 
   test('completeProfile persists the submitted profile once Google-linked', async () => {
-    const created = await app.request('/trpc/auth.createAnonymousSession', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({}),
-    })
-    const cookie = extractCookie(created)
-    const { result } = (await created.json()) as { result: { data: { userId: string } } }
-    await linkIdentity(db, result.data.userId, 'google', `test-subject-${result.data.userId}`)
+    const { cookie, userId } = await mintBareUserCookie()
+    await linkIdentity(db, userId, 'google', `test-subject-${userId}`)
 
     const res = await app.request('/trpc/auth.completeProfile', {
       method: 'POST',
@@ -215,13 +165,7 @@ describe('auth flow through the Hono app', () => {
   })
 
   test('myProfile reports hasLinkedIdentity/hasProfile/profile through the full verification lifecycle, and requires auth', async () => {
-    const created = await app.request('/trpc/auth.createAnonymousSession', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({}),
-    })
-    const cookie = extractCookie(created)
-    const { result: session } = (await created.json()) as { result: { data: { userId: string } } }
+    const { cookie, userId } = await mintBareUserCookie()
 
     const bare = await app.request('/trpc/auth.myProfile', { headers: { cookie } })
     expect(bare.status).toBe(200)
@@ -230,7 +174,7 @@ describe('auth flow through the Hono app', () => {
     }
     expect(bareBody.result.data).toEqual({ hasLinkedIdentity: false, hasProfile: false, profile: null })
 
-    await linkIdentity(db, session.data.userId, 'google', `test-subject-${session.data.userId}`)
+    await linkIdentity(db, userId, 'google', `test-subject-${userId}`)
 
     const linked = await app.request('/trpc/auth.myProfile', { headers: { cookie } })
     const linkedBody = (await linked.json()) as {
@@ -270,14 +214,8 @@ describe('auth flow through the Hono app', () => {
     // outage silently reported a fully-registered user as "needs
     // profile," bouncing them back into the registration flow forever
     // instead of just degrading PII display.
-    const created = await app.request('/trpc/auth.createAnonymousSession', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({}),
-    })
-    const cookie = extractCookie(created)
-    const { result: session } = (await created.json()) as { result: { data: { userId: string } } }
-    await linkIdentity(db, session.data.userId, 'google', `test-subject-${session.data.userId}`)
+    const { cookie, userId } = await mintBareUserCookie()
+    await linkIdentity(db, userId, 'google', `test-subject-${userId}`)
 
     await app.request('/trpc/auth.completeProfile', {
       method: 'POST',
@@ -295,7 +233,7 @@ describe('auth flow through the Hono app', () => {
     await db
       .updateTable('user_profiles')
       .set({ pii_ciphertext: 'not-a-real-vault-ciphertext' })
-      .where('user_id', '=', session.data.userId)
+      .where('user_id', '=', userId)
       .execute()
 
     const res = await app.request('/trpc/auth.myProfile', { headers: { cookie } })
@@ -307,12 +245,7 @@ describe('auth flow through the Hono app', () => {
   })
 
   test('requestDataExport inserts a pending row and publishes it, and getDataExportStatus reports it back to the same user only', async () => {
-    const created = await app.request('/trpc/auth.createAnonymousSession', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({}),
-    })
-    const cookie = extractCookie(created)
+    const { cookie } = await mintBareUserCookie()
 
     const before = publishedMessages.length
     const requestRes = await app.request('/trpc/auth.requestDataExport', {
@@ -335,12 +268,7 @@ describe('auth flow through the Hono app', () => {
     expect(statusBody.result.data[0]?.status).toBe('pending')
 
     // A different user must never see this one's export request.
-    const otherSession = await app.request('/trpc/auth.createAnonymousSession', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({}),
-    })
-    const otherCookie = extractCookie(otherSession)
+    const { cookie: otherCookie } = await mintBareUserCookie()
     const otherStatusRes = await app.request('/trpc/auth.getDataExportStatus', { headers: { cookie: otherCookie } })
     const otherStatusBody = (await otherStatusRes.json()) as { result: { data: unknown[] } }
     expect(otherStatusBody.result.data).toEqual([])
@@ -350,14 +278,8 @@ describe('auth flow through the Hono app', () => {
   })
 
   test('deleteAccount removes the user (cascading their profile) and clears the session cookie', async () => {
-    const created = await app.request('/trpc/auth.createAnonymousSession', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({}),
-    })
-    const cookie = extractCookie(created)
-    const { result: session } = (await created.json()) as { result: { data: { userId: string } } }
-    await linkIdentity(db, session.data.userId, 'google', `delete-test-subject-${session.data.userId}`)
+    const { cookie, userId } = await mintBareUserCookie()
+    await linkIdentity(db, userId, 'google', `delete-test-subject-${userId}`)
     await app.request('/trpc/auth.completeProfile', {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
@@ -381,12 +303,12 @@ describe('auth flow through the Hono app', () => {
     const clearedCookie = res.headers.getSetCookie().find((c) => c.startsWith('mc_session=') && c.includes('Max-Age=0'))
     expect(clearedCookie).toBeDefined()
 
-    const remainingUser = await db.selectFrom('users').select('id').where('id', '=', session.data.userId).executeTakeFirst()
+    const remainingUser = await db.selectFrom('users').select('id').where('id', '=', userId).executeTakeFirst()
     expect(remainingUser).toBeUndefined()
     const remainingProfile = await db
       .selectFrom('user_profiles')
       .select('id')
-      .where('user_id', '=', session.data.userId)
+      .where('user_id', '=', userId)
       .executeTakeFirst()
     expect(remainingProfile).toBeUndefined()
 
@@ -404,18 +326,12 @@ describe('auth flow through the Hono app', () => {
   })
 
   test('a banned account (banned_at set) is treated as unauthenticated on its very next request', async () => {
-    const created = await app.request('/trpc/auth.createAnonymousSession', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({}),
-    })
-    const cookie = extractCookie(created)
-    const { result: session } = (await created.json()) as { result: { data: { userId: string } } }
+    const { cookie, userId } = await mintBareUserCookie()
 
     const stillActive = await app.request('/trpc/auth.whoAmI', { headers: { cookie } })
     expect(stillActive.status).toBe(200)
 
-    await db.updateTable('users').set({ banned_at: new Date() }).where('id', '=', session.data.userId).execute()
+    await db.updateTable('users').set({ banned_at: new Date() }).where('id', '=', userId).execute()
 
     const afterBan = await app.request('/trpc/auth.whoAmI', { headers: { cookie } })
     expect(afterBan.status).toBe(401)

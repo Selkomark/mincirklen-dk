@@ -17,11 +17,13 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
 })
 
 // A session cookie alone (protectedProcedure) only proves "some browser
-// holds a signed token" — createAnonymousSession hands one out with zero
-// credentials. This additionally requires a linked Google identity, i.e. a
-// real, traceable person. Used wherever a session is about to acquire or
-// change real-identity data (currently just auth.completeProfile) but
-// hasn't necessarily finished registering yet.
+// holds a signed token." This additionally requires a linked Google
+// identity, i.e. a real, traceable person — Google sign-in is this
+// platform's only way to get a session in the first place (see
+// resolveGoogleLogin), but a user can still be mid-registration with no
+// profile yet. Used wherever a session is about to acquire or change
+// real-identity data (currently just auth.completeProfile) but hasn't
+// necessarily finished registering yet.
 export const googleLinkedProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   const linked = await isGoogleLinked({
     hasLinkedIdentity: () => hasLinkedIdentityForUser(ctx.appEnv.db, ctx.userId),

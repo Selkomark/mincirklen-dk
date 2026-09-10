@@ -1,11 +1,12 @@
 import * as http from 'node:http'
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test'
-import { DEFAULT_LOCAL_DATABASE_URL, createDb, createPgPool, runMigrations } from '@mincirklen/shared'
+import { DEFAULT_LOCAL_DATABASE_URL, createDb, createPgPool, createSessionToken, runMigrations } from '@mincirklen/shared'
 import { sql } from 'kysely'
 import { Code, ConnectError, type ConnectRouter } from '@connectrpc/connect'
 import { connectNodeAdapter } from '@connectrpc/connect-node'
 import { InternalService, ModerationService } from '@mincirklen/proto'
 import { createApp } from './app'
+import { insertUser } from './repositories/userRepository'
 import { linkIdentity } from './repositories/userIdentityRepository'
 import { upsertUserProfile } from './repositories/userProfileRepository'
 
@@ -20,6 +21,7 @@ const VAULT = {
   vaultToken: process.env.TEST_VAULT_TOKEN ?? 'dev-only-not-for-production',
 }
 const INTERNAL_SERVICE_SECRET = 'session-integration-test-internal-secret'
+const AUTH_SECRET = 'session-integration-test-secret'
 
 let fakeModerationService: http.Server
 let fakeModerationServicePort: number
@@ -210,7 +212,7 @@ beforeAll(async () => {
 
   app = createApp({
     db,
-    authSecret: 'session-integration-test-secret',
+    authSecret: AUTH_SECRET,
     moderationServiceUrl: `http://127.0.0.1:${fakeModerationServicePort}`,
     websocketServiceUrl: `http://127.0.0.1:${fakeWebsocketServicePort}`,
     internalServiceSecret: INTERNAL_SERVICE_SECRET,
@@ -241,20 +243,21 @@ interface Actor {
 // completed profile — see controllers/trpc.ts), so every actor used
 // against session.* has to actually clear that bar, not just hold a
 // session cookie. There's no fake-Google harness in this file (that's
-// oauth.integration.test.ts's job) — linking the identity and completing
-// the profile directly via the repositories is the same setup shortcut
-// oauth.integration.test.ts already uses for the profile half.
-async function createActor(): Promise<Actor> {
-  const res = await app.request('/trpc/auth.createAnonymousSession', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({}),
-  })
-  const setCookie = res.headers.get('set-cookie')
-  if (!setCookie) throw new Error('expected a set-cookie header')
+// oauth.integration.test.ts's job) — inserting the user and signing a
+// token directly, then linking the identity and completing the profile
+// via the repositories, is the same setup shortcut oauth.integration.test.ts
+// already uses for the profile half. This used to go through the now-
+// removed auth.createAnonymousSession endpoint (see SECURITY_FINDINGS.md
+// H1) — Google sign-in is this platform's only real login door, so a
+// bare unverified user is minted directly here instead.
+async function mintBareUserCookie(): Promise<{ cookie: string; userId: string }> {
+  const user = await insertUser(db)
+  const token = createSessionToken(user.id, AUTH_SECRET)
+  return { cookie: `mc_session=${token}`, userId: user.id }
+}
 
-  const body = (await res.json()) as { result: { data: { userId: string } } }
-  const userId = body.result.data.userId
+async function createActor(): Promise<Actor> {
+  const { cookie, userId } = await mintBareUserCookie()
 
   await linkIdentity(db, userId, 'google', `test-subject-${userId}`)
   await upsertUserProfile(db, VAULT, {
@@ -268,7 +271,7 @@ async function createActor(): Promise<Actor> {
     termsAcceptedAt: new Date(),
   })
 
-  return { cookie: setCookie.split(';')[0] as string, userId }
+  return { cookie, userId }
 }
 
 async function call(actor: Actor, path: string, input: unknown) {
@@ -287,30 +290,19 @@ async function query(actor: Actor, path: string, input: Record<string, unknown>)
 }
 
 describe('verifiedProcedure gate on session.*', () => {
-  test('a bare anonymous session (no Google link, no profile) is rejected', async () => {
-    const res = await app.request('/trpc/auth.createAnonymousSession', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({}),
-    })
-    const cookie = (res.headers.get('set-cookie') ?? '').split(';')[0] as string
+  test('a bare unverified session (no Google link, no profile) is rejected', async () => {
+    const { cookie } = await mintBareUserCookie()
 
     const createRes = await call({ cookie, userId: '' }, 'session.create', {})
     expect(createRes.status).toBe(403)
   })
 
   test('a Google-linked session with no completed profile is rejected', async () => {
-    const res = await app.request('/trpc/auth.createAnonymousSession', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({}),
-    })
-    const cookie = (res.headers.get('set-cookie') ?? '').split(';')[0] as string
-    const { result } = (await res.json()) as { result: { data: { userId: string } } }
+    const { cookie, userId } = await mintBareUserCookie()
 
-    await linkIdentity(db, result.data.userId, 'google', `test-subject-${result.data.userId}`)
+    await linkIdentity(db, userId, 'google', `test-subject-${userId}`)
 
-    const createRes = await call({ cookie, userId: result.data.userId }, 'session.create', {})
+    const createRes = await call({ cookie, userId }, 'session.create', {})
     expect(createRes.status).toBe(403)
   })
 
@@ -619,7 +611,7 @@ describe('topics.list', () => {
   })
 })
 
-describe('scheduled circles (/start/new, /start/join)', () => {
+describe('scheduled circles (/p/new, /p/join)', () => {
   async function griefTopicId(actor: Actor): Promise<string> {
     const res = await query(actor, 'topics.list', {})
     const { result } = (await res.json()) as { result: { data: { id: string; slug: string }[] } }
@@ -856,7 +848,7 @@ describe('session.visit / session.listRecentVisits', () => {
     expect(joinNotifications).toEqual([{ sessionId, userId: bob.userId }])
   })
 
-  test('listRecentVisits search filters by name, same as /start/join', async () => {
+  test('listRecentVisits search filters by name, same as /p/join', async () => {
     const alice = await createActor()
     const topicId = await griefTopicId(alice)
     const griefId = await createNamed(alice, topicId, 'Weekly grief circle')

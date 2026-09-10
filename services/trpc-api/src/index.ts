@@ -104,8 +104,12 @@ const app = createApp({
   vault: kms,
   pubsub,
   identityHashKey,
-  // Optional — Google login layers on top of anonymous auth, it isn't
-  // required to boot. See docs/local_dev.md / setup-oauth-env.sh.
+  // Optional — trpc-api boots fine without these; only the OAuth routes
+  // themselves 503 until they're set. Google sign-in is this platform's
+  // only login door (see services/googleAuthService.ts), so a real
+  // deployment always sets these — this is purely a boot-time
+  // convenience for environments (like a fresh local dev clone) that
+  // haven't configured it yet. See docs/local_dev.md / setup-local-oauth-env.sh.
   googleClientId: process.env.GOOGLE_CLIENT_ID || undefined,
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || undefined,
   // Optional — no admin exists until this is set and someone logs in with

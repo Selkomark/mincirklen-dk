@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { createSessionToken, createUserProfileInputSchema } from '@mincirklen/shared'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
-import { deleteUser, insertUser } from '../repositories/userRepository'
+import { deleteUser } from '../repositories/userRepository'
 import { hasLinkedIdentityForUser } from '../repositories/userIdentityRepository'
 import { findUserProfileByUserId, upsertUserProfile, userProfileExists } from '../repositories/userProfileRepository'
 import { listActiveSessionIdsForUser } from '../repositories/sessionRepository'
@@ -14,12 +14,11 @@ import {
 import { KmsError } from '../adapters/kmsAdapter'
 import { publishDataExportRequested } from '../adapters/pubsubAdapter'
 import { notifyProfileUpdated } from '../adapters/websocketServiceAdapter'
-import { createAnonymousSession } from '../services/authService'
 import { completeUserProfile } from '../services/userProfileService'
 import { deleteAccount } from '../services/accountDeletionService'
 import { getDataExportStatus, requestDataExport } from '../services/dataExportRequestService'
 import { ExportNotFoundError, ExportNotReadyError, createExportDownloadToken } from '../services/exportDownloadService'
-import { buildLegacySessionCookieClear, buildLogoutCookie, buildSessionCookie } from '../context'
+import { buildLegacySessionCookieClear, buildLogoutCookie } from '../context'
 import type { AppEnv } from '../context'
 import { googleLinkedProcedure, protectedProcedure, publicProcedure, router } from './trpc'
 
@@ -49,18 +48,6 @@ function notifyProfileUpdatedFireAndForget(env: AppEnv, userId: string, displayN
 }
 
 export const authRouter = router({
-  createAnonymousSession: publicProcedure.mutation(async ({ ctx }) => {
-    const result = await createAnonymousSession({
-      insertUser: () => insertUser(ctx.appEnv.db),
-      createToken: (userId) => createSessionToken(userId, ctx.appEnv.authSecret),
-    })
-
-    ctx.resHeaders.append('set-cookie', buildSessionCookie(result.token, ctx.appEnv.publicBaseUrl))
-    ctx.resHeaders.append('set-cookie', buildLegacySessionCookieClear())
-
-    return result
-  }),
-
   // publicProcedure, not protectedProcedure: logging out must never itself
   // fail — an already-expired or missing session cookie is exactly the
   // state this is meant to end up in anyway, so there's nothing to guard.
@@ -72,13 +59,15 @@ export const authRouter = router({
 
   whoAmI: protectedProcedure.query(({ ctx }) => ({ userId: ctx.userId })),
 
-  // The full picture the frontend's auth gate needs (App.tsx): a bare
-  // session from createAnonymousSession alone answers neither question —
-  // `hasLinkedIdentity: false` means "still needs Google," `hasProfile:
-  // false` (with `hasLinkedIdentity: true`) means "Google done, still
-  // needs RegisterPage.tsx." Only `hasLinkedIdentity && hasProfile` means
-  // the operator's actual bar for using the platform is met — see
-  // verificationService.ts.
+  // The full picture the frontend's auth gate needs (App.tsx):
+  // `hasLinkedIdentity: false` means "still needs Google" (in practice
+  // unreachable today, since resolveGoogleLogin is the only way to get a
+  // session cookie at all — kept as a real, independently-checked signal
+  // rather than assumed, so it stays correct if that ever changes),
+  // `hasProfile: false` (with `hasLinkedIdentity: true`) means "Google
+  // done, still needs RegisterPage.tsx." Only `hasLinkedIdentity &&
+  // hasProfile` means the operator's actual bar for using the platform is
+  // met — see verificationService.ts.
   //
   // This runs on every page load (App.tsx's auth gate), so `hasProfile`
   // is answered via the KMS-free existence check, never by whether

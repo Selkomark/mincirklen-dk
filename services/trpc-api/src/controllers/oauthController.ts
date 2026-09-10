@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { createSessionToken, verifySessionToken } from '@mincirklen/shared'
+import { createSessionToken } from '@mincirklen/shared'
 import { Hono, type Context } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { GoogleOAuthError, buildAuthorizationUrl, exchangeCodeForTokens, verifyIdToken } from '../adapters/googleOAuthAdapter'
@@ -14,7 +14,7 @@ import {
   markAdminBootstrapCompleted,
 } from '../repositories/rbacRepository'
 import { findUserIdByIdentity, linkIdentity } from '../repositories/userIdentityRepository'
-import { insertUser, setEmail, userExists } from '../repositories/userRepository'
+import { insertUser, setEmail } from '../repositories/userRepository'
 import { userProfileExists } from '../repositories/userProfileRepository'
 import { bootstrapAdminIfMasterEmail } from '../services/adminBootstrapService'
 import { resolveGoogleLogin } from '../services/googleAuthService'
@@ -48,9 +48,10 @@ export function createOAuthController(env: AppEnv): Hono {
   const app = new Hono()
 
   app.get('/auth/google/start', (c) => {
-    // Google login is an optional layer on top of anonymous auth (roadmap's
-    // threat model) — trpc-api boots and works without it configured;
-    // only this route itself errors.
+    // trpc-api boots and works without Google configured — only this
+    // route itself errors — but Google sign-in is this platform's actual
+    // identity boundary (see resolveGoogleLogin's comment): nothing that
+    // lets a user participate works without it.
     if (!env.googleClientId || !env.googleClientSecret) {
       return c.text('Google login is not configured', 503)
     }
@@ -89,18 +90,6 @@ export function createOAuthController(env: AppEnv): Hono {
 
     const config = configFor(env, env.googleClientId, env.googleClientSecret)
 
-    // Read the browser's *current* mc_session, if any — this is how a
-    // Google login "upgrades" a user already active in this
-    // browser. Read at callback time, not at /start time: a multi-tab
-    // race (tab A starts login, tab B creates a fresh anonymous session
-    // before A's redirect completes) can upgrade the "wrong" tab's
-    // session — a session-confusion edge case, not a security issue
-    // (only cookies already in this browser's own jar are ever read).
-    const existingToken = getCookie(c, SESSION_COOKIE_NAME)
-    const existingUserId = existingToken
-      ? (verifySessionToken(existingToken, env.authSecret)?.userId ?? null)
-      : null
-
     try {
       const { idToken } = await exchangeCodeForTokens(config, code)
       const { subject, email } = await verifyIdToken(config, idToken)
@@ -119,25 +108,16 @@ export function createOAuthController(env: AppEnv): Hono {
         return loginErrorRedirect(c, env, 'account_banned')
       }
 
-      // An established Google identity always wins over the active
-      // anonymous session (see googleAuthService.ts) — if this identity is
-      // already linked to a *different* user than whatever's active
-      // in the browser, mc_session silently switches to it. Flagged, not
-      // fixed, this pass — see the plan for why.
-      const { userId, hasProfile } = await resolveGoogleLogin(
-        {
-          findUserIdByIdentity: () => findUserIdByIdentity(env.db, GOOGLE_PROVIDER, subjectHash),
-          createUser: () => insertUser(env.db),
-          linkIdentity: (id) => linkIdentity(env.db, id, GOOGLE_PROVIDER, subjectHash),
-          // Existence-only, no decrypt — this is a routing decision
-          // (/start vs /register), not a read of the profile data, so it must
-          // never depend on KMS/Vault being reachable or on the right key
-          // version being available. See userProfileExists's comment.
-          hasProfile: (id) => userProfileExists(env.db, id),
-          userExists: (id) => userExists(env.db, id),
-        },
-        existingUserId,
-      )
+      const { userId, hasProfile } = await resolveGoogleLogin({
+        findUserIdByIdentity: () => findUserIdByIdentity(env.db, GOOGLE_PROVIDER, subjectHash),
+        createUser: () => insertUser(env.db),
+        linkIdentity: (id) => linkIdentity(env.db, id, GOOGLE_PROVIDER, subjectHash),
+        // Existence-only, no decrypt — this is a routing decision
+        // (/p vs /register), not a read of the profile data, so it must
+        // never depend on KMS/Vault being reachable or on the right key
+        // version being available. See userProfileExists's comment.
+        hasProfile: (id) => userProfileExists(env.db, id),
+      })
 
       // Essential account-operation data (CHARTER.md §4's carved-out
       // exception) — kept in sync with Google on every login, not just
@@ -165,7 +145,13 @@ export function createOAuthController(env: AppEnv): Hono {
       // Based on whether a profile actually exists, not on whether the
       // identity link is new — a user who linked Google but abandoned the
       // registration form must be sent back to it on their next login too.
-      const destination = hasProfile ? '/start' : '/register?welcome=1'
+      // '/p', not '/start' — the session-page shell was renamed in the
+      // locale-prefix redesign (see App.tsx's pPath); this redirect target
+      // is a plain string because it's built server-side, so it has no
+      // compile-time link to the frontend's route table and won't error if
+      // that table changes again — only oauth.integration.test.ts's
+      // location assertions would catch a future drift like this one.
+      const destination = hasProfile ? '/p' : '/register?welcome=1'
       return c.redirect(`${env.publicBaseUrl}${destination}`, 302)
     } catch (err) {
       // Anything downstream of the code exchange — a bad/expired code, a
@@ -179,7 +165,7 @@ export function createOAuthController(env: AppEnv): Hono {
       // Whatever mc_session the browser walked in with was implicated in
       // (or at least present for) a failed login — carrying it into the
       // retry risks the exact same failure on the next attempt. Clearing
-      // it drops the browser back to a clean anonymous state so a retry
+      // it drops the browser back to a clean, logged-out state so a retry
       // has a real chance of succeeding.
       deleteCookie(c, SESSION_COOKIE_NAME, { path: '/', domain: sessionCookieDomain(env.publicBaseUrl) })
       return loginErrorRedirect(c, env, errorCode)

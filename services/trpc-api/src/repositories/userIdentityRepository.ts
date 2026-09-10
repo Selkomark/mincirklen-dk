@@ -30,8 +30,9 @@ export async function linkIdentity(
 
 // Whether this user has ever completed a real-identity provider login
 // (currently only Google) — distinguishes a real, traceable account from a
-// bare anonymous session. Used to gate everything past "has a session
-// cookie" (see controllers/trpc.ts's verifiedProcedure/googleLinkedProcedure).
+// bare, unverified session row. Used to gate everything past "has a
+// session cookie" (see controllers/trpc.ts's
+// verifiedProcedure/googleLinkedProcedure).
 export async function hasLinkedIdentityForUser(db: Kysely<Database>, userId: string): Promise<boolean> {
   const row = await db.selectFrom('user_identities').select('id').where('user_id', '=', userId).executeTakeFirst()
 
