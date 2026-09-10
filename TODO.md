@@ -123,11 +123,18 @@ introduced an abuse-prevention ledger (`account_bans` /
 survives account deletion specifically so a banned bad actor can't delete
 their account and quietly re-register with the same Google account.
 
-Today, creating a ban and responding to a post-deletion evidence-
-disclosure request are both **manual operator actions via Adminer** (see
-`docs/gdpr-runbook.md` for the exact steps) — there's no admin UI, no
-admin/moderator role, and no automated way to trigger a ban from anywhere
-in the app. That's fine at current scale, but won't stay fine.
+Today, the ban and disclosure-response logic is only exercised locally,
+by hand, against the dev database (`docs/gdpr-runbook.md`) — there is no
+`/manage` action that performs either in production, and there must
+never be a manual, direct-database substitute for one in production,
+regardless of platform scale. No one — including an account with
+platform-owner access — has standing direct production database access;
+the sole exception is temporary, least-privilege, audited access for a
+trusted, NDA'd, employed operator performing a defined infrastructure
+duty, never for acting on user content. Concretely: **a ban cannot be
+created and a disclosure request cannot be answered in production until
+the actions below exist.** This is a pre-launch blocker, not a someday
+item.
 
 A real admin page should eventually provide:
 
@@ -145,12 +152,14 @@ A real admin page should eventually provide:
    stops being free text and a disclosure response can show who made a
    decision, not just what it was.
 
-**Prerequisite for most of this**: there's no admin authentication/
-authorization model in this codebase at all today — every procedure is
-either public or gated on being a regular signed-in user
-(`protectedProcedure`/`googleLinkedProcedure`/`verifiedProcedure` in
-`services/trpc-api/src/controllers/trpc.ts`). That needs to exist before
-any of the above can be built as more than a direct-DB workaround.
+**Prerequisite for most of this — already satisfied, stale note removed
+2026-09-10**: this used to block on there being no admin authentication/
+authorization model in this codebase. That's no longer true — the
+`/manage` RBAC system (roles, permissions, `hasPermission` gate in
+`services/trpc-api/src/controllers/trpc.ts`/`rbacRouter.ts`, admin pages
+under `services/web-app/src/pages/manage/`) shipped 2026-09-05 (see
+`CHARTER.md` principle 4). Items 1-4 above can be built directly on top
+of it now — nothing left to unblock first.
 
 ## Add CAPTCHA (Cloudflare Turnstile) to register/profile-completion
 

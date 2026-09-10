@@ -13,9 +13,9 @@ circles to be heard in.
 - [docs/security_findings.md](docs/security_findings.md) — pre-release
   security audit reference (incomplete draft; active findings live in
   `SECURITY_FINDINGS.md`)
-- [docs/gdpr-runbook.md](docs/gdpr-runbook.md) — manual operator
-  procedures for the abuse-prevention ban ledger and post-deletion
-  data-disclosure requests
+- [docs/gdpr-runbook.md](docs/gdpr-runbook.md) — local-dev-only reference
+  for the abuse-prevention ban ledger and post-deletion data-disclosure
+  logic; never a production procedure — see `DPIA_PRELAUNCH.md` R8
 - [REJECTED_IDEAS.md](REJECTED_IDEAS.md) / [PROMISING_IDEAS.md](PROMISING_IDEAS.md) —
   product/feature ideas evaluated against `CHARTER.md`, with why
 - [docs/executive_blueprint.md](docs/executive_blueprint.md) —
