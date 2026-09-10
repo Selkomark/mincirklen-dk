@@ -66,22 +66,30 @@ export function SiteHeader({ showJoinCta = true }: { showJoinCta?: boolean }) {
 
   return (
     <Navbar logo={logo}>
-      <a href={publicPagePath('about', locale)} className="ds-text ds-text--small" style={navLinkStyle}>
-        {t('header.about')}
-      </a>
-      <a href={publicPagePath('safety-and-moderation', locale)} className="ds-text ds-text--small" style={navLinkStyle}>
-        {t('header.safety')}
-      </a>
-      {isLoggedIn ? (
-        <>
-          <LinkButton href={pPath(locale)}>{t('header.start')}</LinkButton>
-          <LogoutButton locale={locale} />
-        </>
-      ) : (
-        showJoinCta && authStatus.kind === 'anonymous' && <LinkButton href={loginPath(locale)}>{t('header.joinNow')}</LinkButton>
+      <div className="ds-navbar__group">
+        <a href={publicPagePath('about', locale)} className="ds-text ds-text--small ds-navbar__link" style={navLinkStyle}>
+          {t('header.about')}
+        </a>
+        <a href={publicPagePath('safety-and-moderation', locale)} className="ds-text ds-text--small ds-navbar__link" style={navLinkStyle}>
+          {t('header.safety')}
+        </a>
+      </div>
+      {(isLoggedIn || (showJoinCta && authStatus.kind === 'anonymous')) && (
+        <div className="ds-navbar__group">
+          {isLoggedIn ? (
+            <>
+              <LinkButton href={pPath(locale)}>{t('header.start')}</LinkButton>
+              <LogoutButton locale={locale} />
+            </>
+          ) : (
+            <LinkButton href={loginPath(locale)}>{t('header.joinNow')}</LinkButton>
+          )}
+        </div>
       )}
-      <LanguageSwitcher />
-      <ThemeToggle />
+      <div className="ds-navbar__group ds-navbar__group--settings">
+        <LanguageSwitcher />
+        <ThemeToggle />
+      </div>
     </Navbar>
   )
 }

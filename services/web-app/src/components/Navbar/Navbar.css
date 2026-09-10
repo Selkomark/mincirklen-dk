@@ -38,6 +38,12 @@
   display: none;
 }
 
+/* No-op on desktop: children of a group flow directly into the row
+   layout above, so grouping never changes desktop's flat, inline nav. */
+.ds-navbar__group {
+  display: contents;
+}
+
 @media (max-width: 767px) {
   .ds-navbar__toggle {
     display: inline-flex;
@@ -50,16 +56,56 @@
     left: 0;
     right: 0;
     flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-4);
+    align-items: stretch;
+    gap: 0;
     padding: var(--space-5);
     background: var(--surface-raised);
     border-bottom: 1px solid var(--border-subtle);
     box-shadow: var(--shadow-md);
     z-index: 49;
+    max-height: calc(100vh - 64px);
+    overflow-y: auto;
   }
 
   .ds-navbar__links--open {
     display: flex;
+  }
+
+  /* Each group becomes its own stacked, full-width block, visually
+     separated from the next by a rule — reads as sections (links,
+     primary actions, settings) instead of one undifferentiated list. */
+  .ds-navbar__group {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+
+  .ds-navbar__group + .ds-navbar__group {
+    margin-top: var(--space-5);
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .ds-navbar__link {
+    padding: var(--space-2) 0;
+    font-size: var(--font-size-md);
+    color: var(--text-primary);
+  }
+
+  .ds-navbar__group .ds-button {
+    width: 100%;
+  }
+
+  /* Language + theme controls sit side by side rather than stacking one
+     per row like the links/buttons above them — they're peers, not a list. */
+  .ds-navbar__group--settings {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .ds-navbar__group--settings .language-switcher {
+    flex: 1;
   }
 }
