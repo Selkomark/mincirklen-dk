@@ -53,7 +53,6 @@
     "sessionMeta": "{{timing}} · {{duration}} · {{joined}}/{{capacity}}",
     "circleFilledUp": "Den cirkeln blev precis full — välj en annan.",
     "joinFailed": "Något gick fel när du skulle gå med i cirkeln.",
-    "cancel": "Avbryt",
     "back": "Tillbaka"
   },
   "newPage": {
@@ -69,7 +68,6 @@
     "time": "Tid",
     "length": "Längd",
     "groupSize": "Gruppstorlek",
-    "cancel": "Avbryt",
     "back": "Tillbaka",
     "continue": "Fortsätt",
     "beforeYouBegin": "Innan du börjar",

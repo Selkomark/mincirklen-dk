@@ -63,7 +63,7 @@ export interface SessionsTable {
   current_turn_user_id: string | null
   turn_claimed_at: NullableTimestamp
   // Nullable: only populated for circles created through the scheduled
-  // /start/new flow — the pre-existing ad-hoc turn-based flow leaves all
+  // /p/new flow — the pre-existing ad-hoc turn-based flow leaves all
   // five null.
   topic_id: string | null
   scheduled_at: NullableTimestamp

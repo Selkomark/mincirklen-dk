@@ -14,7 +14,7 @@ export const sessionSchema = z.object({
   // control, not client-facing.
   currentTurnUserId: z.string().uuid().nullable(),
   // Null for sessions created through the pre-existing ad-hoc turn-based
-  // flow — only circles created via /start/new populate these.
+  // flow — only circles created via /p/new populate these.
   topicId: z.string().uuid().nullable(),
   name: z.string().nullable(),
   scheduledAt: z.coerce.date().nullable(),
@@ -87,7 +87,7 @@ export type ListOpenSessionsInput = z.infer<typeof listOpenSessionsInputSchema>
 // scroll listOpenSessionsInputSchema backs, and no topic/date/duration/
 // capacity filters (this is a personal history list, not a browse/search
 // surface over every open circle) — just free-text search, same
-// semantics as /start/join's.
+// semantics as /p/join's.
 export const listRecentVisitsInputSchema = z.object({
   search: z.string().trim().max(100).optional(),
   cursor: z.string().optional(),

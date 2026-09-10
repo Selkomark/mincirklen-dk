@@ -53,7 +53,6 @@
     "sessionMeta": "{{timing}} · {{duration}} · {{joined}}/{{capacity}}",
     "circleFilledUp": "That circle just filled up — pick another.",
     "joinFailed": "Something went wrong joining this circle.",
-    "cancel": "Cancel",
     "back": "Back"
   },
   "newPage": {
@@ -69,7 +68,6 @@
     "time": "Time",
     "length": "Length",
     "groupSize": "Group size",
-    "cancel": "Cancel",
     "back": "Back",
     "continue": "Continue",
     "beforeYouBegin": "Before you begin",

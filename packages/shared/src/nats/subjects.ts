@@ -7,7 +7,7 @@ export function roomSubject(sessionId: string): string {
 
 // Cross-pod fanout for roster/turn/join events — separate from
 // roomSubject (chat messages) so a client that only cares about presence
-// (e.g. the /start/join browse list watching a session's live count)
+// (e.g. the /p/join browse list watching a session's live count)
 // never has to also subscribe to its message stream.
 export function presenceSubject(sessionId: string): string {
   return `room.${sessionId}.presence`

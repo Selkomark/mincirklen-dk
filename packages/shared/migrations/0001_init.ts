@@ -293,7 +293,7 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addCheckConstraint('sessions_status_check', sql`status in ('forming','active','completed','cancelled')`)
     .execute()
 
-  // Backs server-side search on /start/join (sessionRepository.ts's
+  // Backs server-side search on /p/join (sessionRepository.ts's
   // listOpenSessions): pg_trgm's GIN index accelerates ILIKE '%term%'
   // substring scans at scale and adds a `similarity()` function used
   // for typo-tolerant fuzzy matching. Schema-qualified (public) since

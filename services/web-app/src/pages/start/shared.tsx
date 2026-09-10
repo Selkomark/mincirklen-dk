@@ -47,7 +47,7 @@ export function durationLabel(id: string, t: TFunction<'start'>) {
   return duration.minutes === null ? t('durations.openEnded') : t('shared.minutesShort', { count: duration.minutes })
 }
 
-// Safety net only — every circle created through the current /start/new
+// Safety net only — every circle created through the current /p/new
 // flow always has a name (session.create requires it). This only kicks
 // in for circles created before that requirement existed, so the browse
 // list and confirm screen never show a blank title.

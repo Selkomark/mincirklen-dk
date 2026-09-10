@@ -337,12 +337,18 @@ function useRoute() {
   }, [])
 
   const navigate = useCallback((path: string, opts?: { replace?: boolean }) => {
+    // `path` may carry a query string (the locale-insertion redirect below
+    // preserves one) — the browser URL keeps it, but routing state never
+    // does: parseRoute splits on "/" and would otherwise see a bogus final
+    // segment like "login?error=oauth_state" and fall through to
+    // not-found.
+    const pathOnly = path.split('?')[0] ?? path
     if (opts?.replace) {
       window.history.replaceState(null, '', path)
-    } else if (path !== window.location.pathname) {
+    } else if (pathOnly !== window.location.pathname) {
       window.history.pushState(null, '', path)
     }
-    setPathname(path)
+    setPathname(pathOnly)
   }, [])
 
   return { route: parseRoute(pathname), navigate }
@@ -362,11 +368,15 @@ function Shell() {
   // resolved this before anything here mounts) plus the last remembered
   // (or default) market. A silent, historyless correction: the URL is
   // authoritative for locale from here on, but a first/bare visit still
-  // has to land *somewhere*.
+  // has to land *somewhere*. The query string rides along unchanged — a
+  // bare, unprefixed link is exactly what oauthController.ts's redirects
+  // are (e.g. `/login?error=oauth_state`), and LoginPage.tsx reads that
+  // `?error=` straight off `window.location.search` once it mounts, so
+  // losing it here would silently swallow every login-failure message.
   useEffect(() => {
     if (routeResult.kind !== 'redirect') return
     const locale = fallbackLocale(i18n.resolvedLanguage)
-    const target = `${BASE}${formatLocaleSegment(locale)}${routeResult.targetPath ? `/${routeResult.targetPath}` : ''}`
+    const target = `${BASE}${formatLocaleSegment(locale)}${routeResult.targetPath ? `/${routeResult.targetPath}` : ''}${window.location.search}`
     navigate(target, { replace: true })
   }, [routeResult, navigate, i18n.resolvedLanguage])
 

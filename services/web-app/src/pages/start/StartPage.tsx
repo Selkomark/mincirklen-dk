@@ -96,7 +96,7 @@ export function StartPage({ selected, onSelectJoin, onSelectNew, onBack, onCompl
       </div>
       <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-6)' }}>
         {selected === 'join' && <StartJoinPage embedded onBack={onBack} onComplete={onComplete} />}
-        {selected === 'new' && <StartNewPage embedded onBack={onBack} onComplete={onComplete} />}
+        {selected === 'new' && <StartNewPage embedded onComplete={onComplete} />}
         {selected === null && (
           <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>{t('choose.subtitle')}</div>
         )}

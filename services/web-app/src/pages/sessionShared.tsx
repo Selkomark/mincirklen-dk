@@ -42,7 +42,7 @@ export interface RecentVisit {
 // Same fallback as pages/start/shared.tsx's displayName — kept as its own
 // copy (not imported) because RecentVisit's topic is nullable (the
 // ad-hoc turn-based flow's sessions can show up in visit history, unlike
-// /start/join's browse list, which only ever lists topic-having circles).
+// /p/join's browse list, which only ever lists topic-having circles).
 export function visitDisplayName(visit: { name: string | null; topic: Topic | null }): string {
   return visit.name ?? (visit.topic ? `${visit.topic.label} circle` : 'Session')
 }

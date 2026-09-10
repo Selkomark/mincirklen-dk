@@ -16,7 +16,6 @@ import { useDocumentTitle } from '../../useDocumentTitle'
 import { Chip, DURATIONS, SIZES, StepBar, durationLabel, useTopics } from './shared'
 
 export interface StartNewPageProps {
-  onBack: () => void
   onComplete: (sessionId: string) => void
   // pages/start/StartPage.tsx's /p center panel renders this flow
   // embedded (skips the full-page chrome — SiteHeader/SiteFooter, the
@@ -30,7 +29,7 @@ function combineToISOString(date: CalendarDate, time: Time): string {
   return new Date(date.year, date.month - 1, date.day, time.hour, time.minute).toISOString()
 }
 
-export function StartNewPage({ onBack, onComplete, embedded = false }: StartNewPageProps) {
+export function StartNewPage({ onComplete, embedded = false }: StartNewPageProps) {
   const { t } = useTranslation('start')
   const locale = useLocale()
   useDocumentTitle(t('newPage.documentTitle'))
@@ -174,10 +173,7 @@ export function StartNewPage({ onBack, onComplete, embedded = false }: StartNewP
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-                  <Button variant="ghost" onClick={onBack}>
-                    {embedded ? t('newPage.cancel') : t('newPage.back')}
-                  </Button>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
                   <Button variant="safe" isDisabled={createIncomplete} onClick={() => setStep(2)}>
                     {t('newPage.continue')}
                   </Button>

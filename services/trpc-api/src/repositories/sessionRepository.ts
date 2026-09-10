@@ -66,7 +66,7 @@ export interface CreateSessionParams {
 }
 
 // `params` is optional so the pre-existing ad-hoc turn-based flow (every
-// call site before the scheduled /start/new flow existed) keeps working
+// call site before the scheduled /p/new flow existed) keeps working
 // unchanged — see migrations/0001_init.ts and
 // migrations/0001_init.ts.
 export async function createSession(db: Kysely<Database>, params?: CreateSessionParams): Promise<{ id: string }> {
@@ -137,7 +137,7 @@ function parseCursor(cursor: string): { mode: 'schedule' | 'relevance'; value: s
   return { mode, value, id }
 }
 
-// Circles browsable on /start/join: scheduled (has a topic), still
+// Circles browsable on /p/join: scheduled (has a topic), still
 // forming or active, and not yet full. Ad-hoc turn-based sessions (no
 // topic) never appear here.
 //
@@ -153,7 +153,7 @@ function parseCursor(cursor: string): { mode: 'schedule' | 'relevance'; value: s
 //
 // Bidirectional: `direction: 'before'` fetches the page immediately
 // preceding the cursor instead of following it — this backs the windowed
-// browse list on /start/join (pages/start/shared.tsx), which evicts
+// browse list on /p/join (pages/start/shared.tsx), which evicts
 // whichever end the user has scrolled away from and re-fetches from here
 // (not from a client cache) if they scroll back. The row order returned
 // is always the same canonical order regardless of direction — a
@@ -492,7 +492,7 @@ export interface ListRecentVisitsFilters {
   userId: string
   search?: string
   // Forward-only, "load more" pagination — not the bidirectional windowed
-  // scroll listOpenSessions uses for /start/join's browse list. Each page
+  // scroll listOpenSessions uses for /p/join's browse list. Each page
   // is strictly older (by last_visited_at) than the one before it.
   cursor?: string
   limit: number
@@ -513,7 +513,7 @@ function parseVisitCursor(cursor: string): { value: string; id: string } {
 
 // Same search semantics as listOpenSessions above (ilike + pg_trgm
 // similarity against the same display-name expression) — "recent
-// sessions" search should feel identical to /start/join's search, just
+// sessions" search should feel identical to /p/join's search, just
 // scoped to this user's own visited sessions instead of all open circles.
 export async function listRecentSessionVisits(
   db: Kysely<Database>,
@@ -584,7 +584,7 @@ export async function listRecentSessionVisits(
 // acknowledgment, and terms of service + circle liability) — recorded as
 // separate keys, not one combined flag, so each is individually
 // timestamped/auditable. This is the single gate for joining any circle
-// (direct visit, /start/join, "New session" all funnel through
+// (direct visit, /p/join, "New session" all funnel through
 // session.visit -> checkGuidelines). Adding a future new checkbox is
 // just a new key here — the storage (session_users.agreements, a jsonb
 // map) needs no migration to support it.

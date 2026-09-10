@@ -163,7 +163,7 @@ export const sessionRouter = router({
   // Re-checks existence (NOT_FOUND if it doesn't exist — a defensive
   // re-check, not the primary one) and auto-joins/refreshes membership
   // so a verified user can navigate straight to any session's URL —
-  // including ones they've never explicitly joined via /start/join —
+  // including ones they've never explicitly joined via /p/join —
   // without a separate join step; getState/listMessages/sendMessage stay
   // membership-gated exactly as before, now satisfied by this. Also
   // records/bumps last_visited_at for the recent-sessions sidebar

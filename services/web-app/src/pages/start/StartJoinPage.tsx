@@ -29,11 +29,13 @@ import {
 export interface StartJoinPageProps {
   onBack: () => void
   onComplete: (sessionId: string) => void
-  // SessionPage.tsx's "New session" opens this same flow in a Modal
-  // instead of navigating to the /start/join route — embedded skips the
-  // full-page chrome (SiteHeader/SiteFooter, the centered/padded page
-  // wrapper) and just renders the step content, since the Modal already
-  // provides its own dialog chrome.
+  // pages/start/StartPage.tsx's /p center panel renders this flow
+  // embedded (skips the full-page chrome — SiteHeader/SiteFooter, the
+  // centered/padded page wrapper — and just renders the step content,
+  // since DashShell already provides the surrounding chrome). Mirrors
+  // StartNewPage.tsx's identical `embedded` prop. ("New session" used to
+  // open this in a Modal instead — dropped when /p replaced it, see
+  // eebb7da.)
   embedded?: boolean
 }
 
@@ -200,7 +202,7 @@ export function StartJoinPage({ onBack, onComplete, embedded = false }: StartJoi
   const hasFilters = !!(draftDate || draftDuration || draftTopic || draftSize || appliedDate || appliedDuration || appliedTopic || appliedSize)
 
   // The search/filter/list block — the actual "picking a circle" UI —
-  // shared verbatim between the standalone /start/join page and the
+  // shared verbatim between the standalone /p/join page and the
   // embedded modal below. Everything *around* it (heading, card
   // background, page chrome) differs by context and is never shared, so
   // there's exactly one heading and one card border wherever this
@@ -412,11 +414,6 @@ export function StartJoinPage({ onBack, onComplete, embedded = false }: StartJoi
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>{t('joinPage.subtitle')}</div>
         {listBody}
-        <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-          <Button variant="ghost" onClick={onBack}>
-            {t('joinPage.cancel')}
-          </Button>
-        </div>
       </div>
     )
   }
