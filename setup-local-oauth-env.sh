@@ -6,16 +6,17 @@
 # docker-compose.yml — no env_file: directive needed.
 #
 # Usage:
-#   ./setup-oauth-env.sh
+#   ./setup-local-oauth-env.sh
 #
 # Expects the JSON at:
 #   services/web-app/service-accounts/oAuthMincirklenServiceAccount.json
 # (gitignored — never commit it). Safe to re-run: idempotently upserts just
 # the two GOOGLE_CLIENT_* keys in .env, leaving any other lines untouched.
 #
-# Without this, docker-compose.yml's trpc-api service still boots fine —
-# Google login is an optional layer on top of anonymous auth — but
-# /auth/google/start returns 503 until these are set.
+# Without this, docker-compose.yml's trpc-api service still boots fine,
+# but /auth/google/start returns 503 until these are set — and Google
+# sign-in is the platform's only login door, so nothing that needs a real
+# session works without it either.
 
 set -euo pipefail
 
