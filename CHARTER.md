@@ -47,8 +47,8 @@ identifying account data already is, and (c) fully deletable via the same
 account-deletion request that removes everything else — never retained
 past that request except where a *different*, already-documented legal
 basis requires it (see `docs/gdpr-runbook.md`). Added 2026-09-05, alongside
-the `/manage` RBAC system and its master-admin bootstrap, which is the
-first feature to rely on this exception.
+the admin platform's RBAC system and its master-admin bootstrap, which is
+the first feature to rely on this exception.
 
 ## 5. Radical transparency as a safety mechanism
 

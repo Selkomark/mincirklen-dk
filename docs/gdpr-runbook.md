@@ -3,7 +3,7 @@
 **This is not a production runbook, and never has authorized manual
 production database work.** It documents and lets you exercise, against
 the local dev stack only, the two pieces of ban/disclosure logic that
-`/manage`'s admin tooling needs to expose as real, RBAC-gated actions
+the admin platform's tooling needs to expose as real, RBAC-gated actions
 (see `TODO.md`'s "Admin page: GDPR/trust & safety tooling") — the shape
 of an `account_bans`/`account_ban_evidence` row, and what a disclosure
 response must contain. Use it to understand and test that logic locally
@@ -14,7 +14,7 @@ via `https://adminer.dev-mincirklen.dk`, nothing more.
 Nobody has standing direct access to the production database — not an
 operator, not a moderator, not the platform's own founder. A ban or a
 post-deletion disclosure response is only ever performed through the
-`/manage` admin action once it's built; hand-editing production tables to
+admin-platform action once it's built; hand-editing production tables to
 work around missing tooling is not an acceptable substitute, regardless
 of platform scale or urgency. If the tooling described in `TODO.md`
 doesn't exist yet, the action doesn't happen in production — build the
@@ -33,8 +33,8 @@ Used when a user has committed a serious, confirmed policy violation
 (predatory contact, harassment, crisis-language abuse, illegal content)
 and the account should never be able to use the platform again — even if
 they delete their account and try to sign up again with the same Google
-account. This is the shape the real `/manage` ban action needs to write;
-exercise it locally to understand it before it's built.
+account. This is the shape the real admin-platform ban action needs to
+write; exercise it locally to understand it before it's built.
 
 **Why this survives account deletion at all.** `account_bans` is
 deliberately not foreign-keyed to `users.id` — deleting a `users` row
@@ -92,7 +92,7 @@ A banned-and-deleted user (or anyone claiming to be them) emails asking
 what evidence justified banning them — this is a GDPR Article 15 (right
 of access) request specifically about the `account_bans`/
 `account_ban_evidence` record itself, since that's the only thing left
-once their account is gone. This is the shape the real `/manage`
+once their account is gone. This is the shape the real admin-platform
 disclosure-response action needs to assemble; exercise it locally to
 understand it before it's built.
 

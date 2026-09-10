@@ -93,7 +93,7 @@ Status as of this file's creation, cross-checked against
 | R5 | Stack traces leak internal paths outside `NODE_ENV=production` (M3) | Reconnaissance value to an attacker in any misconfigured environment | Open |
 | R6 | WS `ALLOWED_ORIGINS` fail-open, unset in compose (M4) | Removes a cross-site WebSocket protection layer in any environment that forgets to set it explicitly | Open |
 | R7 | No CSP / `X-Frame-Options` / `nosniff` / `Referrer-Policy` (M5) | Clickjacking against an explicitly vulnerable user base; no second line of defense if XSS is ever introduced | Open |
-| R8 | No production path exists for the ban / post-deletion disclosure-response actions except a manual database edit, which is disallowed by policy (nobody — including the platform owner — has standing production DB access; the sole exception is temporary, least-privilege, audited, NDA'd-employee access scoped to infrastructure duties, never to user content) | These actions therefore cannot legitimately be performed in production at all until they exist as real `/manage` admin actions — not a logging gap, a missing-capability gap. Until built, a real ban/disclosure request either can't be actioned, or gets actioned by a policy violation | Open — `TODO.md` "Admin page: GDPR/trust & safety tooling" now scopes this as a pre-launch blocker (corrected 2026-09-10; previously mis-scoped as an accepted-at-current-scale manual workaround in both `TODO.md` and `docs/gdpr-runbook.md`) |
+| R8 | No production path exists for the ban / post-deletion disclosure-response actions except a manual database edit, which is disallowed by policy (nobody — including the platform owner — has standing production DB access; the sole exception is temporary, least-privilege, audited, NDA'd-employee access scoped to infrastructure duties, never to user content) | These actions therefore cannot legitimately be performed in production at all until they exist as real admin-platform actions — not a logging gap, a missing-capability gap. Until built, a real ban/disclosure request either can't be actioned, or gets actioned by a policy violation | Open — `TODO.md` "Admin page: GDPR/trust & safety tooling" now scopes this as a pre-launch blocker (corrected 2026-09-10; previously mis-scoped as an accepted-at-current-scale manual workaround in both `TODO.md` and `docs/gdpr-runbook.md`) |
 | R9 | No breach-notification runbook | Article 33's 72-hour Datatilsynet notification clock has no defined decision-maker or process in this repo | Open |
 | R10 | No documented duty-to-act boundary beyond in-session crisis response | Crisis language is actively detected (`moderation-service`); whether Danish law requires action beyond the Charter §3 in-session response (e.g. imminent third-party threat) is unanswered | Open — needs legal input |
 | R11 | No age-gate / minimum-age policy found | If minors can join, consent basis changes to parental consent with added safeguarding duties | Open — needs a deliberate decision, not silence |
@@ -116,7 +116,7 @@ in your control instead of the regulator's.
 - [ ] R5 — explicit `errorFormatter` stripping stack traces regardless of `NODE_ENV`; confirm prod runtime actually sets it
 - [ ] R6 — fail closed (not open) when `ALLOWED_ORIGINS` is unset in any non-local environment
 - [ ] R7 — add CSP, `X-Frame-Options`/`frame-ancestors`, `X-Content-Type-Options`, `Referrer-Policy`
-- [ ] R8 — build the real `/manage` ban-creation and disclosure-response admin actions (`TODO.md` items 2 and 4) on the existing RBAC system before either can legitimately happen in production; until then, no production ban or disclosure response is permitted, full stop — not "acceptable at current scale"
+- [ ] R8 — build the real admin-platform ban-creation and disclosure-response actions (`TODO.md` items 2 and 4) on the existing RBAC system before either can legitimately happen in production; until then, no production ban or disclosure response is permitted, full stop — not "acceptable at current scale"
 - [ ] R9 — write a breach-notification runbook: who decides, notification template, the 72-hour clock
 - [ ] R12 — confirm DPA coverage for every third-party processor touching EU personal data; confirm EU/adequate-country hosting
 - [ ] R13 — confirm deletion propagates to backups, not just the live table
@@ -155,6 +155,6 @@ in your control instead of the regulator's.
    complaint.
 8. Either way: don't treat this document, or the finished DPIA, as a
    one-time artifact. Re-open it when a new feature changes what data is
-   processed or how (e.g. `/manage` RBAC's admin bootstrap already noted
-   in `CHARTER.md` principle 4 as the first feature relying on the
+   processed or how (e.g. the admin platform's RBAC bootstrap already
+   noted in `CHARTER.md` principle 4 as the first feature relying on the
    operational-data exception).

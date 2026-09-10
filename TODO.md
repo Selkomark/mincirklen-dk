@@ -125,7 +125,7 @@ their account and quietly re-register with the same Google account.
 
 Today, the ban and disclosure-response logic is only exercised locally,
 by hand, against the dev database (`docs/gdpr-runbook.md`) — there is no
-`/manage` action that performs either in production, and there must
+admin-platform action that performs either in production, and there must
 never be a manual, direct-database substitute for one in production,
 regardless of platform scale. No one — including an account with
 platform-owner access — has standing direct production database access;
@@ -155,11 +155,10 @@ A real admin page should eventually provide:
 **Prerequisite for most of this — already satisfied, stale note removed
 2026-09-10**: this used to block on there being no admin authentication/
 authorization model in this codebase. That's no longer true — the
-`/manage` RBAC system (roles, permissions, `hasPermission` gate in
-`services/trpc-api/src/controllers/trpc.ts`/`rbacRouter.ts`, admin pages
-under `services/web-app/src/pages/manage/`) shipped 2026-09-05 (see
-`CHARTER.md` principle 4). Items 1-4 above can be built directly on top
-of it now — nothing left to unblock first.
+admin platform's RBAC system (roles, permissions, `hasPermission` gate in
+`services/trpc-api/src/controllers/trpc.ts`/`rbacRouter.ts`) shipped
+2026-09-05 (see `CHARTER.md` principle 4). Items 1-4 above can be built
+directly on top of it now — nothing left to unblock first.
 
 ## Add CAPTCHA (Cloudflare Turnstile) to register/profile-completion
 
