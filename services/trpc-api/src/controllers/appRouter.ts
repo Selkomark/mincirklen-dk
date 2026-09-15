@@ -1,4 +1,5 @@
 import { authRouter } from './authRouter'
+import { gatesRouter } from './gatesRouter'
 import { moderationRouter } from './moderationRouter'
 import { rbacRouter } from './rbacRouter'
 import { sessionRouter } from './sessionRouter'
@@ -11,6 +12,7 @@ export const appRouter = router({
   topics: topicRouter,
   moderation: moderationRouter,
   rbac: rbacRouter,
+  gates: gatesRouter,
 })
 
 export type AppRouter = typeof appRouter

@@ -221,6 +221,31 @@ export interface TopicsTable {
   created_at: Timestamp
 }
 
+// One row per gate key *only once an admin has changed something away
+// from its code default* (packages/shared/src/gates/registry.ts) —
+// absence means "use the registry's defaultMode, no schedule." No
+// foreign key on `key`: the registry, not a DB row, is the source of
+// truth for which gate keys are valid (see registry.ts's own comment).
+export interface FeatureGateStatesTable {
+  key: string
+  mode: string
+  scheduled_open_at: NullableTimestamp
+  updated_at: Timestamp
+  updated_by: string | null
+}
+
+// Same free-text-attribution convention as AccountBansTable.banned_by —
+// no admin-identity system beyond RBAC roles to reference instead.
+export interface GateSignupsTable {
+  id: Generated<string>
+  gate_key: string
+  email: string
+  status: Generated<string>
+  created_at: Timestamp
+  granted_at: NullableTimestamp
+  granted_by: string | null
+}
+
 export interface Database {
   users: UsersTable
   sessions: SessionsTable
@@ -240,4 +265,6 @@ export interface Database {
   role_permissions: RolePermissionsTable
   user_roles: UserRolesTable
   admin_bootstrap: AdminBootstrapTable
+  feature_gate_states: FeatureGateStatesTable
+  gate_signups: GateSignupsTable
 }

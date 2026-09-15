@@ -218,6 +218,8 @@ export async function up(db: Kysely<any>): Promise<void> {
     { slug: 'users.read', description: 'View users and their assigned roles' },
     { slug: 'users.update', description: "Change a user's assigned roles" },
     { slug: 'moderation_events.review', description: 'Review flagged/crisis moderation events' },
+    { slug: 'gates.read', description: 'View feature gates and their signup lists' },
+    { slug: 'gates.manage', description: "Toggle a feature gate's mode/schedule and grant signups access" },
   ]
 
   const insertedPermissions = await db
@@ -242,6 +244,44 @@ export async function up(db: Kysely<any>): Promise<void> {
     .createTable('admin_bootstrap')
     .addColumn('id', 'uuid', (col) => col.primaryKey().defaultTo(sql`gen_random_uuid()`))
     .addColumn('completed_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
+    .execute()
+
+  // Feature gates — a reusable invite-only lock for any slice of the
+  // platform (packages/shared/src/gates/registry.ts holds the catalog of
+  // which gates exist; that's code, not a DB row). This table holds
+  // mutable *override* state only — a row exists only once an admin has
+  // changed something away from the registry's defaultMode, so absence
+  // means "use the code default, no schedule." No foreign key on `key`:
+  // the registry is the source of truth for which keys are valid, not
+  // this table, so a key can be referenced here before any row for it
+  // exists.
+  await db.schema
+    .createTable('feature_gate_states')
+    .addColumn('key', 'text', (col) => col.primaryKey())
+    .addColumn('mode', 'text', (col) => col.notNull())
+    .addColumn('scheduled_open_at', 'timestamptz')
+    .addColumn('updated_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
+    .addColumn('updated_by', 'text')
+    .addCheckConstraint('feature_gate_states_mode_check', sql`mode in ('open','invite_only')`)
+    .execute()
+
+  // A gate's own waitlist — same free-text `granted_by` attribution
+  // convention as account_bans.banned_by (no admin-identity system beyond
+  // RBAC roles to reference instead). `gate_key` is validated against the
+  // registry at the service layer (services/featureGateService.ts), not
+  // via a DB foreign key, for the same reason feature_gate_states.key has
+  // none.
+  await db.schema
+    .createTable('gate_signups')
+    .addColumn('id', 'uuid', (col) => col.primaryKey().defaultTo(sql`gen_random_uuid()`))
+    .addColumn('gate_key', 'text', (col) => col.notNull())
+    .addColumn('email', 'text', (col) => col.notNull())
+    .addColumn('status', 'text', (col) => col.notNull().defaultTo('pending'))
+    .addColumn('created_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
+    .addColumn('granted_at', 'timestamptz')
+    .addColumn('granted_by', 'text')
+    .addUniqueConstraint('gate_signups_gate_key_email_key', ['gate_key', 'email'])
+    .addCheckConstraint('gate_signups_status_check', sql`status in ('pending','granted')`)
     .execute()
 
   await db.schema
@@ -477,6 +517,8 @@ export async function down(db: Kysely<any>): Promise<void> {
   await db.schema.dropTable('account_ban_evidence').execute()
   await db.schema.dropTable('account_bans').execute()
   await db.schema.dropTable('admin_bootstrap').execute()
+  await db.schema.dropTable('gate_signups').execute()
+  await db.schema.dropTable('feature_gate_states').execute()
   await db.schema.dropTable('user_roles').execute()
   await db.schema.dropTable('role_permissions').execute()
   await db.schema.dropTable('permissions').execute()

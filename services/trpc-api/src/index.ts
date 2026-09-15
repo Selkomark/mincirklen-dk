@@ -92,6 +92,11 @@ if (!downloadTokenSecret) {
   throw new Error('DATA_EXPORT_DOWNLOAD_TOKEN_SECRET is required')
 }
 
+const gateInviteSecret = process.env.GATE_INVITE_SECRET
+if (!gateInviteSecret) {
+  throw new Error('GATE_INVITE_SECRET is required')
+}
+
 await runMigrations(db, dbSchema)
 
 const app = createApp({
@@ -118,6 +123,7 @@ const app = createApp({
   gcs,
   downloadTokenSecret,
   trpcPublicBaseUrl: process.env.TRPC_PUBLIC_BASE_URL ?? 'https://trpc.dev-mincirklen.dk',
+  gateInviteSecret,
 })
 
 const port = Number(process.env.PORT ?? 8787)

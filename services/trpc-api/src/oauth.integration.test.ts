@@ -104,6 +104,7 @@ beforeAll(async () => {
     gcs: { provider: 'gcp', bucket: 'unused-in-this-test' },
     downloadTokenSecret: 'oauth-integration-test-download-token-secret',
     trpcPublicBaseUrl: 'https://trpc.dev-mincirklen.dk',
+    gateInviteSecret: 'oauth-integration-test-gate-invite-secret',
   })
 })
 
@@ -388,6 +389,7 @@ describe('when Google login is not configured', () => {
       gcs: { provider: 'gcp', bucket: 'unused-in-this-test' },
       downloadTokenSecret: 'oauth-integration-test-download-token-secret',
       trpcPublicBaseUrl: 'https://trpc.dev-mincirklen.dk',
+      gateInviteSecret: 'oauth-integration-test-gate-invite-secret',
     })
 
     expect((await unconfiguredApp.request('/auth/google/start')).status).toBe(503)

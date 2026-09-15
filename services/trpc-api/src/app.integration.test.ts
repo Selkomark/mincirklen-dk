@@ -3,6 +3,7 @@ import { DEFAULT_LOCAL_DATABASE_URL, createDb, createPgPool, createSessionToken,
 import { createApp } from './app'
 import { insertUser } from './repositories/userRepository'
 import { linkIdentity } from './repositories/userIdentityRepository'
+import { upsertState } from './repositories/featureGateStateRepository'
 
 const pool = createPgPool(
   process.env.TEST_DATABASE_URL ?? DEFAULT_LOCAL_DATABASE_URL,
@@ -11,6 +12,15 @@ const pool = createPgPool(
 const db = createDb(pool)
 
 await runMigrations(db, 'test')
+
+// platform_launch defaults to invite_only (packages/shared/src/gates/registry.ts)
+// — this file exercises real auth.completeProfile flows through
+// googleLinkedProcedure, which the gate now sits in front of
+// (controllers/trpc.ts). Opening it here is the same thing a real admin
+// does post-launch, not a workaround; requireGateAccess's own behavior is
+// covered separately by app.integration.test.ts's dedicated gate tests
+// below.
+await upsertState(db, 'platform_launch', { mode: 'open', scheduledOpenAt: null, updatedBy: 'test-setup' })
 
 // A real in-process fake, not a mocked fetch — same convention as
 // oauth.integration.test.ts's fakeGoogle. requestDataExport (below)
@@ -55,6 +65,7 @@ const app = createApp({
   gcs: { provider: 'gcp', bucket: 'unused-in-this-test' },
   downloadTokenSecret: 'app-integration-test-download-token-secret',
   trpcPublicBaseUrl: 'https://trpc.dev-mincirklen.dk',
+  gateInviteSecret: 'app-integration-test-gate-invite-secret',
 })
 
 afterAll(async () => {

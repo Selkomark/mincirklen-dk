@@ -372,6 +372,12 @@ services:
       # download-proxy URL returned by auth.createExportDownloadToken.
       # Distinct from PUBLIC_BASE_URL above, which is the main app's host.
       TRPC_PUBLIC_BASE_URL: https://trpc.dev-mincirklen.dk
+      # Signs/verifies every feature gate's invite token
+      # (packages/shared/src/auth/gateInviteToken.ts) — separate from
+      # AUTH_SECRET/IDENTITY_HASH_KEY, same key-separation reasoning as
+      # those. One secret for every gate; the payload itself carries which
+      # gate a token is for.
+      GATE_INVITE_SECRET: dev-only-not-for-production-gate-invite
       # Unset by default — same "don't report dev noise unless opted in"
       # posture as web-app's VITE_SENTRY_DSN. See src/app.ts's sentry()
       # middleware and local-infra/glitchtip/init.py's printed DSN.

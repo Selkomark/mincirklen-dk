@@ -56,6 +56,20 @@ export function buildLegacySessionCookieClear(): string {
   return `${SESSION_COOKIE_NAME}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`
 }
 
+const GATE_COOKIE_PREFIX = 'mc_gate_'
+const GATE_INVITE_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 90 // 90 days, matches gateInviteToken.ts's default max age
+
+// One cookie per gate, deterministically named — a browser can hold
+// access to several independent gates at once (see
+// packages/shared/src/gates/registry.ts) without them colliding.
+export function gateCookieName(gateKey: string): string {
+  return `${GATE_COOKIE_PREFIX}${gateKey}`
+}
+
+export function buildGateCookie(gateKey: string, token: string, publicBaseUrl: string): string {
+  return `${gateCookieName(gateKey)}=${token}; Domain=${sessionCookieDomain(publicBaseUrl)}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${GATE_INVITE_COOKIE_MAX_AGE_SECONDS}`
+}
+
 export interface AppEnv {
   db: Kysely<Database>
   authSecret: string
@@ -106,6 +120,12 @@ export interface AppEnv {
   // build the absolute download-proxy URL returned to the browser — the
   // main app's publicBaseUrl points at a different host entirely.
   trpcPublicBaseUrl: string
+  // Signs/verifies every gate's invite token (gateInviteToken.ts) —
+  // separate from authSecret/identityHashKey (key separation, same
+  // rationale as those). One secret for every gate: the payload itself
+  // carries which gate a token is for, so there's no need for a
+  // per-gate secret.
+  gateInviteSecret: string
 }
 
 export interface AppContext {
@@ -124,6 +144,12 @@ export interface AppContext {
   // and controllers/trpc.ts::hasPermission, which reads this.
   roles: { id: string; name: string }[]
   permissions: string[]
+  // Every `mc_gate_*` cookie on the request, keyed by gate key with the
+  // prefix stripped — raw, unverified tokens (controllers/trpc.ts's
+  // requireGateAccess and gatesRouter.ts's getStatus verify on demand).
+  // Parsed once here, same spirit as mc_session being read raw before
+  // resolveSession does the real work.
+  gateTokens: Record<string, string>
 }
 
 function bearerToken(c: HonoContext): string | null {
@@ -152,6 +178,13 @@ export function createContextFactory(env: AppEnv) {
       ? await getUserRolesAndPermissions(env.db, userId)
       : { roles: [], permissions: [] }
 
-    return { resHeaders: opts.resHeaders, userId, appEnv: env, roles, permissions }
+    const gateTokens: Record<string, string> = {}
+    for (const [name, value] of Object.entries(getCookie(c))) {
+      if (name.startsWith(GATE_COOKIE_PREFIX)) {
+        gateTokens[name.slice(GATE_COOKIE_PREFIX.length)] = value
+      }
+    }
+
+    return { resHeaders: opts.resHeaders, userId, appEnv: env, roles, permissions, gateTokens }
   }
 }

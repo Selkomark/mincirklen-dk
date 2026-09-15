@@ -8,6 +8,7 @@ import { InternalService, ModerationService } from '@mincirklen/proto'
 import { createApp } from './app'
 import { insertUser } from './repositories/userRepository'
 import { linkIdentity } from './repositories/userIdentityRepository'
+import { upsertState } from './repositories/featureGateStateRepository'
 import { upsertUserProfile } from './repositories/userProfileRepository'
 
 const pool = createPgPool(
@@ -101,6 +102,12 @@ async function waitForJoinNotification(count: number): Promise<void> {
 
 beforeAll(async () => {
   await runMigrations(db, 'test')
+
+  // platform_launch defaults to invite_only — this file exercises real
+  // session.* flows through verifiedProcedure, which the gate now sits in
+  // front of (controllers/trpc.ts). Opening it here is the same thing a
+  // real admin does post-launch, not a workaround.
+  await upsertState(db, 'platform_launch', { mode: 'open', scheduledOpenAt: null, updatedBy: 'test-setup' })
 
   // The real moderation-service is intentionally not published to the host
   // (see docs/local_dev.md), and it only ever returns 'pass' anyway — this
@@ -225,6 +232,7 @@ beforeAll(async () => {
     gcs: { provider: 'gcp', bucket: 'unused-in-this-test' },
     downloadTokenSecret: 'session-integration-test-download-token-secret',
     trpcPublicBaseUrl: 'https://trpc.dev-mincirklen.dk',
+    gateInviteSecret: 'session-integration-test-gate-invite-secret',
   })
 })
 
