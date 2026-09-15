@@ -281,7 +281,13 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('granted_at', 'timestamptz')
     .addColumn('granted_by', 'text')
     .addUniqueConstraint('gate_signups_gate_key_email_key', ['gate_key', 'email'])
-    .addCheckConstraint('gate_signups_status_check', sql`status in ('pending','granted')`)
+    // 'revoked' — an admin undoing a grant (GatesTab.tsx's Revoke button) —
+    // is its own status rather than resetting to 'pending', so the admin
+    // list can still show this person WAS granted, unlike someone who
+    // never was. redeemGateInvite (featureGateService.ts) already rejects
+    // anything that isn't exactly 'granted', so a revoked row's old invite
+    // link stops working with no other change needed there.
+    .addCheckConstraint('gate_signups_status_check', sql`status in ('pending','granted','revoked')`)
     .execute()
 
   await db.schema
@@ -330,6 +336,15 @@ export async function up(db: Kysely<any>): Promise<void> {
     // name — createSessionInputSchema requires it for that path — see
     // sessionRepository.ts's listOpenSessions.
     .addColumn('name', 'text')
+    // Room-sharding: when a circle fills, joinSessionWithOverflow
+    // (sessionRepository.ts) spins up a sibling `sessions` row rather
+    // than turning the next joiner away — every row in that family
+    // shares one room_group_id (defaulting to a fresh value per row, so
+    // a standalone circle with no siblings is simply a group of one,
+    // never null). room_number is display-only ("Room 2"), never used
+    // for ordering/logic beyond picking the newest room to try first.
+    .addColumn('room_group_id', 'uuid', (col) => col.notNull().defaultTo(sql`gen_random_uuid()`))
+    .addColumn('room_number', 'integer', (col) => col.notNull().defaultTo(1))
     .addCheckConstraint('sessions_status_check', sql`status in ('forming','active','completed','cancelled')`)
     .execute()
 
@@ -340,6 +355,11 @@ export async function up(db: Kysely<any>): Promise<void> {
   // the extension itself is a database-wide singleton, not scoped to
   // whichever of dev/test happens to run this migration first.
   await sql`create index sessions_name_trgm_idx on sessions using gin (name public.gin_trgm_ops)`.execute(db)
+
+  // Room-sharding lookups (joinSessionWithOverflow finding the newest
+  // sibling with space, listOpenSessions grouping) always filter by
+  // room_group_id first.
+  await db.schema.createIndex('sessions_room_group_id_idx').on('sessions').column('room_group_id').execute()
 
   await db.schema
     .createTable('session_users')

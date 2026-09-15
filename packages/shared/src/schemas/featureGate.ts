@@ -12,6 +12,7 @@ export const gateStatSchema = z.object({
   open: z.boolean(),
   pendingCount: z.number().int().min(0),
   grantedCount: z.number().int().min(0),
+  revokedCount: z.number().int().min(0),
 })
 export type GateStat = z.infer<typeof gateStatSchema>
 
@@ -30,7 +31,7 @@ export type UpdateGateStateInput = z.infer<typeof updateGateStateInputSchema>
 
 export const listGateSignupsInputSchema = z.object({
   gateKey: z.string(),
-  status: z.enum(['pending', 'granted']).optional(),
+  status: z.enum(['pending', 'granted', 'revoked']).optional(),
   cursor: z.string().optional(),
   limit: z.number().int().min(1).max(100).default(50),
 })
@@ -40,7 +41,7 @@ export const gateSignupSchema = z.object({
   id: z.string().uuid(),
   gateKey: z.string(),
   email: z.string(),
-  status: z.enum(['pending', 'granted']),
+  status: z.enum(['pending', 'granted', 'revoked']),
   createdAt: z.coerce.date(),
   grantedAt: z.coerce.date().nullable(),
   grantedBy: z.string().nullable(),
@@ -51,6 +52,11 @@ export const grantGateSignupInputSchema = z.object({
   signupId: z.string().uuid(),
 })
 export type GrantGateSignupInput = z.infer<typeof grantGateSignupInputSchema>
+
+export const revokeGateSignupInputSchema = z.object({
+  signupId: z.string().uuid(),
+})
+export type RevokeGateSignupInput = z.infer<typeof revokeGateSignupInputSchema>
 
 export const redeemGateInviteInputSchema = z.object({
   token: z.string(),

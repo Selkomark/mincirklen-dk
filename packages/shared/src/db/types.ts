@@ -70,6 +70,11 @@ export interface SessionsTable {
   duration_minutes: number | null
   capacity: number | null
   name: string | null
+  // Room-sharding — see migrations/0001_init.ts's comment on these two
+  // columns. Never null: every session gets a fresh room_group_id by
+  // default, so a standalone circle is simply a group of one.
+  room_group_id: Generated<string>
+  room_number: Generated<number>
 }
 
 export interface SessionUsersTable {
