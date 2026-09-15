@@ -49,30 +49,34 @@ export const PUBLIC_PAGES: Record<PublicPageId, PublicPageData> = {
   'how-it-works': {
     id: 'how-it-works',
     title: 'How it works',
-    intro: 'MinCirklen connects you with small, anonymous peer-support circles — no account and no real name required.',
+    intro: 'A quick Google sign-in gets you into small, anonymous peer-support circles.',
     sections: [
       {
         heading: 'Find a circle',
-        body: 'Browse circles by topic and time from the sidebar, or start your own with the topic, length, and group size you want. Each circle holds up to 12 people plus a facilitator.',
+        body: "Browse circles by topic and time, and join one that's open.",
+      },
+      {
+        heading: 'Or start your own',
+        body: "Pick a topic, length, and size, and create a circle for others to join. If it fills up, a new room opens automatically — nobody gets turned away.",
       },
       {
         heading: 'Turn-based sharing',
-        body: "Circles use a simple turn system so everyone gets space to speak. When it's your turn you'll have about 20 seconds before your message sends automatically — or you can turn that off and send whenever you're ready.",
+        body: "Everyone gets a turn to speak. You'll have about 10 seconds before your message sends automatically — or turn that off and send whenever you're ready.",
       },
       {
-        heading: 'A facilitator is always present',
-        body: 'Every session has a trained facilitator who keeps the conversation safe, on-topic, and within the community guidelines. They can pause a session or remove a user if needed.',
+        heading: 'Moderated, not unsupervised',
+        body: "Every message is checked before the circle sees it. Anything unsafe is held back, and a moderator reviews it. You can report a message or a user anytime.",
       },
       {
         heading: 'Leave anytime',
-        body: 'You can leave a session at any point, for any reason, without explaining why. Nothing is held against you, and you can rejoin a different circle whenever you want.',
+        body: 'Leave whenever you want, for any reason — no explanation needed.',
       },
     ],
   },
   'safety-and-moderation': {
     id: 'safety-and-moderation',
     title: 'Safety and moderation',
-    intro: 'Every circle is built around a small set of non-negotiable rules, enforced by a trained facilitator in every session.',
+    intro: 'Every circle is built around a small set of non-negotiable rules, backed by two layers of moderation.',
     sections: [
       {
         heading: 'The non-negotiable rules',
@@ -88,7 +92,7 @@ export const PUBLIC_PAGES: Record<PublicPageId, PublicPageData> = {
       },
       {
         heading: 'What gets a session ended',
-        body: 'A facilitator can end a session immediately for harassment, doxxing, solicitation, or anything that puts a user at risk. Repeated or serious violations can result in an account being removed.',
+        body: 'A session can be ended immediately for harassment, doxxing, solicitation, or anything that puts a user at risk. Repeated or serious violations can result in an account being removed.',
       },
       {
         heading: 'When it becomes an emergency',
@@ -111,11 +115,11 @@ export const PUBLIC_PAGES: Record<PublicPageId, PublicPageData> = {
       },
       {
         heading: 'What we store',
-        body: "While a circle is live, messages are visible to that session's users and facilitator for moderation purposes. Session transcripts are not shared with users after the session ends, and are retained only as long as needed for safety review.",
+        body: "While a circle is live, messages are visible to that session's users, and checked for safety as described in Safety and moderation. Session transcripts are not shared with users after the session ends, and are retained only as long as needed for safety review.",
       },
       {
         heading: 'Who can see what',
-        body: "Facilitators can see messages within sessions they're facilitating. Moderators can see reported messages and the context immediately around them — never a full account history.",
+        body: 'Moderators can see reported or flagged messages and the context immediately around them — never a full account history.',
       },
       {
         heading: 'Deleting your data',
@@ -209,7 +213,7 @@ export const PUBLIC_PAGES: Record<PublicPageId, PublicPageData> = {
       },
       {
         heading: 'Who can see what',
-        body: 'Facilitators can see messages within sessions they run. Moderators can see reported messages and the surrounding context — never a full history of everything you have ever said on the platform.',
+        body: 'Moderators can see reported or flagged messages and the surrounding context — never a full history of everything you have ever said on the platform.',
       },
       {
         heading: 'Cookies',
@@ -248,7 +252,7 @@ export const PUBLIC_PAGES: Record<PublicPageId, PublicPageData> = {
       },
       {
         heading: 'No liability for session content',
-        body: 'MinCirklen and its facilitators are not liable for advice, opinions, or outcomes shared by users within a session. Nothing said in a circle should be treated as professional, medical, or legal advice.',
+        body: 'MinCirklen is not liable for advice, opinions, or outcomes shared by users within a session. Nothing said in a circle should be treated as professional, medical, or legal advice.',
       },
       {
         heading: 'Changes to these terms',
@@ -301,19 +305,15 @@ export const PUBLIC_PAGES: Record<PublicPageId, PublicPageData> = {
   facilitators: {
     id: 'facilitators',
     title: 'Facilitators',
-    intro: 'Every circle is guided by a trained facilitator, backed by real-time safety monitoring.',
+    intro: "We're building toward every circle having a trained facilitator present. Here's where that stands today.",
     sections: [
       {
-        heading: 'What a facilitator does',
-        body: "A facilitator keeps a session safe, on-topic, and within the community guidelines. They can pause a session or step in directly if something feels off, without waiting for a report.",
-      },
-      {
-        heading: 'Two layers of safety',
-        body: 'Messages are screened by a lightweight safety check as they are sent, and a trained person is always reachable behind that check — the two layers work together rather than either one carrying safety alone.',
+        heading: 'Where we are today',
+        body: 'Right now, safety runs on two layers: every message is checked before the group sees it, and a trained moderator reviews anything flagged or reported. A facilitator — a trained person present in the circle itself — is the next layer we\'re building.',
       },
       {
         heading: 'Becoming a facilitator',
-        body: 'Interested in facilitating a circle? We are recruiting a small number of trained facilitators for the current pilot. Reach out from the Contact page.',
+        body: 'Interested in facilitating a circle? We are recruiting a small number of trained facilitators for the pilot. Reach out from the Contact page.',
       },
     ],
   },

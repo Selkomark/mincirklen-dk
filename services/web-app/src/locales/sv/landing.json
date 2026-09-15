@@ -7,7 +7,6 @@
     "about": "Om oss",
     "safety": "Säkerhet",
     "joinNow": "Gå med nu",
-    "joinWaitlist": "Gå med i väntelistan",
     "start": "Starta",
     "logOut": "Logga ut"
   },
@@ -50,7 +49,8 @@
     "emailPlaceholder": "du@exempel.se",
     "submit": "Gå med i väntelistan",
     "success": "Du står på listan — vi mejlar dig när det är din tur.",
-    "error": "Något gick fel. Försök igen om en stund."
+    "error": "Något gick fel. Försök igen om en stund.",
+    "howItWorksLink": "Så fungerar det"
   },
   "stats": {
     "anonymousValue": "Anonymt",

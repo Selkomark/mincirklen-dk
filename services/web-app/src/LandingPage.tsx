@@ -37,6 +37,7 @@ type SubmitState = { kind: 'idle' } | { kind: 'submitting' } | { kind: 'done' } 
 // Google login, only toward the waitlist itself.
 function WaitlistForm() {
   const { t } = useTranslation('landing')
+  const locale = useLocale()
   const [email, setEmail] = useState('')
   const [state, setState] = useState<SubmitState>({ kind: 'idle' })
 
@@ -51,17 +52,21 @@ function WaitlistForm() {
     }
   }
 
-  // A stable id, present regardless of submission state — SiteHeader's
-  // "Join the waitlist" CTA anchors straight here (WAITLIST_ANCHOR_ID),
-  // so the target must still resolve even after a successful submit
-  // collapses the form down to just the success message.
+  // A stable id, present regardless of submission state — every other
+  // CTA on this page while gated (pricing cards, the closing section,
+  // via `ctaHref` below) scrolls straight here (WAITLIST_ANCHOR_ID), so
+  // the target must still resolve even after a successful submit
+  // collapses the form down to just the success message. SiteHeader
+  // used to have its own copy of this same anchor link; removed as
+  // redundant with this form being the page's own, more prominent call
+  // to action.
   return (
     <div id={WAITLIST_ANCHOR_ID} style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 420, scrollMarginTop: 96 }}>
       {state.kind === 'done' ? (
         <Alert variant="safe">{t('waitlist.success')}</Alert>
       ) : (
         <>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div style={{ flex: '1 1 240px' }}>
               <TextField
                 label={t('waitlist.emailLabel')}
@@ -71,9 +76,24 @@ function WaitlistForm() {
                 placeholder={t('waitlist.emailPlaceholder')}
               />
             </div>
-            <Button variant="safe" isPending={state.kind === 'submitting'} onPress={() => void handleSubmit()}>
-              {t('waitlist.submit')}
-            </Button>
+            {/* Grouped so the button and link wrap onto their own line
+                together at narrow widths, instead of the link wrapping
+                alone underneath the email field — and alignItems:
+                'flex-end' on the row above lines this group up with the
+                input itself, not the "Email address" label towering
+                over it. alignItems: 'center' here (not on the outer
+                row) centers the plain-text link against the much taller
+                button next to it, deliberately a lighter-weight text
+                link rather than a second button — "Join the waitlist"
+                is the one real action on this form. */}
+            <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+              <Button variant="safe" isPending={state.kind === 'submitting'} onPress={() => void handleSubmit()}>
+                {t('waitlist.submit')}
+              </Button>
+              <a href={publicPagePath('how-it-works', locale)} className="ds-inline-link">
+                {t('waitlist.howItWorksLink')}
+              </a>
+            </div>
           </div>
           {state.kind === 'error' && <Alert variant="urgent">{t('waitlist.error')}</Alert>}
         </>

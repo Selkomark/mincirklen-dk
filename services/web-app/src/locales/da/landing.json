@@ -7,7 +7,6 @@
     "about": "Om",
     "safety": "Sikkerhed",
     "joinNow": "Bliv medlem nu",
-    "joinWaitlist": "Tilmeld dig ventelisten",
     "start": "Start",
     "logOut": "Log ud"
   },
@@ -50,7 +49,8 @@
     "emailPlaceholder": "dig@eksempel.dk",
     "submit": "Tilmeld dig ventelisten",
     "success": "Du er på listen — vi sender dig en e-mail, når det er din tur.",
-    "error": "Noget gik galt. Prøv igen om lidt."
+    "error": "Noget gik galt. Prøv igen om lidt.",
+    "howItWorksLink": "Sådan fungerer det"
   },
   "stats": {
     "anonymousValue": "Anonymt",

@@ -98,10 +98,16 @@ export function SiteHeader({ showJoinCta = true }: { showJoinCta?: boolean }) {
         </a>
       </div>
       {platformGated
-        ? showJoinCta && (
+        ? // No "Join the waitlist" button here — the landing page's own
+          // email-capture form (LandingPage.tsx, WAITLIST_ANCHOR_ID) is
+          // already the call to action for a gated visitor; a second,
+          // redundant copy of it in the header added nothing. Logout
+          // still shows regardless of showJoinCta — an admin (or anyone
+          // else who somehow holds a session while gated) still needs a
+          // way to sign out, which isn't a "join" prompt at all.
+          isLoggedIn && (
             <div className="ds-navbar__group">
-              <LinkButton href={`${landingPath(locale)}#${WAITLIST_ANCHOR_ID}`}>{t('header.joinWaitlist')}</LinkButton>
-              {isLoggedIn && <LogoutButton locale={locale} />}
+              <LogoutButton locale={locale} />
             </div>
           )
         : (isLoggedIn || (showJoinCta && authStatus.kind === 'anonymous')) && (
