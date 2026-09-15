@@ -283,6 +283,65 @@ describe('grant -> redeem -> access, end to end', () => {
     const res = await call('gates.redeemInvite', { token: 'not-a-real-token' })
     expect(res.status).toBe(400)
   })
+
+  // The whole point of GatesTab.tsx's Revoke button: an admin undoing a
+  // grant must cut off someone who *already* redeemed their invite and
+  // has been sitting on a real gate cookie, not just block a future
+  // redemption of a link nobody's used yet. Before this re-check existed,
+  // requireGateAccess/getStatus only verified the cookie's own signature
+  // — a revoke would update the DB row but the still-valid-looking cookie
+  // kept working forever.
+  test('revoking a grant cuts off a cookie that already redeemed it, both for enforcement and for getStatus', async () => {
+    const admin = await createAdminActor()
+    const email = uniqueEmail()
+    await call('gates.submitSignup', { gateKey: 'platform_launch', email })
+
+    const listRes = await query('gates.listSignups', { gateKey: 'platform_launch', status: 'pending', limit: 50 }, admin)
+    const listBody = (await listRes.json()) as { result: { data: { signups: { id: string; email: string }[] } } }
+    const target = listBody.result.data.signups.find((s) => s.email === email)!
+
+    const grantRes = await call('gates.grantSignup', { signupId: target.id }, admin)
+    const grantBody = (await grantRes.json()) as { result: { data: { inviteUrl: string } } }
+    const token = new URL(grantBody.result.data.inviteUrl).searchParams.get('invite')!
+
+    const redeemRes = await call('gates.redeemInvite', { token })
+    const redeemedCookie = redeemRes.headers.get('set-cookie')!.split(';')[0]!
+
+    const otherActor = await mintBareUserCookie()
+    await linkIdentity(db, otherActor.userId, 'google', `gate-test-${otherActor.userId}`)
+    const invitedActor: Actor = { cookie: `${otherActor.cookie}; ${redeemedCookie}`, userId: otherActor.userId }
+
+    // Confirm it actually works before revoking — otherwise a later 403
+    // could just as easily mean the setup was wrong, not that revoke did
+    // anything.
+    const before = await call(
+      'auth.completeProfile',
+      { firstName: 'X', lastName: 'Y', gender: 'other', country: 'US', mobileNumber: '+1 555 0100', stayAnonymous: true },
+      invitedActor,
+    )
+    expect(before.status).toBe(200)
+
+    const revokeRes = await call('gates.revokeSignup', { signupId: target.id }, admin)
+    expect(revokeRes.status).toBe(200)
+
+    const statusRes = await app.request(`/trpc/gates.getStatus?${new URLSearchParams({ input: JSON.stringify({ gateKey: 'platform_launch' }) })}`, {
+      headers: { cookie: redeemedCookie },
+    })
+    const statusBody = (await statusRes.json()) as { result: { data: { unlocked: boolean; hasAccess: boolean } } }
+    expect(statusBody.result.data).toMatchObject({ unlocked: false, hasAccess: false })
+
+    // A second, freshly-created user presenting the exact same (now-
+    // revoked) cookie must also be rejected — this is a bearer-token
+    // gate, not tied to whichever identity redeemed it first.
+    const anotherActor = await mintBareUserCookie()
+    await linkIdentity(db, anotherActor.userId, 'google', `gate-test-${anotherActor.userId}`)
+    const after = await call(
+      'auth.completeProfile',
+      { firstName: 'X', lastName: 'Y', gender: 'other', country: 'US', mobileNumber: '+1 555 0100', stayAnonymous: true },
+      { cookie: `${anotherActor.cookie}; ${redeemedCookie}`, userId: anotherActor.userId },
+    )
+    expect(after.status).toBe(403)
+  })
 })
 
 describe('gates.list / gates.update (admin only)', () => {

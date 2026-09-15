@@ -58,7 +58,7 @@ function decodeCursor(cursor: string): { createdAtText: string; id: string } {
 export async function listSignups(
   db: Kysely<Database>,
   gateKey: string,
-  params: { status?: 'pending' | 'granted'; cursor?: string; limit: number },
+  params: { status?: 'pending' | 'granted' | 'revoked'; cursor?: string; limit: number },
 ): Promise<{ signups: GateSignup[]; nextCursor: string | null }> {
   let query = db
     .selectFrom('gate_signups')
@@ -103,6 +103,24 @@ export async function markGranted(db: Kysely<Database>, id: string, grantedBy: s
   return row ? toGateSignup(row) : null
 }
 
+// Leaves granted_at/granted_by as-is — a historical "who granted this,
+// and when" record stays informative after a revoke, unlike resetting
+// straight to 'pending' would (see the migration's comment on why
+// 'revoked' is its own status). redeemGateInvite (featureGateService.ts)
+// only ever accepts an exactly-'granted' row, so this alone is what
+// invalidates the person's existing invite link.
+export async function markRevoked(db: Kysely<Database>, id: string): Promise<GateSignup | null> {
+  const row = await db
+    .updateTable('gate_signups')
+    .set({ status: 'revoked' })
+    .where('id', '=', id)
+    .where('status', '=', 'granted')
+    .returningAll()
+    .executeTakeFirst()
+
+  return row ? toGateSignup(row) : null
+}
+
 export async function findSignupById(db: Kysely<Database>, id: string): Promise<GateSignup | null> {
   const row = await db.selectFrom('gate_signups').selectAll().where('id', '=', id).executeTakeFirst()
   return row ? toGateSignup(row) : null
@@ -111,18 +129,21 @@ export async function findSignupById(db: Kysely<Database>, id: string): Promise<
 // One grouped query covering every gate at once — the admin list view's
 // aggregated stats (featureGateService.ts::listGatesWithStats) needs one
 // count per (gateKey, status), not N+1 queries per registry entry.
-export async function countsByGateKey(db: Kysely<Database>): Promise<Map<string, { pending: number; granted: number }>> {
+export async function countsByGateKey(
+  db: Kysely<Database>,
+): Promise<Map<string, { pending: number; granted: number; revoked: number }>> {
   const rows = await db
     .selectFrom('gate_signups')
     .select(['gate_key', 'status', (eb) => eb.fn.countAll().as('count')])
     .groupBy(['gate_key', 'status'])
     .execute()
 
-  const counts = new Map<string, { pending: number; granted: number }>()
+  const counts = new Map<string, { pending: number; granted: number; revoked: number }>()
   for (const row of rows) {
-    const entry = counts.get(row.gate_key) ?? { pending: 0, granted: 0 }
+    const entry = counts.get(row.gate_key) ?? { pending: 0, granted: 0, revoked: 0 }
     const count = Number(row.count)
     if (row.status === 'granted') entry.granted = count
+    else if (row.status === 'revoked') entry.revoked = count
     else entry.pending = count
     counts.set(row.gate_key, entry)
   }

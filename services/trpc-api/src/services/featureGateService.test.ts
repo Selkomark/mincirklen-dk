@@ -7,6 +7,7 @@ import {
   isGateOpen,
   listGatesWithStats,
   redeemGateInvite,
+  revokeSignupAccess,
   submitSignup,
   updateGateState,
 } from './featureGateService'
@@ -112,6 +113,22 @@ describe('grantSignupAccess', () => {
   })
 })
 
+describe('revokeSignupAccess', () => {
+  test('rejects a signup that is not currently granted (missing, pending, or already revoked)', async () => {
+    await expect(revokeSignupAccess({ markRevoked: async () => null }, { signupId: 'missing' })).rejects.toBeInstanceOf(
+      SignupNotFoundError,
+    )
+  })
+
+  test('marks revoked', async () => {
+    const result = await revokeSignupAccess(
+      { markRevoked: async () => ({ id: 'signup-1', gateKey: 'platform_launch' }) },
+      { signupId: 'signup-1' },
+    )
+    expect(result).toEqual({ gateKey: 'platform_launch' })
+  })
+})
+
 describe('redeemGateInvite', () => {
   test('rejects an invalid/unverifiable token', async () => {
     const result = await redeemGateInvite(
@@ -180,6 +197,7 @@ describe('listGatesWithStats', () => {
         open: false,
         pendingCount: 0,
         grantedCount: 0,
+        revokedCount: 0,
       },
     ])
   })
@@ -187,9 +205,9 @@ describe('listGatesWithStats', () => {
   test('merges a DB override and signup counts onto the registry entry', async () => {
     const result = await listGatesWithStats({
       listStates: async () => [{ key: 'platform_launch', mode: 'open', scheduledOpenAt: null }],
-      countsByGateKey: async () => new Map([['platform_launch', { pending: 3, granted: 2 }]]),
+      countsByGateKey: async () => new Map([['platform_launch', { pending: 3, granted: 2, revoked: 1 }]]),
     })
 
-    expect(result[0]).toMatchObject({ mode: 'open', open: true, pendingCount: 3, grantedCount: 2 })
+    expect(result[0]).toMatchObject({ mode: 'open', open: true, pendingCount: 3, grantedCount: 2, revokedCount: 1 })
   })
 })

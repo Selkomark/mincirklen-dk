@@ -2,9 +2,10 @@ import { type GateKey, verifyGateInviteToken } from '@mincirklen/shared'
 import { initTRPC, TRPCError } from '@trpc/server'
 import type { AppContext } from '../context'
 import { findState } from '../repositories/featureGateStateRepository'
+import { findSignupById } from '../repositories/gateSignupRepository'
 import { hasLinkedIdentityForUser } from '../repositories/userIdentityRepository'
 import { userProfileExists } from '../repositories/userProfileRepository'
-import { isGateEffectivelyOpen } from '../services/featureGateService'
+import { isGateEffectivelyOpen, redeemGateInvite } from '../services/featureGateService'
 import { isFullyVerified, isGoogleLinked } from '../services/verificationService'
 
 const t = initTRPC.context<AppContext>().create()
@@ -32,6 +33,15 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
 // openness (registry default or DB override — isGateEffectivelyOpen is
 // the one implementation gatesRouter.ts's getStatus also uses, so they
 // can never disagree), then this specific gate's own cookie.
+//
+// The cookie's own signature alone is deliberately NOT enough — it only
+// proves "this was a real grant at issue time," the same reasoning
+// redeemGateInvite (featureGateService.ts) already documents for the
+// one-time redemption itself. Reusing it here means every gated request
+// (not just the initial redemption) re-checks the signup's live status,
+// so an admin revoking someone (GatesTab.tsx's Revoke button) actually
+// cuts them off on their very next request — not just blocks a future
+// redemption while an already-issued cookie keeps working forever.
 export function requireGateAccess(gateKey: GateKey) {
   return protectedProcedure.use(async ({ ctx, next }) => {
     if (ctx.permissions.includes('admin.access')) {
@@ -41,9 +51,17 @@ export function requireGateAccess(gateKey: GateKey) {
       return next({ ctx })
     }
     const token = ctx.gateTokens[gateKey]
-    const verified = token ? verifyGateInviteToken(token, ctx.appEnv.gateInviteSecret) : null
-    if (verified?.gateKey === gateKey) {
-      return next({ ctx })
+    if (token) {
+      const result = await redeemGateInvite(
+        {
+          verifyToken: (t) => verifyGateInviteToken(t, ctx.appEnv.gateInviteSecret),
+          findSignupById: (id) => findSignupById(ctx.appEnv.db, id),
+        },
+        token,
+      )
+      if (result.ok && result.gateKey === gateKey) {
+        return next({ ctx })
+      }
     }
     throw new TRPCError({ code: 'FORBIDDEN', message: `gate:${gateKey}` })
   })

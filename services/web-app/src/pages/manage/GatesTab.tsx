@@ -7,6 +7,7 @@ import { Table } from '../../components/Table'
 import { Switch } from '../../components/Switch'
 import { DatePicker } from '../../components/DatePicker'
 import { TimePicker } from '../../components/TimePicker'
+import { Modal } from '../../components/Modal'
 import { getTrpc, postTrpc } from './manageShared'
 
 // One row per packages/shared/src/gates/registry.ts entry — this tab
@@ -21,13 +22,14 @@ interface GateStat {
   open: boolean
   pendingCount: number
   grantedCount: number
+  revokedCount: number
 }
 
 interface GateSignup {
   id: string
   gateKey: string
   email: string
-  status: 'pending' | 'granted'
+  status: 'pending' | 'granted' | 'revoked'
   createdAt: string
   grantedAt: string | null
   grantedBy: string | null
@@ -80,6 +82,61 @@ function CopyInviteLinkButton({ signupId, variant = 'ghost' }: { signupId: strin
   )
 }
 
+// Only ever reachable for a 'granted' row (SignupsPanel below), which
+// gates.revokeSignup's own repository query re-checks server-side too —
+// see markRevoked's comment (gateSignupRepository.ts). Revoking flips
+// status back so their existing invite link stops verifying
+// (redeemGateInvite only accepts an exactly-'granted' row) and the row
+// reverts to a re-grantable "Grant access" state, same as a never-
+// granted signup — but it does NOT end a session for someone who
+// already redeemed their link before this click; see gatesRouter.ts's
+// revokeSignup comment for why that's a real limit, not an oversight.
+function RevokeAccessButton({ email, signupId, onRevoked }: { email: string; signupId: string; onRevoked: () => void }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [isRevoking, setIsRevoking] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function revoke(close: () => void) {
+    setIsRevoking(true)
+    setError(null)
+    try {
+      await postTrpc('gates.revokeSignup', { signupId })
+      setIsRevoking(false)
+      close()
+      onRevoked()
+    } catch {
+      setError('Failed to revoke access.')
+      setIsRevoking(false)
+    }
+  }
+
+  return (
+    <>
+      <Button variant="urgent" onPress={() => setIsOpen(true)}>
+        Revoke
+      </Button>
+      <Modal isOpen={isOpen} onOpenChange={setIsOpen} title="Revoke access?">
+        {(close) => (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            <Alert variant="urgent">
+              {email} won't be able to use their invite link anymore. You can grant them access again later if you change your mind.
+            </Alert>
+            {error && <Alert variant="urgent">{error}</Alert>}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <Button variant="secondary" onPress={close}>
+                Cancel
+              </Button>
+              <Button variant="urgent" isPending={isRevoking} onPress={() => void revoke(close)}>
+                Revoke access
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </>
+  )
+}
+
 function CopyTextButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false)
 
@@ -96,7 +153,7 @@ function CopyTextButton({ text }: { text: string }) {
   )
 }
 
-function SignupsPanel({ gateKey, onGranted }: { gateKey: string; onGranted: () => void }) {
+function SignupsPanel({ gateKey, onChanged }: { gateKey: string; onChanged: () => void }) {
   const [signups, setSignups] = useState<GateSignup[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [grantingId, setGrantingId] = useState<string | null>(null)
@@ -123,12 +180,18 @@ function SignupsPanel({ gateKey, onGranted }: { gateKey: string; onGranted: () =
       const result = await postTrpc<{ inviteUrl: string }>('gates.grantSignup', { signupId: id })
       setInviteUrl(result.inviteUrl)
       await load()
-      onGranted()
+      onChanged()
     } catch {
       setError('Failed to grant access.')
     } finally {
       setGrantingId(null)
     }
+  }
+
+  async function handleRevoked() {
+    setInviteUrl(null)
+    await load()
+    onChanged()
   }
 
   if (signups === null) {
@@ -163,15 +226,26 @@ function SignupsPanel({ gateKey, onGranted }: { gateKey: string; onGranted: () =
             {signups.map((signup) => (
               <tr key={signup.id}>
                 <td>{signup.email}</td>
-                <td>{signup.status === 'granted' ? <Badge variant="safe">Granted</Badge> : <Badge>Pending</Badge>}</td>
+                <td>
+                  {signup.status === 'granted' ? (
+                    <Badge variant="safe">Granted</Badge>
+                  ) : signup.status === 'revoked' ? (
+                    <Badge variant="urgent">Revoked</Badge>
+                  ) : (
+                    <Badge>Pending</Badge>
+                  )}
+                </td>
                 <td>{new Date(signup.createdAt).toLocaleString()}</td>
                 <td>
-                  {signup.status === 'pending' ? (
+                  {signup.status === 'granted' ? (
+                    <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+                      <CopyInviteLinkButton signupId={signup.id} />
+                      <RevokeAccessButton signupId={signup.id} email={signup.email} onRevoked={() => void handleRevoked()} />
+                    </div>
+                  ) : (
                     <Button variant="safe" isPending={grantingId === signup.id} onPress={() => void grant(signup.id)}>
                       Grant access
                     </Button>
-                  ) : (
-                    <CopyInviteLinkButton signupId={signup.id} />
                   )}
                 </td>
               </tr>
@@ -242,6 +316,7 @@ function GateRow({ gate, onUpdated }: { gate: GateStat; onUpdated: () => void })
         <td>{gate.open ? <Badge variant="safe">Open</Badge> : <Badge variant="urgent">Invite-only</Badge>}</td>
         <td>{gate.pendingCount}</td>
         <td>{gate.grantedCount}</td>
+        <td>{gate.revokedCount}</td>
         <td>
           <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
             <Switch isSelected={gate.mode === 'open'} isDisabled={saving} onChange={(isSelected) => void setMode(isSelected ? 'open' : 'invite_only')}>
@@ -255,7 +330,7 @@ function GateRow({ gate, onUpdated }: { gate: GateStat; onUpdated: () => void })
       </tr>
       {expanded && (
         <tr>
-          <td colSpan={5}>
+          <td colSpan={6}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', padding: 'var(--space-3) 0' }}>
               {error && <Alert variant="urgent">{error}</Alert>}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -289,7 +364,7 @@ function GateRow({ gate, onUpdated }: { gate: GateStat; onUpdated: () => void })
                   </Button>
                 </div>
               </div>
-              <SignupsPanel gateKey={gate.key} onGranted={onUpdated} />
+              <SignupsPanel gateKey={gate.key} onChanged={onUpdated} />
             </div>
           </td>
         </tr>
@@ -329,6 +404,7 @@ export function GatesTab() {
               <th>Status</th>
               <th>Pending</th>
               <th>Granted</th>
+              <th>Revoked</th>
               <th></th>
             </tr>
           </thead>

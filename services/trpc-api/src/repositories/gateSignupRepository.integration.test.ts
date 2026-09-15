@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, test } from 'bun:test'
 import { DEFAULT_LOCAL_DATABASE_URL, createDb, createPgPool, runMigrations } from '@mincirklen/shared'
-import { countsByGateKey, findSignupById, insertSignup, listSignups, markGranted } from './gateSignupRepository'
+import { countsByGateKey, findSignupById, insertSignup, listSignups, markGranted, markRevoked } from './gateSignupRepository'
 
 const pool = createPgPool(
   process.env.TEST_DATABASE_URL ?? DEFAULT_LOCAL_DATABASE_URL,
@@ -59,15 +59,21 @@ describe('listSignups', () => {
     const gateKey = `gate-${crypto.randomUUID()}`
     await insertSignup(db, gateKey, uniqueEmail())
     await insertSignup(db, gateKey, uniqueEmail())
+    await insertSignup(db, gateKey, uniqueEmail())
     const [{ signups: all }] = [await listSignups(db, gateKey, { limit: 10 })]
     await markGranted(db, all[0]!.id, 'admin:test')
+    await markGranted(db, all[1]!.id, 'admin:test')
+    await markRevoked(db, all[1]!.id)
 
     const pending = await listSignups(db, gateKey, { status: 'pending', limit: 10 })
     const granted = await listSignups(db, gateKey, { status: 'granted', limit: 10 })
+    const revoked = await listSignups(db, gateKey, { status: 'revoked', limit: 10 })
 
     expect(pending.signups).toHaveLength(1)
     expect(granted.signups).toHaveLength(1)
     expect(granted.signups[0]!.id).toBe(all[0]!.id)
+    expect(revoked.signups).toHaveLength(1)
+    expect(revoked.signups[0]!.id).toBe(all[1]!.id)
   })
 
   test('paginates with a cursor and reports nextCursor only when more remain', async () => {
@@ -107,17 +113,58 @@ describe('markGranted / findSignupById', () => {
   })
 })
 
-describe('countsByGateKey', () => {
-  test('groups pending/granted counts per gate in one pass', async () => {
+describe('markRevoked', () => {
+  test('revokes a granted signup, leaving grantedAt/grantedBy as a historical record', async () => {
     const gateKey = `gate-${crypto.randomUUID()}`
+    await insertSignup(db, gateKey, uniqueEmail())
+    const [signup] = (await listSignups(db, gateKey, { limit: 1 })).signups
+    await markGranted(db, signup!.id, 'admin:test')
+
+    const revoked = await markRevoked(db, signup!.id)
+
+    expect(revoked).toMatchObject({ id: signup!.id, status: 'revoked', grantedBy: 'admin:test' })
+    expect(revoked!.grantedAt).not.toBeNull()
+
+    const refetched = await findSignupById(db, signup!.id)
+    expect(refetched?.status).toBe('revoked')
+  })
+
+  // The Revoke button (GatesTab.tsx) only appears on a granted row, but
+  // this is what actually enforces "only a granted signup can be
+  // revoked" — a stale UI, a double-click, or a direct API call against
+  // a pending or already-revoked row must all be no-ops, not a status
+  // flip that shouldn't happen.
+  test('is a no-op for a signup that is not currently granted', async () => {
+    const gateKey = `gate-${crypto.randomUUID()}`
+    await insertSignup(db, gateKey, uniqueEmail())
+    const [signup] = (await listSignups(db, gateKey, { limit: 1 })).signups
+
+    expect(await markRevoked(db, signup!.id)).toBeNull()
+
+    await markGranted(db, signup!.id, 'admin:test')
+    await markRevoked(db, signup!.id)
+    expect(await markRevoked(db, signup!.id)).toBeNull()
+  })
+
+  test('returns null for a signup that does not exist', async () => {
+    expect(await markRevoked(db, crypto.randomUUID())).toBeNull()
+  })
+})
+
+describe('countsByGateKey', () => {
+  test('groups pending/granted/revoked counts per gate in one pass', async () => {
+    const gateKey = `gate-${crypto.randomUUID()}`
+    await insertSignup(db, gateKey, uniqueEmail())
     await insertSignup(db, gateKey, uniqueEmail())
     await insertSignup(db, gateKey, uniqueEmail())
     const [{ signups }] = [await listSignups(db, gateKey, { limit: 10 })]
     await markGranted(db, signups[0]!.id, 'admin:test')
+    await markGranted(db, signups[1]!.id, 'admin:test')
+    await markRevoked(db, signups[1]!.id)
 
     const counts = await countsByGateKey(db)
 
-    expect(counts.get(gateKey)).toEqual({ pending: 1, granted: 1 })
+    expect(counts.get(gateKey)).toEqual({ pending: 1, granted: 1, revoked: 1 })
   })
 
   test('a gate with no signups at all is simply absent from the map', async () => {

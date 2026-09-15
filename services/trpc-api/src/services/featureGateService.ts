@@ -79,6 +79,22 @@ export async function grantSignupAccess(
   return { signupId: granted.id, gateKey: granted.gateKey, token: deps.createInviteToken(granted.gateKey, granted.id) }
 }
 
+export interface RevokeSignupAccessDeps {
+  markRevoked: (signupId: string) => Promise<{ id: string; gateKey: string } | null>
+}
+
+// Only reachable from a 'granted' row (markRevoked's own WHERE clause) —
+// a not-found here means either a bad id or a signup that was already
+// pending/revoked, both of which are genuinely "nothing to revoke", not
+// distinguishable states worth a different error for.
+export async function revokeSignupAccess(deps: RevokeSignupAccessDeps, params: { signupId: string }): Promise<{ gateKey: string }> {
+  const revoked = await deps.markRevoked(params.signupId)
+  if (!revoked) {
+    throw new SignupNotFoundError('Signup not found')
+  }
+  return { gateKey: revoked.gateKey }
+}
+
 export interface RedeemGateInviteDeps {
   verifyToken: (token: string) => { gateKey: string; signupId: string } | null
   findSignupById: (id: string) => Promise<{ gateKey: string; status: string } | null>
@@ -111,11 +127,12 @@ export interface GateStatsEntry {
   open: boolean
   pendingCount: number
   grantedCount: number
+  revokedCount: number
 }
 
 export interface ListGatesWithStatsDeps {
   listStates: () => Promise<{ key: string; mode: GateMode; scheduledOpenAt: Date | null }[]>
-  countsByGateKey: () => Promise<Map<string, { pending: number; granted: number }>>
+  countsByGateKey: () => Promise<Map<string, { pending: number; granted: number; revoked: number }>>
 }
 
 // Iterates GATE_REGISTRY, not the DB — a gate with zero rows anywhere
@@ -131,7 +148,7 @@ export async function listGatesWithStats(deps: ListGatesWithStatsDeps, now: Date
     const override = stateByKey.get(key)
     const mode = override?.mode ?? definition.defaultMode
     const scheduledOpenAt = override?.scheduledOpenAt ?? null
-    const count = counts.get(key) ?? { pending: 0, granted: 0 }
+    const count = counts.get(key) ?? { pending: 0, granted: 0, revoked: 0 }
 
     return {
       key,
@@ -142,6 +159,7 @@ export async function listGatesWithStats(deps: ListGatesWithStatsDeps, now: Date
       open: isGateOpen({ mode, scheduledOpenAt }, now),
       pendingCount: count.pending,
       grantedCount: count.granted,
+      revokedCount: count.revoked,
     }
   })
 }

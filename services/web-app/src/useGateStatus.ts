@@ -21,6 +21,15 @@ export type GateStatus =
   // "should this specific page show its real content vs. the waitlist."
   | { kind: 'loaded'; open: boolean; unlocked: boolean; hasAccess: boolean }
 
+// A revoked grant (GatesTab.tsx's Revoke button) needs to actually cut a
+// visitor off, not just block a future invite redemption while a tab
+// they already had open keeps trusting a one-time-fetched
+// `hasAccess: true` forever — gatesRouter.ts's getStatus re-checks the
+// signup's live status on every call specifically so polling here has
+// something real to catch. 30s, not instant: a revoke is a rare admin
+// action, not something that needs sub-second reaction time.
+const GATE_STATUS_POLL_INTERVAL_MS = 30000
+
 // gates.getStatus is public and computes all three fields server-side —
 // this hook never needs its own logic, it just reflects back what the
 // backend already decided (same relationship useAuthStatus in App.tsx
@@ -30,19 +39,28 @@ export function useGateStatus(gateKey: GateKey): GateStatus {
 
   useEffect(() => {
     let cancelled = false
-    void (async () => {
+
+    async function load(isInitial: boolean) {
       try {
         const result = await getTrpc<{ open: boolean; unlocked: boolean; hasAccess: boolean }>('gates.getStatus', { gateKey })
         if (!cancelled) setStatus({ kind: 'loaded', ...result })
       } catch {
-        // Fails safe as fully closed — a signed-out visitor with a flaky
-        // request should see the waitlist landing, never the real app by
-        // accident.
-        if (!cancelled) setStatus({ kind: 'loaded', open: false, unlocked: false, hasAccess: false })
+        // Only the initial load fails safe as fully closed — a signed-out
+        // visitor with a flaky request should see the waitlist landing,
+        // never the real app by accident. A later poll's transient
+        // network blip must not silently boot someone who was already
+        // legitimately unlocked; it just tries again next tick instead of
+        // overwriting a good status with a bad one.
+        if (isInitial && !cancelled) setStatus({ kind: 'loaded', open: false, unlocked: false, hasAccess: false })
       }
-    })()
+    }
+
+    void load(true)
+    const interval = setInterval(() => void load(false), GATE_STATUS_POLL_INTERVAL_MS)
+
     return () => {
       cancelled = true
+      clearInterval(interval)
     }
   }, [gateKey])
 
