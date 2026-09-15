@@ -121,3 +121,252 @@ hardware-key step-up auth and an audited access-grant workflow close
 `DPIA_PRELAUNCH.md`'s R8 gap (no audit trail on who granted admin
 access, to whom, when), and the rate-limiting piece is
 `SECURITY_FINDINGS.md` H1, already flagged and still open.
+
+## 2026-09-15 — Multi-room, topic-based circles with phased matching
+
+**Idea:** Improve the join page beyond "one session to join per topic."
+Full scope, as refined across discussion (a future session should be
+able to plan/build directly from this without re-deriving any of it):
+
+**1. Rooms, not one growing session.** A "session" in the join page is
+really a *topic* (already: admin-curated, may have a limited time
+window). When a topic's current room fills (`sessions.capacity`, e.g.
+6), the platform doesn't grow that room past capacity — it opens
+another bounded room instance of the same topic and routes overflow
+joiners into it. A "room" is not a new concept: it's just another
+`sessions` row sharing the same `topic_id`, created programmatically
+when the current one(s) fill. Round-robin/turn-taking
+(`current_turn_user_id`, `turn_claimed_at`, both already on `sessions`
+— `packages/shared/migrations/0001_init.ts`) stays scoped *inside* each
+room, completely unaffected by how many rooms exist for a topic — this
+is what makes it scale to arbitrarily many participants per topic
+without ever breaking the turn-taking model a single room depends on.
+Scaling happens by spawning more bounded rooms, never by making one
+room unbounded.
+
+**2. Matching, phased — build FIFO first, ship matching later:**
+   - **Phase 1 (launch)**: dead-simple FIFO — a new joiner goes to
+     whichever open room for that topic has a free seat, in join
+     order. No analysis, no ranking, nothing to consent to. Appropriate
+     because early users are invite-known people who likely already
+     have enough in common to sustain a conversation (see the
+     feature-gate/waitlist work already shipped).
+   - **Phase 2 (later, once validated and campaigning to unknown/public
+     users)**: consent-gated content-based matching. For users who
+     opt in, use what they've discussed (and/or a direct prompt asking
+     what they're looking for right now, e.g. "I have trouble
+     sleeping") to route them toward a room where a similar topic has
+     come up, instead of pure join order.
+   - **Fallback, always**: if no good match is found (or the user
+     hasn't consented), fall straight back to FIFO — a user is never
+     stuck with no room.
+   - **Low-affinity refinement**: if a new user has nothing in common
+     with anyone in the best-matched room, an alternative strategy is
+     pairing them with more *seasoned* participants instead (defined
+     narrowly as prior-session count, not a fuller engagement/frequency
+     score) so they have an easier time getting up to speed — this
+     stays a simple tenure check, not the behavioral ranking system
+     considered and deliberately dropped below.
+
+**3. Consent — the part negotiated in most detail, don't skip re-reading
+this before building it:**
+   - This is a **new, separate, granular consent purpose** —
+     "context-analysis for room matching" — distinct from the existing
+     `user_profiles.training_consent` column, which is scoped
+     specifically to AI *training* use. Reusing that flag for matching
+     would violate GDPR's purpose-specificity requirement (Art. 7);
+     matching needs its own explicitly-worded consent, presented
+     alongside (not merged into) the training one.
+   - This is **also fully separate from the cookie-consent banner**
+     (`CookieConsentBanner.tsx`), which covers marketing/analytics/
+     behavioral-tracking cookies under ePrivacy/ordinary personal-data
+     rules — a different legal basis and a different mechanism from
+     Art. 9 explicit consent for special-category health-disclosure
+     content. Do not merge the two mechanisms or storage.
+   - **Do reuse the cookie banner's UI *pattern*** — equal-weight
+     "Allow all" / granular pick-and-choose buttons
+     (`equalWeightButtons: true`) — for the new platform-feature
+     consent screen, so accepting and customizing/declining stay
+     equally easy to click (the specific dark-pattern EDPB guidance
+     targets). Same visual weighting, separate mechanism.
+   - **The core service must stay fully unconditioned on this
+     consent.** FIFO matching (and peer-support participation
+     generally) must work exactly as well for someone who declines
+     every AI-related consent — no degraded experience, no fewer
+     features. Message the benefit as *addition* ("opt in and we can
+     match you by what you've actually discussed; without it, you're
+     matched by join order, which works well but isn't tailored"),
+     never as *subtraction* ("you won't get a quality experience
+     without this"). The latter risks failing Art. 7(4)'s
+     freely-given-consent test — conditioning a service on consent to
+     processing that isn't necessary for it — which would be
+     especially exposed here since this is Art. 9 *explicit* consent
+     for health-category data, the strictest tier GDPR has. If that
+     consent is ever found invalid, the processing built on it becomes
+     retroactively unlawful.
+   - Presented first at registration (gentle, honest benefit reminder
+     if declined, same equal-weight buttons), but must remain
+     changeable afterward — already true today via the Account modal's
+     Preferences section (where language preference already lives), no
+     new revocation surface needs building.
+
+**4. Before this ships**: `DPIA_PRELAUNCH.md` needs a new section
+describing this as its own processing operation (purpose, necessity/
+proportionality, risk) — it's a genuinely new use of session content
+beyond moderation, not covered by the DPIA's current scope.
+
+**Verdict:** promising, as refined through discussion — no further
+narrowing needed. Phase 1 (FIFO room-sharding) is safe to plan/build
+immediately; Phase 2 (consent-gated matching) waits on the new DPIA
+section and the granular consent UI both existing first.
+
+**Why:** Fits `CHARTER.md` cleanly once room-sharding (not one
+unbounded room) is the mechanism — small, bounded, moderated circles
+stay exactly that, per-room, no matter how many rooms a popular topic
+needs; nothing about matching creates a directory or lookup (routing
+is server-side, never a searchable profile); anonymity is unaffected
+(matching keys off consented content analysis, not identity). The
+consent design earns its "promising" verdict specifically *because* it
+was pushed to be granular, separately-mechanisms, unconditioned-core-
+service, and addition-framed — the bundled/conditioned version of this
+same idea, floated earlier in the conversation, would have failed
+Art. 7(4) and Art. 9's explicit-consent bar and is not what this entry
+approves.
+
+## 2026-09-15 — User-created private/invite-code sessions, with moderated multi-room scaling
+
+**Idea:** Extend "New session" so a user (not just an admin curating
+`topics`) can create their own session, optionally private behind a
+short, memorable, human-shareable code (originally proposed as 4
+digits — kept short by design, not meant as a cryptographic secret;
+the point is a code an organizer can say out loud or write on a board,
+e.g. a support-group facilitator continuing an existing in-person group
+online, or a live event announcing a debate room in person) rather than
+a long unguessable link. The code is scoped to one session, expires
+when the session does, and is not searchable/browsable — the only way
+in is already knowing the code. A private, user-created session can
+also scale to multiple rooms exactly like the admin-curated multi-room
+feature (`PROMISING_IDEAS.md`'s 2026-09-15 "Multi-room, topic-based
+circles" entry — same underlying mechanism: a room is a `sessions` row
+sharing a key, round-robin stays scoped per room, overflow spawns a new
+room rather than growing one past capacity).
+
+Because these sessions are user-titled and not pre-vetted like admin
+`topics`, this introduces a new moderation surface: session *titles*
+currently go through no classification at all (`sessions.name` is
+free-text, only message *content* is classified by moderation-service).
+Rapid growth into multiple rooms is a cheap trigger for human review
+(a new session-level review queue, distinct from the existing per-
+message one in `ReviewQueueTab.tsx`/`moderation_events`). Rejected
+titles build a moderator-maintained blocklist/pattern list (deliberately
+not a trained model — see "why" below) so similar titles get routed to
+review before they resurface, and a pattern match is a signal that
+routes to human review, never an automatic ban — `account_bans`
+already has a fixed `reason_category` taxonomy and an evidence trail
+(`docs/gdpr-runbook.md`); a new automated title-pattern-match category
+would need to fit that same reviewed, evidenced shape, not bypass it.
+
+Certain topics (named example: suicide as the organizing premise of a
+public/semi-public room, as opposed to it coming up within an ordinary
+support conversation) should be blocked from user-created sessions
+until the platform has real clinical moderation resourced for that
+specific category — not only a legal-exposure precaution but a
+genuine safety one: unsupervised peer groups self-organizing explicitly
+around suicide/self-harm as their premise carry a documented contagion
+risk in crisis-intervention literature, distinct from crisis language
+surfacing within a general conversation, which the existing per-message
+deterministic escalation (`CHARTER.md` §3) already handles correctly.
+This restriction needs to be named plainly in the ToS (concrete
+categories, not vague reserved-rights language) before it's enforced.
+
+Rate limiting the code-entry endpoint specifically (not just login/
+OAuth) is required before this ships, independent of how weak or
+strong the code format ends up being: with a small code space and
+codes reused across sessions over time, an unthrottled guess endpoint
+risks an uninvolved person's random or automated guess landing them in
+*someone else's* private session by pure collision — a privacy
+exposure that exists regardless of whether anyone is deliberately
+targeting anyone. Same class of gap as `SECURITY_FINDINGS.md` H1
+(OAuth callback / `sendMessage` still uncapped) and should be built
+alongside it, not as a separate later pass.
+
+Separately: whether training-data consent for the rejected-title
+pattern list is the *same* purpose as the existing
+`user_profiles.training_consent` field, or needs its own, is an open
+question to answer deliberately rather than assume either way —
+unlike the room-matching idea's consent (clearly a different purpose:
+routing vs. training), this one plausibly folds into the existing
+"help us train AI systems" bucket, but that needs a real answer, not
+a default.
+
+**Verdict:** promising, as refined through discussion. Ship order:
+rate limiting on the code-entry endpoint is a prerequisite, not a
+follow-up; the moderator-maintained blocklist (not a trained model)
+and the session-level review queue are new build, not reuse; the ToS
+update and the training-consent-scope determination both need answers
+before user-created private sessions go live, not after.
+
+**Why:** The core use case volunteered for this — "a real group
+therapy can continue online, protected from outsiders" — sits squarely
+inside `CHARTER.md`'s actual mission (anonymity, protecting a circle
+from outsiders) rather than in tension with it; other possible uses of
+the same generic mechanism (a debate room, an event networking session)
+are accepted as incidental to what the tool permits, not something
+being built for deliberately, which is the right relationship between
+a generic mechanism and a specific mission. The moderator-review-over-
+automation choice and the pattern-match-flags-for-review (not auto-ban)
+choice both follow the same reasoning already established earlier in
+this log: simple and auditable before trained and opaque, at a stage
+where there isn't yet enough real attack/abuse volume to justify
+anything heavier.
+
+## 2026-09-15 — Long-horizon: B2B clinic partnerships, tenant-isolated infrastructure, white-label deployment
+
+**Idea:** Deferred deliberately — not pursued now, logged so the
+reasoning survives to whenever it's actually picked back up. Once
+there's real revenue, move into B2B: partner with legitimate clinics
+to improve their efficiency and reach, letting more people benefit
+from clinical resources without directly burdening clinic capacity,
+with clinics helping surface needs the platform wouldn't otherwise
+know to build for. Possible shape floated: an exclusive/segregated
+tier for clinic customers — conceptually like matchmaking segregation
+in multiplayer games, but the actual goal is security isolation, not
+routing/latency — up to fully separate deployed infrastructure per
+tenant tier (own Postgres/Redis/compute, not just a shared app
+pointing at separate databases; the isolation only holds if the
+*application* processes are separately deployed too, not just the data
+stores — a shared process holding credentials to both tiers is still
+one blast radius regardless of DB separation). Also floated: a paywall
+with a choice between standalone/self-hosted (customer owns their
+data, platform keeps supporting it per their subscription/contract) or
+managed cloud infra; and using the same mechanism for adjacent, non-
+mental-health use cases (short-term multi-room sessions for live
+events, debate platforms, general networking tools) as separate
+customer types entirely.
+
+**Verdict:** promising as a long-horizon direction, explicitly not
+scoped or sequenced yet — no narrowing needed because nothing here is
+being built now. The one concrete technical note worth preserving:
+this repo's infrastructure is already Terraform (`IaC/`), which is the
+right shape for standing up a second isolated environment later (same
+application image, separate VPC/Cloud SQL/Redis/GKE namespace) without
+needing to touch application code — nothing to build in advance of
+actually needing it.
+
+**Why:** Standalone/self-hosted runs directly into an already-decided
+policy — `CHARTER.md` principle 5 states the moderation service's
+source is deliberately not open-sourced, gated to vetted partners only
+— so a self-hosting customer either brings their own moderation
+(plausible for a non-mental-health white-label use case) or still
+depends on a hosted moderation call-back, meaning "standalone" isn't
+fully standalone; this needs resolving before it's ever promised to a
+customer, not before it's logged as a direction. More broadly: a
+white-label engine serving debate/networking customers is a different
+product from MinCirklen's own mission-constrained policy layer
+(`CHARTER.md`'s no-directory/no-solicitation/anonymity constraints are
+specific to the mental-health use case, not assumed properties of the
+generic mechanism) — the reusable part is the rooms/matching engine,
+the mission-specific part is the policy on top of it, and conflating
+the two when this gets built for real would be the actual mistake, not
+the ambition itself. Explicitly out of scope until the stated
+milestone (first 100 users, then real revenue) is reached.

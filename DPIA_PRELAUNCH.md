@@ -10,7 +10,8 @@ signs off on it — nothing in this file is legal advice.
 
 Cross-referenced against `CHARTER.md`, `docs/roadmap.md` §3.2,
 `docs/gdpr-runbook.md`, `SECURITY_FINDINGS.md` (review date 2026-08-26),
-`SECURITY.md`, and `services/web-app/src/publicPages/pages.ts`.
+`SECURITY.md`, `services/web-app/src/publicPages/pages.ts`, and
+`PROMISING_IDEAS.md`.
 
 ---
 
@@ -158,3 +159,39 @@ in your control instead of the regulator's.
    processed or how (e.g. the admin platform's RBAC bootstrap already
    noted in `CHARTER.md` principle 4 as the first feature relying on the
    operational-data exception).
+
+## 7. Future processing operations not yet covered — fold in before shipping
+
+Features not yet built that will introduce a new processing purpose
+beyond what §2's systematic description currently covers. Tracked here
+so each one gets folded in as it's built, per §6 item 8, rather than
+this document going stale the moment one of them ships.
+
+- **Multi-room topic matching, Phase 2 (consent-gated content
+  analysis)** — full design in `PROMISING_IDEAS.md`'s 2026-09-15 entry
+  ("Multi-room, topic-based circles with phased matching"). Analyzes
+  session content, under explicit, granular, separately-worded consent
+  (distinct from both `user_profiles.training_consent` and the cookie-
+  consent banner's marketing/analytics consent — three separate
+  purposes, three separate consents, never merged), to route a new
+  joiner toward a room where a similar topic has already come up.
+  Phase 1 of that same feature (plain FIFO room assignment, one topic
+  scaling across multiple bounded room instances) introduces no new
+  processing and needs nothing here — only Phase 2 does. Before Phase 2
+  ships:
+  - Add its own entry to §2 element 1's systematic description — a
+    processing operation distinct from moderation classification, even
+    though both read session content.
+  - Write the §2 element 2 necessity/proportionality case: is content
+    analysis actually the least invasive way to improve matching,
+    against a plainer alternative like self-reported topic tags alone.
+  - Confirm the consent UI, when built, actually is unconditioned-core-
+    service, granular, addition-framed, and equal-weight-buttoned (the
+    PROMISING_IDEAS entry's own bar for approval) — not just documented
+    as the intent.
+  - Add a risk-register (§4) row once built: what's the retention/
+    deletion story for the *derived* matching signal itself, not just
+    the raw message it's computed from — does it expire on the same
+    schedule as the underlying session content, or does it persist as
+    a longer-lived signal about a person's topics, which would need its
+    own justification and deletion path.
