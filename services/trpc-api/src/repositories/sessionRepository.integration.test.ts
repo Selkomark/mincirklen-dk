@@ -12,6 +12,7 @@ import {
   getSessionSummary,
   isSessionMember,
   joinSession,
+  joinSessionWithOverflow,
   listOpenSessions,
   listRecentSessionVisits,
   recordGuidelinesAgreement,
@@ -198,6 +199,154 @@ describe('joinSession', () => {
   })
 })
 
+describe('joinSessionWithOverflow', () => {
+  test('joins the requested room directly when it has space', async () => {
+    const topic = await seedTopic()
+    const { id: sessionId } = await createSession(db, {
+      topicId: topic.id,
+      name: 'Weekly grief circle',
+      scheduledAt: new Date(),
+      durationMinutes: 45,
+      capacity: 4,
+    })
+    const user = await db.insertInto('users').defaultValues().returningAll().executeTakeFirstOrThrow()
+
+    const result = await joinSessionWithOverflow(db, sessionId, user.id)
+    expect(result).toEqual({
+      entry: { userId: user.id, turnOrder: 0 },
+      isNewJoin: true,
+      sessionId,
+      roomNumber: 1,
+    })
+  })
+
+  test('spills a full room into a freshly created sibling — room 2', async () => {
+    const topic = await seedTopic()
+    const { id: sessionId } = await createSession(db, {
+      topicId: topic.id,
+      name: 'Small grief circle',
+      scheduledAt: new Date(),
+      durationMinutes: 45,
+      capacity: 1,
+    })
+    const alice = await db.insertInto('users').defaultValues().returningAll().executeTakeFirstOrThrow()
+    const bob = await db.insertInto('users').defaultValues().returningAll().executeTakeFirstOrThrow()
+
+    await joinSessionWithOverflow(db, sessionId, alice.id)
+    const bobResult = await joinSessionWithOverflow(db, sessionId, bob.id)
+
+    expect(bobResult.sessionId).not.toBe(sessionId)
+    expect(bobResult.roomNumber).toBe(2)
+    expect(bobResult.isNewJoin).toBe(true)
+
+    const room2 = await db
+      .selectFrom('sessions')
+      .select(['name', 'capacity', 'topic_id'])
+      .where('id', '=', bobResult.sessionId)
+      .executeTakeFirstOrThrow()
+    expect(room2).toMatchObject({ name: 'Small grief circle', capacity: 1, topic_id: topic.id })
+  })
+
+  test('a third overflow lands in a new room 3, not a duplicate room 2', async () => {
+    const topic = await seedTopic()
+    const { id: sessionId } = await createSession(db, {
+      topicId: topic.id,
+      name: 'Tiny grief circle',
+      scheduledAt: new Date(),
+      durationMinutes: 45,
+      capacity: 1,
+    })
+    const alice = await db.insertInto('users').defaultValues().returningAll().executeTakeFirstOrThrow()
+    const bob = await db.insertInto('users').defaultValues().returningAll().executeTakeFirstOrThrow()
+    const carol = await db.insertInto('users').defaultValues().returningAll().executeTakeFirstOrThrow()
+
+    await joinSessionWithOverflow(db, sessionId, alice.id)
+    const bobResult = await joinSessionWithOverflow(db, sessionId, bob.id)
+    const carolResult = await joinSessionWithOverflow(db, sessionId, carol.id)
+
+    expect(bobResult.roomNumber).toBe(2)
+    expect(carolResult.roomNumber).toBe(3)
+    expect(carolResult.sessionId).not.toBe(bobResult.sessionId)
+  })
+
+  test('rejoins an existing sibling with space before creating a new room', async () => {
+    const topic = await seedTopic()
+    const { id: sessionId } = await createSession(db, {
+      topicId: topic.id,
+      name: 'Grief circle',
+      scheduledAt: new Date(),
+      durationMinutes: 45,
+      capacity: 1,
+    })
+    const alice = await db.insertInto('users').defaultValues().returningAll().executeTakeFirstOrThrow()
+    const bob = await db.insertInto('users').defaultValues().returningAll().executeTakeFirstOrThrow()
+    const carol = await db.insertInto('users').defaultValues().returningAll().executeTakeFirstOrThrow()
+
+    await joinSessionWithOverflow(db, sessionId, alice.id)
+    const bobResult = await joinSessionWithOverflow(db, sessionId, bob.id)
+
+    // bob's room (capacity 1) is already full too, but the *original*
+    // room now has a free seat again — carol should land back there
+    // rather than spawning a third room, since the requested id is
+    // always tried first regardless of who else has overflowed.
+    await db.deleteFrom('session_users').where('session_id', '=', sessionId).where('user_id', '=', alice.id).execute()
+
+    const carolResult = await joinSessionWithOverflow(db, sessionId, carol.id)
+    expect(carolResult.sessionId).toBe(sessionId)
+    expect(carolResult.roomNumber).toBe(1)
+    expect(bobResult.roomNumber).toBe(2)
+  })
+
+  test('concurrent simultaneous overflow attempts against a full room create exactly one sibling, not one each', async () => {
+    const topic = await seedTopic()
+    // Capacity 5 so the 4 concurrent joiners below all fit in a single
+    // sibling room — with capacity 1 each concurrent joiner would
+    // legitimately fill and overflow its own sibling in turn, which
+    // would defeat the point of this test (proving the advisory lock
+    // stops *redundant* sibling creation, not that overflow works at all).
+    const { id: sessionId } = await createSession(db, {
+      topicId: topic.id,
+      name: 'Popular grief circle',
+      scheduledAt: new Date(),
+      durationMinutes: 45,
+      capacity: 5,
+    })
+    const seeders = await Promise.all(
+      Array.from({ length: 5 }, () => db.insertInto('users').defaultValues().returningAll().executeTakeFirstOrThrow()),
+    )
+    for (const seeder of seeders) {
+      await joinSessionWithOverflow(db, sessionId, seeder.id)
+    }
+
+    const joiners = await Promise.all(
+      Array.from({ length: 4 }, () => db.insertInto('users').defaultValues().returningAll().executeTakeFirstOrThrow()),
+    )
+    const results = await Promise.all(joiners.map((u) => joinSessionWithOverflow(db, sessionId, u.id)))
+
+    // The advisory lock serializes these within the group, so they should
+    // all land in the same single sibling room, never a room each.
+    const distinctSessionIds = new Set(results.map((r) => r.sessionId))
+    expect(distinctSessionIds.size).toBe(1)
+    expect([...distinctSessionIds][0]).not.toBe(sessionId)
+    expect(results.every((r) => r.roomNumber === 2)).toBe(true)
+
+    const { room_group_id: groupId } = await db
+      .selectFrom('sessions')
+      .select('room_group_id')
+      .where('id', '=', sessionId)
+      .executeTakeFirstOrThrow()
+    const groupRooms = await db.selectFrom('sessions').select(['id']).where('room_group_id', '=', groupId).execute()
+    expect(groupRooms).toHaveLength(2)
+  })
+
+  test('skips overflow entirely for an ad-hoc, topicless session — joins (or throws full) on the exact id given', async () => {
+    const { sessionId } = await seedSessionWithUsers(8)
+    const extra = await db.insertInto('users').defaultValues().returningAll().executeTakeFirstOrThrow()
+
+    await expect(joinSessionWithOverflow(db, sessionId, extra.id)).rejects.toBeInstanceOf(SessionFullError)
+  })
+})
+
 describe('isSessionMember', () => {
   test('reflects membership accurately', async () => {
     const { sessionId, userIds } = await seedSessionWithUsers(1)
@@ -331,7 +480,7 @@ describe('listRecentSessionVisits', () => {
 // any more.
 
 describe('listOpenSessions', () => {
-  test('includes forming and active scheduled circles with room left, excludes the rest', async () => {
+  test('includes forming and active scheduled circles with room left, and full ones too (room-sharding makes a group never unjoinable)', async () => {
     const topic = await seedTopic()
 
     const open = await createSession(db, {
@@ -359,7 +508,11 @@ describe('listOpenSessions', () => {
     const ids = sessions.map((r) => r.id)
 
     expect(ids).toContain(open.id)
-    expect(ids).not.toContain(full.id)
+    // A full group is no longer excluded — overflow (joinSessionWithOverflow,
+    // exercised in session.integration.test.ts) always has somewhere to put
+    // the next joiner, so the browse list reflects that by showing the group
+    // with its true (full) aggregated occupancy rather than hiding it.
+    expect(ids).toContain(full.id)
     expect(nextCursor).toBeNull()
 
     const openResult = sessions.find((r) => r.id === open.id)
@@ -369,6 +522,48 @@ describe('listOpenSessions', () => {
       durationMinutes: 60,
       capacity: 4,
       joinedCount: 0,
+      topic: { id: topic.id, slug: topic.slug, label: topic.label },
+    })
+
+    const fullResult = sessions.find((r) => r.id === full.id)
+    expect(fullResult).toMatchObject({
+      status: 'active',
+      name: 'Full grief circle',
+      durationMinutes: 30,
+      capacity: 1,
+      joinedCount: 1,
+      topic: { id: topic.id, slug: topic.slug, label: topic.label },
+    })
+  })
+
+  test('aggregates a room-sharded group into a single row, summing capacity and joinedCount across every room', async () => {
+    const topic = await seedTopic()
+    const { id: room1Id } = await createSession(db, {
+      topicId: topic.id,
+      name: 'Sharded grief circle',
+      scheduledAt: new Date('2026-09-01T18:00:00.000Z'),
+      durationMinutes: 45,
+      capacity: 1,
+    })
+    const alice = await db.insertInto('users').defaultValues().returningAll().executeTakeFirstOrThrow()
+    const bob = await db.insertInto('users').defaultValues().returningAll().executeTakeFirstOrThrow()
+
+    await joinSessionWithOverflow(db, room1Id, alice.id)
+    const room2Result = await joinSessionWithOverflow(db, room1Id, bob.id)
+    expect(room2Result.sessionId).not.toBe(room1Id)
+
+    const { sessions } = await listOpenSessions(db, { topicId: topic.id, limit: 50 })
+
+    // One aggregated row for the whole group, not one per room.
+    const groupRows = sessions.filter((r) => r.id === room1Id || r.id === room2Result.sessionId)
+    expect(groupRows).toHaveLength(1)
+
+    const [row] = groupRows
+    expect(row).toMatchObject({
+      id: room1Id, // lowest room_number represents the group for display
+      name: 'Sharded grief circle',
+      capacity: 2, // summed across both rooms (1 + 1)
+      joinedCount: 2, // summed across both rooms (1 + 1)
       topic: { id: topic.id, slug: topic.slug, label: topic.label },
     })
   })

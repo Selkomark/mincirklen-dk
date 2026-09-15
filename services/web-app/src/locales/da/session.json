@@ -109,6 +109,7 @@
     "ended": "Denne session er afsluttet",
     "startsAt": "Starter {{time}} · anonymt som standard"
   },
+  "roomSuffix": "Rum {{number}}",
   "emptyState": {
     "ended": "Denne session er afsluttet. Transskriptioner er kun synlige for brugere under den aktive runde.",
     "forming": "Denne cirkel er ikke startet endnu. Du får besked, når runden begynder.",

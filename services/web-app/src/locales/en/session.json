@@ -109,6 +109,7 @@
     "ended": "This session has ended",
     "startsAt": "Starts {{time}} · anonymous by default"
   },
+  "roomSuffix": "Room {{number}}",
   "emptyState": {
     "ended": "This session has ended. Transcripts are only visible to users during the live round.",
     "forming": "This circle has not started yet. You will be notified when the round begins.",

@@ -1094,7 +1094,11 @@ function SessionCenterPanel({
     if (loadState.status === 'ready' && chatMatchesTarget) setDisplayedSummary(loadState.summary)
   }, [loadState, chatMatchesTarget])
 
-  useDocumentTitle(displayedSummary ? `${visitDisplayName(displayedSummary)} — MinCirklen` : 'MinCirklen')
+  useDocumentTitle(
+    displayedSummary
+      ? `${visitDisplayName(displayedSummary, (n) => t('roomSuffix', { number: n }))} — MinCirklen`
+      : 'MinCirklen',
+  )
 
   const [draft, setDraft] = useState('')
   const composerTextareaRef = useRef<HTMLTextAreaElement>(null)
@@ -1514,7 +1518,7 @@ function SessionCenterPanel({
                   whiteSpace: 'nowrap',
                 }}
               >
-                {visitDisplayName(summary)}
+                {visitDisplayName(summary, (n) => t('roomSuffix', { number: n }))}
               </div>
               {subtitle && (
                 <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', marginTop: 2 }}>{subtitle}</div>

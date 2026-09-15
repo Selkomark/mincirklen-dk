@@ -1,5 +1,6 @@
 import type {
   GuidelinesCheckResult,
+  JoinSessionWithOverflowResult,
   ListOpenSessionsResult,
   ListRecentVisitsResult,
   RosterEntry,
@@ -23,11 +24,19 @@ export async function listOpenSessions(deps: ListOpenSessionsDeps): Promise<List
   return deps.listOpenSessions()
 }
 
+// Return type is the room-sharding-aware shape (sessionId/roomNumber
+// included), not a bare RosterEntry — the browse-and-join path
+// (StartJoinPage.tsx, via sessionRouter.ts's `join`) needs to know which
+// session it actually landed in, since a full circle's overflow can
+// route the caller into a different room than the one requested. `visit`
+// (direct navigation to a session URL) deliberately stays on plain
+// joinSession/RosterEntry — see VisitSessionDeps below and
+// sessionRepository.ts's joinSessionWithOverflow doc comment for why.
 export interface JoinSessionDeps {
-  joinSession(): Promise<RosterEntry>
+  joinSession(): Promise<JoinSessionWithOverflowResult>
 }
 
-export async function joinSession(deps: JoinSessionDeps): Promise<RosterEntry> {
+export async function joinSession(deps: JoinSessionDeps): Promise<JoinSessionWithOverflowResult> {
   return deps.joinSession()
 }
 

@@ -21,8 +21,9 @@ describe('createSession', () => {
 
 describe('joinSession', () => {
   test('delegates to the injected dependency', async () => {
-    const result = await joinSession({ joinSession: async () => ({ userId: 'p1', turnOrder: 0 }) })
-    expect(result).toEqual({ userId: 'p1', turnOrder: 0 })
+    const value = { entry: { userId: 'p1', turnOrder: 0 }, isNewJoin: true, sessionId: 's1', roomNumber: 1 }
+    const result = await joinSession({ joinSession: async () => value })
+    expect(result).toEqual(value)
   })
 })
 
@@ -124,6 +125,7 @@ describe('getSessionSummary', () => {
       capacity: null,
       joinedCount: 0,
       topic: null,
+      roomNumber: 1,
     }
     expect(await getSessionSummary({ getSessionSummary: async () => summary })).toEqual(summary)
   })
@@ -140,6 +142,7 @@ describe('visitSession', () => {
       capacity: 6,
       joinedCount: 1,
       topic: { id: 't1', slug: 'grief', label: 'Grief' },
+      roomNumber: 1,
     }
     let joinCalled = false
     const result = await visitSession({

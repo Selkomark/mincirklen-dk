@@ -173,7 +173,12 @@ export function StartJoinPage({ onBack, onComplete, embedded = false }: StartJoi
         throw new Error(res.status === 409 ? t('joinPage.circleFilledUp') : t('joinPage.joinFailed'))
       }
 
-      onComplete(id)
+      // A full circle spills over into a sibling room (room-sharding —
+      // sessionRepository.ts's joinSessionWithOverflow), so the session
+      // actually joined can differ from the one clicked. Redirect to
+      // whichever session the response says was joined, not the clicked id.
+      const body = (await res.json()) as { result: { data: { sessionId: string } } }
+      onComplete(body.result.data.sessionId)
     } catch (err) {
       setJoinError(err instanceof Error ? err.message : t('joinPage.joinFailed'))
       setJoiningId(null)

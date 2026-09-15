@@ -27,6 +27,10 @@ export interface SessionSummary {
   capacity: number | null
   joinedCount: number
   topic: Topic | null
+  // Which room within its room-sharding group this is — see
+  // sessionRepository.ts's joinSessionWithOverflow. > 1 means this user
+  // overflowed into a sibling room rather than the one they clicked.
+  roomNumber: number
 }
 
 export interface RecentVisit {
@@ -43,8 +47,23 @@ export interface RecentVisit {
 // copy (not imported) because RecentVisit's topic is nullable (the
 // ad-hoc turn-based flow's sessions can show up in visit history, unlike
 // /p/join's browse list, which only ever lists topic-having circles).
-export function visitDisplayName(visit: { name: string | null; topic: Topic | null }): string {
-  return visit.name ?? (visit.topic ? `${visit.topic.label} circle` : 'Session')
+//
+// roomNumber is only present on SessionSummary (the session actually
+// joined), never on RecentVisit — a room-sharded sibling only matters
+// once you're in it, not in the visit history list — so it's optional
+// here and the suffix only appears when it's > 1. roomLabel is a
+// translated "Room {{number}}" string (session.json's roomSuffix key);
+// callers without a `t` in scope (none currently) can omit it and just
+// get the bare name.
+export function visitDisplayName(
+  visit: { name: string | null; topic: Topic | null; roomNumber?: number },
+  roomLabel?: (roomNumber: number) => string,
+): string {
+  const base = visit.name ?? (visit.topic ? `${visit.topic.label} circle` : 'Session')
+  if (visit.roomNumber && visit.roomNumber > 1 && roomLabel) {
+    return `${base} — ${roomLabel(visit.roomNumber)}`
+  }
+  return base
 }
 
 async function postTrpc<T>(path: string, input: unknown): Promise<T> {

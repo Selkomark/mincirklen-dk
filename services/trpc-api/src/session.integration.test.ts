@@ -719,7 +719,7 @@ describe('scheduled circles (/p/new, /p/join)', () => {
     expect(back.data.sessions.map((s) => s.id)).toEqual(firstPage.data.sessions.map((s) => s.id))
   })
 
-  test('enforces the circle\'s own capacity rather than the ad-hoc default of 8', async () => {
+  test('enforces the circle\'s own capacity rather than the ad-hoc default of 8 — a 2nd joiner spills into a sibling room, not into the same one', async () => {
     const alice = await createActor()
     const topicId = await griefTopicId(alice)
 
@@ -735,9 +735,16 @@ describe('scheduled circles (/p/new, /p/join)', () => {
 
     await call(alice, 'session.join', { sessionId })
 
+    // Room-sharding (joinSessionWithOverflow) means a full circle no
+    // longer 409s — bob still gets in, just not into the same room as
+    // alice, which is the part that actually proves capacity 1 (not the
+    // ad-hoc default of 8) was enforced for the original room.
     const bob = await createActor()
-    const fullRes = await call(bob, 'session.join', { sessionId })
-    expect(fullRes.status).toBe(409)
+    const overflowRes = await call(bob, 'session.join', { sessionId })
+    expect(overflowRes.status).toBe(200)
+    const { result: overflow } = (await overflowRes.json()) as { result: { data: { sessionId: string; roomNumber: number } } }
+    expect(overflow.data.sessionId).not.toBe(sessionId)
+    expect(overflow.data.roomNumber).toBe(2)
   })
 
   test('rejects a partially-filled scheduling input', async () => {

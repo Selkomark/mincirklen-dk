@@ -63,6 +63,14 @@ export interface CreateSessionParams {
   scheduledAt: Date | string
   durationMinutes: number | null
   capacity: number
+  // Room-sharding — both optional and only ever set by
+  // joinSessionWithOverflow's own sibling-room creation, never by the
+  // public session.create path (a brand-new circle is always room 1 of
+  // its own fresh group, the column defaults handle that). Passing
+  // roomGroupId without roomNumber (or vice versa) is a caller bug, not
+  // a supported half-state — both or neither.
+  roomGroupId?: string
+  roomNumber?: number
 }
 
 // `params` is optional so the pre-existing ad-hoc turn-based flow (every
@@ -80,6 +88,8 @@ export async function createSession(db: Kysely<Database>, params?: CreateSession
           scheduled_at: params.scheduledAt,
           duration_minutes: params.durationMinutes,
           capacity: params.capacity,
+          ...(params.roomGroupId ? { room_group_id: params.roomGroupId } : {}),
+          ...(params.roomNumber ? { room_number: params.roomNumber } : {}),
         })
         .returningAll()
         .executeTakeFirstOrThrow()
@@ -201,6 +211,8 @@ export async function listOpenSessions(db: Kysely<Database>, filters: ListOpenSe
       's.scheduled_at as scheduled_at',
       's.duration_minutes as duration_minutes',
       's.capacity as capacity',
+      's.room_group_id as room_group_id',
+      's.room_number as room_number',
       't.id as topic_id',
       't.slug as topic_slug',
       't.label as topic_label',
@@ -241,9 +253,47 @@ export async function listOpenSessions(db: Kysely<Database>, filters: ListOpenSe
     )
   }
 
-  const aggregated = inner.groupBy(['s.id', 't.id']).as('agg')
+  // Per-session rows, one per room — same shape this query always had.
+  const perSession = inner.groupBy(['s.id', 't.id', 's.room_group_id', 's.room_number']).as('per_session')
 
-  let outer = db.selectFrom(aggregated).selectAll().whereRef('agg.joined_count', '<', 'agg.capacity')
+  // Room-sharding: collapse every room in a group into the one row the
+  // browse list actually shows. `name`/`topic_*`/`duration_minutes` are
+  // identical across every room in a group by construction (siblings
+  // copy them from the original — joinSessionWithOverflow), so `min(...)
+  // filter (where room_number = 1)` just authoritatively picks the
+  // primary room's value rather than an arbitrary one; `scheduled_at`
+  // deliberately uses the *primary* room's value too (a sibling's own
+  // scheduled_at is "now," the moment it was formed, not a meaningful
+  // display time). `capacity`/`joined_count` sum across every room —
+  // the browse list shows total occupancy, not one room's. No full-group
+  // exclusion filter below (unlike the old per-session `agg`): overflow
+  // means a group is never truly unjoinable, there's always a next room.
+  const aggregated = db
+    .selectFrom(perSession)
+    .select(({ fn }) => [
+      // Postgres has no built-in min()/max() for uuid — cast through text
+      // and back. Correctness is unaffected either way: exactly one row
+      // per group matches `room_number = 1`, so min() over a single
+      // value just returns that value regardless of type.
+      sql<string>`(min(per_session.id::text) filter (where per_session.room_number = 1))::uuid`.as('id'),
+      sql<'forming' | 'active'>`min(per_session.status) filter (where per_session.room_number = 1)`.as('status'),
+      sql<string | null>`min(per_session.name) filter (where per_session.room_number = 1)`.as('name'),
+      sql<Date>`min(per_session.scheduled_at) filter (where per_session.room_number = 1)`.as('scheduled_at'),
+      sql<string>`min(per_session.scheduled_at_cursor) filter (where per_session.room_number = 1)`.as('scheduled_at_cursor'),
+      sql<number | null>`min(per_session.duration_minutes) filter (where per_session.room_number = 1)`.as('duration_minutes'),
+      fn.sum<string>('per_session.capacity').as('capacity'),
+      fn.sum<string>('per_session.joined_count').as('joined_count'),
+      sql<string>`(min(per_session.topic_id::text) filter (where per_session.room_number = 1))::uuid`.as('topic_id'),
+      sql<string>`min(per_session.topic_slug) filter (where per_session.room_number = 1)`.as('topic_slug'),
+      sql<string>`min(per_session.topic_label) filter (where per_session.room_number = 1)`.as('topic_label'),
+      relevanceMode
+        ? fn.max<number | null>('per_session.relevance').as('relevance')
+        : sql<number | null>`null`.as('relevance'),
+    ])
+    .groupBy('per_session.room_group_id')
+    .as('agg')
+
+  let outer = db.selectFrom(aggregated).selectAll()
 
   if (filters.cursor) {
     const decoded = parseCursor(filters.cursor)
@@ -322,7 +372,10 @@ export async function listOpenSessions(db: Kysely<Database>, filters: ListOpenSe
       name: row.name,
       scheduledAt: row.scheduled_at as Date,
       durationMinutes: row.duration_minutes,
-      capacity: row.capacity as number,
+      // sum()'s result comes back from pg as a string (arbitrary
+      // precision, unlike a plain int4 column) — Number(...) here, not
+      // a bare cast, same reasoning as joined_count just below.
+      capacity: Number(row.capacity),
       joinedCount: Number(row.joined_count),
       topic: { id: row.topic_id, slug: row.topic_slug, label: row.topic_label },
     })),
@@ -373,54 +426,167 @@ export interface JoinSessionResult {
   isNewJoin: boolean
 }
 
-export async function joinSession(db: Kysely<Database>, sessionId: string, userId: string): Promise<JoinSessionResult> {
-  return db.transaction().execute(async (trx) => {
-    const session = await trx
-      .selectFrom('sessions')
-      .select(['id', 'capacity'])
-      .where('id', '=', sessionId)
-      .forUpdate()
-      .executeTakeFirst()
+async function joinSessionInTransaction(trx: Kysely<Database>, sessionId: string, userId: string): Promise<JoinSessionResult> {
+  const session = await trx
+    .selectFrom('sessions')
+    .select(['id', 'capacity'])
+    .where('id', '=', sessionId)
+    .forUpdate()
+    .executeTakeFirst()
 
-    if (!session) {
-      throw new SessionNotFoundError(`session ${sessionId} not found`)
-    }
+  if (!session) {
+    throw new SessionNotFoundError(`session ${sessionId} not found`)
+  }
 
-    const roster = await getRoster(trx, sessionId)
-    const existing = roster.find((entry) => entry.userId === userId)
-    if (existing) {
-      // Revisiting an already-joined session — no new membership row, just
-      // bump recency so the sidebar's "recent sessions" list reflects it.
-      await trx
-        .updateTable('session_users')
-        .set({ last_visited_at: sql`now()` })
-        .where('session_id', '=', sessionId)
-        .where('user_id', '=', userId)
-        .execute()
-      return { entry: existing, isNewJoin: false }
-    }
-
-    const capacity = session.capacity ?? MAX_USERS_PER_SESSION
-    if (roster.length >= capacity) {
-      throw new SessionFullError(`session ${sessionId} is full`)
-    }
-
-    const turnOrder = roster.length
-
+  const roster = await getRoster(trx, sessionId)
+  const existing = roster.find((entry) => entry.userId === userId)
+  if (existing) {
+    // Revisiting an already-joined session — no new membership row, just
+    // bump recency so the sidebar's "recent sessions" list reflects it.
     await trx
-      .insertInto('session_users')
-      .values({ session_id: sessionId, user_id: userId, turn_order: turnOrder })
+      .updateTable('session_users')
+      .set({ last_visited_at: sql`now()` })
+      .where('session_id', '=', sessionId)
+      .where('user_id', '=', userId)
+      .execute()
+    return { entry: existing, isNewJoin: false }
+  }
+
+  const capacity = session.capacity ?? MAX_USERS_PER_SESSION
+  if (roster.length >= capacity) {
+    throw new SessionFullError(`session ${sessionId} is full`)
+  }
+
+  const turnOrder = roster.length
+
+  await trx
+    .insertInto('session_users')
+    .values({ session_id: sessionId, user_id: userId, turn_order: turnOrder })
+    .execute()
+
+  if (turnOrder === 0) {
+    await trx
+      .updateTable('sessions')
+      .set({ status: 'active', current_turn_user_id: userId })
+      .where('id', '=', sessionId)
+      .execute()
+  }
+
+  return { entry: { userId, turnOrder }, isNewJoin: true }
+}
+
+// Transaction-reentrant: Kysely refuses to open a transaction on a
+// connection that's already inside one (`.transaction()` throws on a
+// `Transaction` instance), which joinSessionWithOverflow below hits
+// directly — it calls this with its own already-open `trx` so the
+// capacity check and the overflow-to-a-sibling-room fallback share one
+// atomic unit of work. `db.isTransaction` (a real Kysely property, not
+// a workaround) is what makes that safe: called from anywhere else
+// (sessionRouter.ts's `join`/`visit`, both still pass a bare `db`),
+// this opens its own transaction exactly as before.
+export async function joinSession(db: Kysely<Database>, sessionId: string, userId: string): Promise<JoinSessionResult> {
+  if (db.isTransaction) {
+    return joinSessionInTransaction(db, sessionId, userId)
+  }
+  return db.transaction().execute((trx) => joinSessionInTransaction(trx, sessionId, userId))
+}
+
+export interface JoinSessionWithOverflowResult extends JoinSessionResult {
+  // The session actually joined — may differ from the id passed in, if
+  // that one was full and this call spilled over into a sibling room
+  // (existing or freshly created). Callers (sessionRouter.ts's `join`)
+  // must use this, not the id they requested, for anything downstream —
+  // notifying the right room, and redirecting the frontend to where the
+  // user actually landed.
+  sessionId: string
+  roomNumber: number
+}
+
+// Room-sharding overflow, used by sessionRouter.ts's `join` (the browse-
+// and-click path, StartJoinPage.tsx) — deliberately *not* used by
+// `visit` (direct navigation to a session URL, SessionPage.tsx), which
+// keeps throwing SessionFullError on a full session exactly as before.
+// A direct link is to one *specific* room; silently rerouting it would
+// disconnect whoever followed that link from the room they were
+// actually invited into, which is a worse outcome than the existing
+// "this circle is full" error state.
+//
+// Only ad-hoc, topicless sessions (topic_id null — the pre-existing
+// turn-based flow, never browsable via /p/join) skip overflow entirely
+// and fall straight through to plain joinSession: there's no sibling
+// concept for a private, link-shared session nobody discovered by
+// browsing — spinning up an empty new room for the 9th person to join
+// alone would disconnect them from whoever actually invited them, the
+// same reasoning `visit` above is exempt for.
+export async function joinSessionWithOverflow(
+  db: Kysely<Database>,
+  requestedSessionId: string,
+  userId: string,
+): Promise<JoinSessionWithOverflowResult> {
+  const requested = await db
+    .selectFrom('sessions')
+    .select(['id', 'room_group_id', 'room_number', 'topic_id', 'name', 'duration_minutes', 'capacity'])
+    .where('id', '=', requestedSessionId)
+    .executeTakeFirst()
+
+  if (!requested) {
+    throw new SessionNotFoundError(`session ${requestedSessionId} not found`)
+  }
+
+  if (!requested.topic_id) {
+    const result = await joinSession(db, requestedSessionId, userId)
+    return { ...result, sessionId: requestedSessionId, roomNumber: requested.room_number }
+  }
+
+  return db.transaction().execute(async (trx) => {
+    // Serializes overflow attempts *within this room group only* — never
+    // blocks a join into an unrelated group, and works even the very
+    // first time this group overflows (nothing to `SELECT ... FOR UPDATE`
+    // yet, unlike joinSession's own per-row lock below).
+    await sql`select pg_advisory_xact_lock(hashtext(${requested.room_group_id}::text))`.execute(trx)
+
+    try {
+      const result = await joinSession(trx, requestedSessionId, userId)
+      return { ...result, sessionId: requestedSessionId, roomNumber: requested.room_number }
+    } catch (err) {
+      if (!(err instanceof SessionFullError)) throw err
+    }
+
+    // Requested room is full — try existing siblings newest-first (an
+    // older room having space again, e.g. from a departure, is less
+    // likely than a newer one that was created with headroom).
+    const siblings = await trx
+      .selectFrom('sessions')
+      .select(['id', 'room_number'])
+      .where('room_group_id', '=', requested.room_group_id)
+      .where('id', '!=', requestedSessionId)
+      .orderBy('room_number', 'desc')
       .execute()
 
-    if (turnOrder === 0) {
-      await trx
-        .updateTable('sessions')
-        .set({ status: 'active', current_turn_user_id: userId })
-        .where('id', '=', sessionId)
-        .execute()
+    for (const sibling of siblings) {
+      try {
+        const result = await joinSession(trx, sibling.id, userId)
+        return { ...result, sessionId: sibling.id, roomNumber: sibling.room_number }
+      } catch (err) {
+        if (!(err instanceof SessionFullError)) throw err
+      }
     }
 
-    return { entry: { userId, turnOrder }, isNewJoin: true }
+    // Every existing room is full (or this is the first-ever overflow) —
+    // form a new one now, not chained to the original's own (possibly
+    // long-past) scheduled_at.
+    const nextRoomNumber = Math.max(requested.room_number, ...siblings.map((s) => s.room_number)) + 1
+    const created = await createSession(trx, {
+      topicId: requested.topic_id!,
+      name: requested.name!,
+      scheduledAt: new Date(),
+      durationMinutes: requested.duration_minutes,
+      capacity: requested.capacity!,
+      roomGroupId: requested.room_group_id,
+      roomNumber: nextRoomNumber,
+    })
+    const result = await joinSession(trx, created.id, userId)
+    return { ...result, sessionId: created.id, roomNumber: nextRoomNumber }
   })
 }
 
@@ -439,6 +605,11 @@ export interface SessionSummary {
   capacity: number | null
   joinedCount: number
   topic: Topic | null
+  // Which room within its room-sharding group this is (see
+  // joinSessionWithOverflow). Surfaced so a user who overflowed into a
+  // sibling room sees "Room 2" rather than an unlabeled duplicate of the
+  // circle they clicked — see sessionShared.tsx's visitDisplayName.
+  roomNumber: number
 }
 
 export async function getSessionSummary(db: Kysely<Database>, sessionId: string): Promise<SessionSummary | null> {
@@ -453,6 +624,7 @@ export async function getSessionSummary(db: Kysely<Database>, sessionId: string)
       's.scheduled_at as scheduled_at',
       's.duration_minutes as duration_minutes',
       's.capacity as capacity',
+      's.room_number as room_number',
       't.id as topic_id',
       't.slug as topic_slug',
       't.label as topic_label',
@@ -473,6 +645,7 @@ export async function getSessionSummary(db: Kysely<Database>, sessionId: string)
     capacity: row.capacity,
     joinedCount: Number(row.joined_count),
     topic: row.topic_id ? { id: row.topic_id, slug: row.topic_slug!, label: row.topic_label! } : null,
+    roomNumber: row.room_number,
   }
 }
 

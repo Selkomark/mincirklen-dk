@@ -31,6 +31,7 @@ import {
   getSessionSummary as getSessionSummaryRepo,
   isSessionMember,
   joinSession as joinSessionRepo,
+  joinSessionWithOverflow as joinSessionWithOverflowRepo,
   listOpenSessions as listOpenSessionsRepo,
   listRecentSessionVisits as listRecentSessionVisitsRepo,
   recordGuidelinesAgreement,
@@ -116,21 +117,28 @@ export const sessionRouter = router({
     return sessionService.listOpenSessions({ listOpenSessions: () => listOpenSessionsRepo(ctx.appEnv.db, input) })
   }),
 
+  // Room-sharding aware: a full circle spills over into a sibling room
+  // (existing or freshly created) rather than rejecting the join — see
+  // joinSessionWithOverflow's doc comment in sessionRepository.ts. The
+  // response's `sessionId` is the room actually joined, which may differ
+  // from `input.sessionId`; StartJoinPage.tsx must navigate to *that* id,
+  // not the one it requested.
   join: verifiedProcedure.input(sessionIdInput).mutation(async ({ ctx, input }) => {
     try {
       return await sessionService.joinSession({
         joinSession: async () => {
-          const { entry, isNewJoin } = await joinSessionRepo(ctx.appEnv.db, input.sessionId, ctx.userId)
+          const result = await joinSessionWithOverflowRepo(ctx.appEnv.db, input.sessionId, ctx.userId)
           // Only a genuinely new member fans out a live "joined" event —
           // re-joining a circle you're already in (a double-click, a
           // stale browse-page click) must not re-announce you to
           // everyone currently viewing it. See JoinSessionResult's doc
-          // comment in sessionRepository.ts.
-          if (isNewJoin) {
-            notifyJoinedFireAndForget(ctx.appEnv, input.sessionId, entry)
-            await recordAndPublishJoinMessage(ctx.appEnv, input.sessionId, ctx.userId)
+          // comment in sessionRepository.ts. Notified against the room
+          // actually joined (result.sessionId), not the one requested.
+          if (result.isNewJoin) {
+            notifyJoinedFireAndForget(ctx.appEnv, result.sessionId, result.entry)
+            await recordAndPublishJoinMessage(ctx.appEnv, result.sessionId, ctx.userId)
           }
-          return entry
+          return result
         },
       })
     } catch (err) {
