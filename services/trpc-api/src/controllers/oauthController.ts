@@ -27,6 +27,42 @@ function redirectUriFor(env: AppEnv): string {
   return `${env.publicBaseUrl}/api/auth/callback/google`
 }
 
+// Carries "where to return to after login" through the round trip to
+// Google and back — needed because /manage's inline LoginPage (App.tsx)
+// starts this same flow but must land back on /manage, not the default
+// /p every other login lands on. Deliberately a real relative path, not
+// a symbolic 'manage'/'p' marker this file would have to resolve itself
+// — ADMIN_ROUTE_SEGMENT (App.tsx) is per-deployment configurable and
+// this backend has no access to that frontend env var, so it can't be
+// the one deciding what "the admin path" even is.
+//
+// Piggybacks on the existing CSRF state token/cookie instead of a
+// second cookie: `next` is appended after a "." the random UUID state
+// never contains, and the callback below still requires
+// stateParam === stateCookie byte-for-byte before trusting either half,
+// so this adds no new attack surface. Validated to a plain, single-
+// segment-or-more absolute path (no scheme, no protocol-relative `//`)
+// — not that it could escape the fixed `${env.publicBaseUrl}` prefix
+// below anyway, this is just hygiene against a malformed redirect
+// target, not an open-redirect guard.
+const NEXT_PATH_RE = /^\/[A-Za-z0-9/_-]*$/
+
+function parseNextParam(raw: string | undefined): string | null {
+  if (!raw || !NEXT_PATH_RE.test(raw) || raw.startsWith('//')) return null
+  return raw
+}
+
+function composeState(next: string | null): string {
+  const state = randomUUID()
+  return next ? `${state}.${next}` : state
+}
+
+function nextFromState(state: string | undefined): string | null {
+  if (!state) return null
+  const dot = state.indexOf('.')
+  return dot === -1 ? null : parseNextParam(state.slice(dot + 1))
+}
+
 // Every failure branch below sends the browser back to a page it can
 // render, never a raw framework error page — a user mid-login (stale
 // OAuth state, an expired code, a KMS hiccup, a DB blip) should land on a
@@ -56,7 +92,8 @@ export function createOAuthController(env: AppEnv): Hono {
       return c.text('Google login is not configured', 503)
     }
 
-    const state = randomUUID()
+    const next = parseNextParam(c.req.query('next'))
+    const state = composeState(next)
     setCookie(c, OAUTH_STATE_COOKIE_NAME, state, {
       httpOnly: true,
       secure: true,
@@ -82,6 +119,8 @@ export function createOAuthController(env: AppEnv): Hono {
     if (!stateParam || !stateCookie || stateParam !== stateCookie) {
       return loginErrorRedirect(c, env, 'oauth_state')
     }
+
+    const next = nextFromState(stateCookie)
 
     const code = c.req.query('code')
     if (!code) {
@@ -151,7 +190,16 @@ export function createOAuthController(env: AppEnv): Hono {
       // compile-time link to the frontend's route table and won't error if
       // that table changes again — only oauth.integration.test.ts's
       // location assertions would catch a future drift like this one.
-      const destination = hasProfile ? '/p' : '/register?welcome=1'
+      // `next` (from the state above) overrides the /p default — set
+      // when this login started from /manage's inline LoginPage, so an
+      // admin logging in from a fresh browser lands back on /manage
+      // instead of the default end-user destination. A profile-less
+      // first-time login still goes through /register first regardless
+      // of `next` — carried forward as its own query param so
+      // RegisterPage's completion (App.tsx) can finish the same detour.
+      const destination = hasProfile
+        ? (next ?? '/p')
+        : `/register?welcome=1${next ? `&next=${encodeURIComponent(next)}` : ''}`
       return c.redirect(`${env.publicBaseUrl}${destination}`, 302)
     } catch (err) {
       // Anything downstream of the code exchange — a bad/expired code, a

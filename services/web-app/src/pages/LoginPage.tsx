@@ -35,7 +35,16 @@ const OTHER_PROVIDERS = [
   { id: 'microsoft', labelKey: 'otherProviders.microsoft' },
 ]
 
-export function LoginPage() {
+export interface LoginPageProps {
+  // Set only by /manage's inline login (App.tsx) — appended to the
+  // Google OAuth start request so oauthController.ts's callback lands
+  // the browser back on /manage instead of the default /p once signed
+  // in. Every other LoginPage render (the shared /login route) omits
+  // this and gets the default.
+  nextPath?: string
+}
+
+export function LoginPage({ nextPath }: LoginPageProps = {}) {
   const { t } = useTranslation('auth')
   const locale = useLocale()
   useDocumentTitle(t('login.documentTitle'))
@@ -79,7 +88,9 @@ export function LoginPage() {
             <Button
               variant="secondary"
               onPress={() => {
-                window.location.href = '/api/auth/google/start'
+                window.location.href = nextPath
+                  ? `/api/auth/google/start?next=${encodeURIComponent(nextPath)}`
+                  : '/api/auth/google/start'
               }}
               style={{ width: '100%' }}
             >

@@ -44,7 +44,13 @@ const BASE = import.meta.env.BASE_URL
 // still ships this string to every visitor's browser — it's not a secret
 // from anyone actually inspecting the live site, only from casual
 // repo/source review.
-const ADMIN_ROUTE_SEGMENT = import.meta.env.VITE_ADMIN_ROUTE || 'manage'
+// Exported so LoginPage.tsx can build the bare `/${ADMIN_ROUTE_SEGMENT}`
+// path to send as oauthController.ts's `?next=` param on the login
+// started from /manage's inline LoginPage — the backend has no access
+// to this frontend-only Vite env var, so it can't be the one deciding
+// what "the admin path" is for a given deployment; it just redirects
+// back to whatever relative path this frontend told it to.
+export const ADMIN_ROUTE_SEGMENT = import.meta.env.VITE_ADMIN_ROUTE || 'manage'
 
 // Every path builder takes the current `locale` explicitly (see useLocale
 // below) and splices its URL segment in right after BASE — the one thing
@@ -352,7 +358,35 @@ const GATED_ROUTE_NAMES = new Set(['login', 'register', 'p', 'p-join', 'p-new', 
 // 5 (radical transparency as a safety mechanism) — it's meant to build
 // trust *before* launch, not after. 'landing' is handled separately
 // below (it renders a waitlist-signup variant instead of redirecting).
-const PLATFORM_GATE_EXEMPT_ROUTE_NAMES = new Set(['landing', 'public-page', 'moderation-transparency'])
+// 'manage' is exempt too, matching the backend: requireGateAccess
+// (controllers/trpc.ts) already lets admin.access holders straight
+// through regardless of any gate's state, so /manage was never actually
+// protected by platform_launch — this frontend redirect was the only
+// thing still bouncing a fresh, not-yet-authenticated admin browser to
+// the waitlist landing page instead of letting them log in. The path
+// itself stays unadvertised (ADMIN_ROUTE_SEGMENT above), and the real
+// access boundary — a completed login plus an actual permission — is
+// unchanged below.
+const PLATFORM_GATE_EXEMPT_ROUTE_NAMES = new Set(['landing', 'public-page', 'moderation-transparency', 'manage'])
+
+// A first-time login started from /manage (no profile yet) still detours
+// through /register, but oauthController.ts carries the original
+// `?next=/manage` forward onto that redirect (see its comment) so
+// RegisterPage's completion here can finish the same detour instead of
+// defaulting to /p like every other registration. Mirrors LoginPage.tsx's
+// loginErrorKey() in reading window.location.search directly rather than
+// threading it through parseRoute — this is a one-off query param on a
+// single route, not routing state. Re-validated here (not just trusted
+// from the URL) for the same reason oauthController.ts validates it: a
+// bookmarked or hand-edited /register?next=... URL is still just user
+// input.
+function registerCompletionPath(locale: Locale): string {
+  const next = new URLSearchParams(window.location.search).get('next')
+  if (next && /^\/[A-Za-z0-9/_-]*$/.test(next) && !next.startsWith('//')) {
+    return next
+  }
+  return pPath(locale)
+}
 
 function useRoute() {
   const [pathname, setPathname] = useState(() => window.location.pathname)
@@ -399,6 +433,18 @@ function Shell() {
   // (fails closed) rather than only false once we positively know the
   // gate is closed.
   const platformGateOk = platformGateStatus.kind === 'loaded' && (platformGateStatus.open || platformGateStatus.hasAccess)
+  // Narrower than platformGateOk — deliberately excludes `open`. Used
+  // only by /manage's needs-profile branch below to decide whether to
+  // offer the registration detour at all: `hasAccess` (gatesRouter.ts's
+  // getStatus) is `unlocked || admin.access`, i.e. an admin, or someone
+  // who personally redeemed a platform_launch invite — neither of which
+  // is "just any authenticated visitor," unlike `open` (true for
+  // literally everyone once the platform has launched). /manage stays
+  // admin-gated regardless of platform_launch's own launch state; a
+  // non-admin landing here — invited or not — gets the 403 below, the
+  // same wall ManagePage's own useAccess() check has always shown a
+  // non-admin verified user.
+  const manageAdminBypass = platformGateStatus.kind === 'loaded' && platformGateStatus.hasAccess
 
   // A `?invite=<token>` query param redeems a grant into the mc_gate_
   // cookie (gatesRouter.ts's redeemInvite) — reached most naturally via a
@@ -502,7 +548,13 @@ function Shell() {
       return
     }
 
-    if (route.name === 'p' || route.name === 'p-join' || route.name === 'p-new' || route.name === 'session' || route.name === 'manage') {
+    // 'manage' deliberately excluded here — /login and /register stay
+    // platform_launch-gated (see the redirect effect above), so sending
+    // an anonymous/needs-profile manage visitor there would just bounce
+    // them straight to the waitlist landing page. Instead the render
+    // below shows LoginPage/RegisterPage inline, in place, under the
+    // /manage path itself.
+    if (route.name === 'p' || route.name === 'p-join' || route.name === 'p-new' || route.name === 'session') {
       if (authStatus.kind === 'anonymous') {
         navigate(loginPath(locale))
       } else if (authStatus.kind === 'needs-profile') {
@@ -567,7 +619,16 @@ function Shell() {
         <div
           className={[
             'ds-shell-view',
-            route.name === 'session' || route.name === 'system-design' || route.name === 'manage'
+            // 'manage' only wants the fixed, non-scrolling shell for its
+            // actual dashboard (ManagePage's own sidebar+content layout
+            // manages its own internal scroll) — when it's instead
+            // showing the inline LoginPage/RegisterPage fallback
+            // (anonymous/needs-profile, see the render block below),
+            // that's the same long-form scrollable content the
+            // standalone /login and /register routes use, and needs the
+            // same '--scroll' treatment or it clips off-screen with no
+            // way to reach the rest of the form.
+            route.name === 'session' || route.name === 'system-design' || (route.name === 'manage' && authStatus.kind === 'verified')
               ? 'ds-shell-view--fixed'
               : 'ds-shell-view--scroll',
           ].join(' ')}
@@ -622,9 +683,32 @@ function Shell() {
             )}
           {route.name === 'login' && authStatus.kind === 'anonymous' && platformGateOk && <LoginPage />}
           {route.name === 'register' && authStatus.kind === 'needs-profile' && platformGateOk && (
-            <RegisterPage onComplete={() => navigate(pPath(locale))} />
+            // Usually pPath(locale) — registerCompletionPath only differs
+            // when this /register visit is the needs-profile detour from
+            // a /manage-started login (?next=/manage on the URL, set by
+            // oauthController.ts), in which case it sends the new admin
+            // on to /manage instead of the default /p.
+            <RegisterPage onComplete={() => navigate(registerCompletionPath(locale))} />
           )}
-          {route.name === 'manage' && authStatus.kind === 'verified' && platformGateOk && (
+          {/* /manage never checks platformGateOk — see PLATFORM_GATE_EXEMPT_ROUTE_NAMES's
+              comment above. Login/register render inline here (not a
+              navigate to the shared, still-gated /login and /register
+              routes) so a fresh admin browser gets a login prompt in
+              place instead of bouncing through the waitlist landing
+              page. */}
+          {route.name === 'manage' && authStatus.kind === 'anonymous' && <LoginPage nextPath={`/${ADMIN_ROUTE_SEGMENT}`} />}
+          {route.name === 'manage' && authStatus.kind === 'needs-profile' && manageAdminBypass && (
+            // Reached by a freshly master-admin-bootstrapped account
+            // (adminBootstrapService.ts assigns the admin role at login
+            // time, before profile completion) logging in from /manage
+            // for the very first time — a real admin with no profile
+            // yet, not a random signup.
+            <RegisterPage onComplete={() => navigate(managePath(locale))} />
+          )}
+          {route.name === 'manage' && authStatus.kind === 'needs-profile' && !manageAdminBypass && (
+            <ErrorPage code={403} title={t('forbidden.title')} message={t('forbidden.message')} />
+          )}
+          {route.name === 'manage' && authStatus.kind === 'verified' && (
             <ManagePage section={route.section} onNavigate={(section) => navigate(managePath(locale, section))} />
           )}
         </div>

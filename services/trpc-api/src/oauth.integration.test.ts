@@ -118,8 +118,8 @@ function findCookie(res: Response, name: string): string | null {
   return cookie ? (cookie.split(';')[0] as string) : null
 }
 
-async function startLogin(): Promise<{ stateCookie: string; state: string }> {
-  const res = await app.request('/auth/google/start')
+async function startLogin(next?: string): Promise<{ stateCookie: string; state: string }> {
+  const res = await app.request(`/auth/google/start${next ? `?next=${encodeURIComponent(next)}` : ''}`)
   expect(res.status).toBe(302)
 
   const stateCookie = findCookie(res, 'mc_oauth_state')
@@ -268,6 +268,86 @@ describe('GET /auth/callback/google', () => {
 
     expect(secondRes.status).toBe(302)
     expect(secondRes.headers.get('location')).toBe(`${PUBLIC_BASE_URL}/register?welcome=1`)
+  })
+
+  // /manage's inline LoginPage (App.tsx) starts login with ?next=/manage
+  // so an admin logging in from a fresh browser lands back on /manage,
+  // not the default end-user /p — see oauthController.ts's composeState.
+  test('an existing-profile login started with ?next=/manage redirects to /manage instead of /p', async () => {
+    nextSubject = `subject-${crypto.randomUUID()}`
+    const subjectHash = hashSubject(nextSubject)
+
+    const first = await startLogin()
+    await app.request(`/auth/callback/google?code=fake-code&state=${first.state}`, {
+      headers: { cookie: first.stateCookie },
+    })
+    const linked = await db
+      .selectFrom('user_identities')
+      .select('user_id')
+      .where('provider_subject_hash', '=', subjectHash)
+      .executeTakeFirstOrThrow()
+    await upsertUserProfile(db, TEST_VAULT, {
+      userId: linked.user_id,
+      firstName: 'Grace',
+      lastName: 'Hopper',
+      gender: 'other',
+      country: 'GB',
+      mobileNumber: '+44 20 7946 0959',
+      stayAnonymous: true,
+      termsAcceptedAt: new Date(),
+    })
+
+    const second = await startLogin('/manage')
+    const secondRes = await app.request(`/auth/callback/google?code=fake-code&state=${second.state}`, {
+      headers: { cookie: second.stateCookie },
+    })
+    expect(secondRes.status).toBe(302)
+    expect(secondRes.headers.get('location')).toBe(`${PUBLIC_BASE_URL}/manage`)
+  })
+
+  test('a first-time login started with ?next=/manage still goes to /register first, carrying `next` forward', async () => {
+    nextSubject = `subject-${crypto.randomUUID()}`
+
+    const { state, stateCookie } = await startLogin('/manage')
+    const res = await app.request(`/auth/callback/google?code=fake-code&state=${state}`, {
+      headers: { cookie: stateCookie },
+    })
+    expect(res.status).toBe(302)
+    expect(res.headers.get('location')).toBe(`${PUBLIC_BASE_URL}/register?welcome=1&next=%2Fmanage`)
+  })
+
+  test('a malformed ?next is ignored, falling back to the default /p destination', async () => {
+    nextSubject = `subject-${crypto.randomUUID()}`
+    const subjectHash = hashSubject(nextSubject)
+
+    const first = await startLogin()
+    await app.request(`/auth/callback/google?code=fake-code&state=${first.state}`, {
+      headers: { cookie: first.stateCookie },
+    })
+    const linked = await db
+      .selectFrom('user_identities')
+      .select('user_id')
+      .where('provider_subject_hash', '=', subjectHash)
+      .executeTakeFirstOrThrow()
+    await upsertUserProfile(db, TEST_VAULT, {
+      userId: linked.user_id,
+      firstName: 'Katherine',
+      lastName: 'Johnson',
+      gender: 'other',
+      country: 'GB',
+      mobileNumber: '+44 20 7946 0960',
+      stayAnonymous: true,
+      termsAcceptedAt: new Date(),
+    })
+
+    // A scheme-relative target — could otherwise be used to redirect a
+    // browser off-site were it ever trusted verbatim.
+    const second = await startLogin('//evil.example.com')
+    const secondRes = await app.request(`/auth/callback/google?code=fake-code&state=${second.state}`, {
+      headers: { cookie: second.stateCookie },
+    })
+    expect(secondRes.status).toBe(302)
+    expect(secondRes.headers.get('location')).toBe(`${PUBLIC_BASE_URL}/p`)
   })
 
   // The two cases previously here — an existing mc_session cookie
