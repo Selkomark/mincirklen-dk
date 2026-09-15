@@ -137,27 +137,11 @@ function RevokeAccessButton({ email, signupId, onRevoked }: { email: string; sig
   )
 }
 
-function CopyTextButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false)
-
-  async function copy() {
-    await navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  return (
-    <Button variant="ghost" onPress={() => void copy()}>
-      {copied ? 'Copied!' : 'Copy'}
-    </Button>
-  )
-}
-
 function SignupsPanel({ gateKey, onChanged }: { gateKey: string; onChanged: () => void }) {
   const [signups, setSignups] = useState<GateSignup[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [grantingId, setGrantingId] = useState<string | null>(null)
-  const [inviteUrl, setInviteUrl] = useState<string | null>(null)
+  const [copiedForEmail, setCopiedForEmail] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -172,13 +156,26 @@ function SignupsPanel({ gateKey, onChanged }: { gateKey: string; onChanged: () =
     void load()
   }, [load])
 
-  async function grant(id: string) {
+  // The granted row's own Copy invite link button (CopyInviteLinkButton
+  // above) still works anytime afterward — this is just the common case
+  // (grant, then immediately go paste the link somewhere) needing one
+  // fewer click, not a replacement for it.
+  async function grant(id: string, email: string) {
     setGrantingId(id)
-    setInviteUrl(null)
     setError(null)
+    setCopiedForEmail(null)
     try {
       const result = await postTrpc<{ inviteUrl: string }>('gates.grantSignup', { signupId: id })
-      setInviteUrl(result.inviteUrl)
+      try {
+        await navigator.clipboard.writeText(result.inviteUrl)
+        setCopiedForEmail(email)
+        setTimeout(() => setCopiedForEmail(null), 3000)
+      } catch {
+        // Clipboard access can fail silently (permissions, a non-secure
+        // context) — granting itself already succeeded regardless, and
+        // the row's own Copy invite link button is still right there as
+        // a fallback, so this is quiet rather than surfaced as an error.
+      }
       await load()
       onChanged()
     } catch {
@@ -189,7 +186,6 @@ function SignupsPanel({ gateKey, onChanged }: { gateKey: string; onChanged: () =
   }
 
   async function handleRevoked() {
-    setInviteUrl(null)
     await load()
     onChanged()
   }
@@ -201,15 +197,7 @@ function SignupsPanel({ gateKey, onChanged }: { gateKey: string; onChanged: () =
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
       {error && <Alert variant="urgent">{error}</Alert>}
-      {inviteUrl && (
-        <Alert variant="safe">
-          Invite link — copy and send this to them directly, there's no automated email:
-          <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center', marginTop: 'var(--space-2)' }}>
-            <code style={{ wordBreak: 'break-all', flex: 1 }}>{inviteUrl}</code>
-            <CopyTextButton text={inviteUrl} />
-          </div>
-        </Alert>
-      )}
+      {copiedForEmail && <Alert variant="safe">Invite link copied to clipboard — ready to send to {copiedForEmail}.</Alert>}
       {signups.length === 0 ? (
         <span style={{ color: 'var(--text-secondary)' }}>No signups yet.</span>
       ) : (
@@ -243,7 +231,7 @@ function SignupsPanel({ gateKey, onChanged }: { gateKey: string; onChanged: () =
                       <RevokeAccessButton signupId={signup.id} email={signup.email} onRevoked={() => void handleRevoked()} />
                     </div>
                   ) : (
-                    <Button variant="safe" isPending={grantingId === signup.id} onPress={() => void grant(signup.id)}>
+                    <Button variant="safe" isPending={grantingId === signup.id} onPress={() => void grant(signup.id, signup.email)}>
                       Grant access
                     </Button>
                   )}
