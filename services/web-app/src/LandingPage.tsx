@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from './components/Badge'
 import { Row } from './components/Row'
@@ -11,19 +12,85 @@ import { Testimonial } from './components/Testimonial'
 import { Stat } from './components/Stat'
 import { CTASection } from './components/CTASection'
 import { PricingCard } from './components/PricingCard'
+import { TextField } from './components/TextField'
+import { Button } from './components/Button'
+import { Alert } from './components/Alert'
 import { publicPagePath } from './publicPages/pages'
 import { loginPath, landingPath, useLocale } from './App'
-import { SiteHeader } from './SiteHeader'
+import { SiteHeader, WAITLIST_ANCHOR_ID } from './SiteHeader'
 import { SiteFooter } from './SiteFooter'
 import { LinkButton } from './LinkButton'
 import { usePageMeta } from './usePageMeta'
 import { useJsonLd } from './useJsonLd'
 import { SITE_ORIGIN, SITE_NAME } from './siteConfig'
+import { postTrpc } from './gateShared'
 import heroImage from './assets/hero-circle.webp'
 
-export function LandingPage() {
+type SubmitState = { kind: 'idle' } | { kind: 'submitting' } | { kind: 'done' } | { kind: 'error' }
+
+// The hero's primary CTA while platform_launch is invite-only — same
+// hero/header/footer chrome as the real landing page, "basically the
+// same page" per the request, not a separate route/component tree.
+// Every other CTA on this page (pricing, the closing section) points
+// here too via `ctaHref` once waitlistMode is on, rather than at
+// loginPath — a gated visitor should never be offered a path toward
+// Google login, only toward the waitlist itself.
+function WaitlistForm() {
+  const { t } = useTranslation('landing')
+  const [email, setEmail] = useState('')
+  const [state, setState] = useState<SubmitState>({ kind: 'idle' })
+
+  async function handleSubmit() {
+    if (!email.trim()) return
+    setState({ kind: 'submitting' })
+    try {
+      await postTrpc('gates.submitSignup', { gateKey: 'platform_launch', email })
+      setState({ kind: 'done' })
+    } catch {
+      setState({ kind: 'error' })
+    }
+  }
+
+  // A stable id, present regardless of submission state — SiteHeader's
+  // "Join the waitlist" CTA anchors straight here (WAITLIST_ANCHOR_ID),
+  // so the target must still resolve even after a successful submit
+  // collapses the form down to just the success message.
+  return (
+    <div id={WAITLIST_ANCHOR_ID} style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 420, scrollMarginTop: 96 }}>
+      {state.kind === 'done' ? (
+        <Alert variant="safe">{t('waitlist.success')}</Alert>
+      ) : (
+        <>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 240px' }}>
+              <TextField
+                label={t('waitlist.emailLabel')}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={t('waitlist.emailPlaceholder')}
+              />
+            </div>
+            <Button variant="safe" isPending={state.kind === 'submitting'} onPress={() => void handleSubmit()}>
+              {t('waitlist.submit')}
+            </Button>
+          </div>
+          {state.kind === 'error' && <Alert variant="urgent">{t('waitlist.error')}</Alert>}
+        </>
+      )}
+    </div>
+  )
+}
+
+export function LandingPage({ waitlistMode = false }: { waitlistMode?: boolean }) {
   const { t } = useTranslation('landing')
   const locale = useLocale()
+  // Every other CTA on this page (pricing cards, the closing section)
+  // uses this instead of a bare loginPath(locale) once waitlistMode is
+  // on — otherwise they'd still send a gated visitor toward a Google
+  // login button that leads nowhere real (see SiteHeader.tsx's identical
+  // reasoning for its own CTA).
+  const ctaHref = waitlistMode ? `#${WAITLIST_ANCHOR_ID}` : loginPath(locale)
   const pageUrl = `${SITE_ORIGIN}${landingPath(locale)}`
   const imageUrl = `${SITE_ORIGIN}${heroImage}`
   // Real hreflang alternates now (see usePageMeta.ts) — a crawler
@@ -82,15 +149,19 @@ export function LandingPage() {
           />
         }
       >
-        <Badge variant="safe">{t('hero.badge')}</Badge>
+        <Badge variant="safe">{waitlistMode ? t('waitlist.badge') : t('hero.badge')}</Badge>
         <Heading level={1}>{t('hero.title')}</Heading>
-        <Text variant="lead">{t('hero.lead')}</Text>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <LinkButton href={loginPath(locale)}>{t('hero.joinCircle')}</LinkButton>
-          <LinkButton href={publicPagePath('how-it-works', locale)} variant="secondary">
-            {t('hero.learnMore')}
-          </LinkButton>
-        </div>
+        <Text variant="lead">{waitlistMode ? t('waitlist.lead') : t('hero.lead')}</Text>
+        {waitlistMode ? (
+          <WaitlistForm />
+        ) : (
+          <div style={{ display: 'flex', gap: 12 }}>
+            <LinkButton href={loginPath(locale)}>{t('hero.joinCircle')}</LinkButton>
+            <LinkButton href={publicPagePath('how-it-works', locale)} variant="secondary">
+              {t('hero.learnMore')}
+            </LinkButton>
+          </div>
+        )}
       </Hero>
 
       <Section tone="raised" spacing="lg">
@@ -155,7 +226,7 @@ export function LandingPage() {
               price={t('pricing.freePrice')}
               features={[t('pricing.freeFeature1'), t('pricing.freeFeature2'), t('pricing.freeFeature3')]}
               cta={
-                <LinkButton href={loginPath(locale)} variant="secondary" style={{ width: '100%' }}>
+                <LinkButton href={ctaHref} variant="secondary" style={{ width: '100%' }}>
                   {t('pricing.getStarted')}
                 </LinkButton>
               }
@@ -168,7 +239,7 @@ export function LandingPage() {
               period={t('pricing.supportPeriod')}
               features={[t('pricing.supportFeature1'), t('pricing.supportFeature2'), t('pricing.supportFeature3')]}
               cta={
-                <LinkButton href={loginPath(locale)} style={{ width: '100%' }}>
+                <LinkButton href={ctaHref} style={{ width: '100%' }}>
                   {t('pricing.getStarted')}
                 </LinkButton>
               }
@@ -181,7 +252,7 @@ export function LandingPage() {
       <CTASection
         title={t('cta.title')}
         actions={
-          <LinkButton href={loginPath(locale)} variant="secondary">
+          <LinkButton href={ctaHref} variant="secondary">
             {t('cta.action')}
           </LinkButton>
         }

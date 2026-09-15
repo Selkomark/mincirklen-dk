@@ -20,6 +20,8 @@ import { ErrorBoundary } from './ErrorBoundary'
 import { PUBLIC_PAGES, PUBLIC_PAGE_ORDER, type PublicPageId } from './publicPages/pages'
 import { PublicPageView } from './publicPages/PublicPageView'
 import { CookieConsentBanner } from './CookieConsentBanner'
+import { useGateStatus } from './useGateStatus'
+import { postTrpc } from './gateShared'
 import {
   fallbackLocale,
   formatLocaleSegment,
@@ -57,7 +59,7 @@ export const sessionPath = (locale: Locale, sessionId: string) => `${BASE}${form
 export const loginPath = (locale: Locale) => `${BASE}${formatLocaleSegment(locale)}/login`
 export const registerPath = (locale: Locale) => `${BASE}${formatLocaleSegment(locale)}/register`
 export const moderationTransparencyPath = (locale: Locale) => `${BASE}${formatLocaleSegment(locale)}/moderation-transparency`
-export type ManageSection = 'review' | 'roles' | 'users'
+export type ManageSection = 'review' | 'roles' | 'users' | 'gates'
 export const managePath = (locale: Locale, section?: ManageSection) =>
   `${BASE}${formatLocaleSegment(locale)}/${ADMIN_ROUTE_SEGMENT}${section ? `/${section}` : ''}`
 
@@ -124,6 +126,22 @@ function RouteProviders({ locale, navigate, children }: { locale: Locale; naviga
     <LocaleContext.Provider value={locale}>
       <NavigateContext.Provider value={navigate}>{children}</NavigateContext.Provider>
     </LocaleContext.Provider>
+  )
+}
+
+// `html`/`body` are deliberately overflow:hidden app-wide (index.css —
+// a mobile on-screen-keyboard fix) — `.ds-shell-view--scroll` is the
+// actual scroll container every route needs, not just the ones under
+// Shell's main return below. Every route rendered *without* this (a
+// public page, the transparency report, a 404, a blocked-market page)
+// has no scroll container at all, so any content taller than the
+// viewport is simply clipped, unreachable, with no visible scrollbar to
+// hint why.
+function ScrollableView({ children }: { children: ReactNode }) {
+  return (
+    <div className="ds-shell-root" style={{ display: 'flex', flexDirection: 'column' }}>
+      <div className="ds-shell-view ds-shell-view--scroll">{children}</div>
+    </div>
   )
 }
 
@@ -194,7 +212,7 @@ function parsePageRoute(normalized: string): PageRoute {
   if (adminSegments[0] === ADMIN_ROUTE_SEGMENT && adminSegments.length <= 2) {
     const sub = adminSegments[1]
     if (sub === undefined) return { name: 'manage', section: null }
-    if (sub === 'review' || sub === 'roles' || sub === 'users') return { name: 'manage', section: sub }
+    if (sub === 'review' || sub === 'roles' || sub === 'users' || sub === 'gates') return { name: 'manage', section: sub }
   }
 
   const sessionMatch = normalized.match(/^s\/([^/]+)$/)
@@ -327,6 +345,15 @@ export function useAuthStatus(gateKey: string | null): AuthStatus {
 // this is the UI-side half of the same gate, not a replacement for it.
 const GATED_ROUTE_NAMES = new Set(['login', 'register', 'p', 'p-join', 'p-new', 'session', 'manage'])
 
+// Routes the platform_launch gate never touches: public-page and
+// moderation-transparency are already backend-public (publicPagePath's
+// content, moderationRouter.ts's transparencyMetrics), and gating the
+// transparency report specifically would contradict CHARTER.md principle
+// 5 (radical transparency as a safety mechanism) — it's meant to build
+// trust *before* launch, not after. 'landing' is handled separately
+// below (it renders a waitlist-signup variant instead of redirecting).
+const PLATFORM_GATE_EXEMPT_ROUTE_NAMES = new Set(['landing', 'public-page', 'moderation-transparency'])
+
 function useRoute() {
   const [pathname, setPathname] = useState(() => window.location.pathname)
 
@@ -362,6 +389,62 @@ function Shell() {
 
   const gateKey = routeResult.kind === 'page' && GATED_ROUTE_NAMES.has(routeResult.page.name) ? routeResult.page.name : null
   const authStatus = useAuthStatus(gateKey)
+  const platformGateStatus = useGateStatus('platform_launch')
+  // Guards the *render* of every gated route below, not just the
+  // redirect effect further down — the effect only fires after a
+  // render has already happened, which without this would let e.g.
+  // LoginPage flash its real "Continue with Google" button for one
+  // frame while platformGateStatus is still loading, before the
+  // redirect away from it lands. Deliberately false while loading
+  // (fails closed) rather than only false once we positively know the
+  // gate is closed.
+  const platformGateOk = platformGateStatus.kind === 'loaded' && (platformGateStatus.open || platformGateStatus.hasAccess)
+
+  // A `?invite=<token>` query param redeems a grant into the mc_gate_
+  // cookie (gatesRouter.ts's redeemInvite) — reached most naturally via a
+  // bare link to `/`, but handled here regardless of route so a shared
+  // link with extra path segments still works. Hard-navigates to the
+  // same URL with the param stripped once redeemed, rather than trying
+  // to force useGateStatus to re-fetch — same "just reload" precedent
+  // SiteHeader.tsx's logout already uses for a session-cookie change.
+  // Silently ignores an invalid/expired token: the visitor just stays on
+  // whatever the gate would otherwise show them, no error UI to build for
+  // a token nobody but an admin ever hands out.
+  useEffect(() => {
+    if (!window.location.search.includes('invite=')) return
+    const token = new URLSearchParams(window.location.search).get('invite')
+    if (!token) return
+
+    let cancelled = false
+    void (async () => {
+      try {
+        await postTrpc('gates.redeemInvite', { token })
+      } catch {
+        // See comment above — an invalid token just leaves the gate as-is.
+      }
+      if (!cancelled) {
+        const url = new URL(window.location.href)
+        url.searchParams.delete('invite')
+        window.location.href = `${url.pathname}${url.search}`
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Everything except the exempt routes above stays unreachable while
+  // platform_launch is closed for this visitor — redirect to the landing
+  // page, which renders the waitlist-signup variant below instead of
+  // this route. This is UX only, same relationship the auth-status
+  // redirect effect below has to protectedProcedure/verifiedProcedure —
+  // the real enforcement is requireGateAccess (controllers/trpc.ts).
+  useEffect(() => {
+    if (routeResult.kind !== 'page' || platformGateStatus.kind === 'loading') return
+    if (platformGateStatus.open || platformGateStatus.hasAccess) return
+    if (PLATFORM_GATE_EXEMPT_ROUTE_NAMES.has(routeResult.page.name)) return
+    navigate(landingPath(routeResult.locale))
+  }, [routeResult, platformGateStatus, navigate])
 
   // Inserts a locale segment whenever the URL didn't carry a usable one —
   // stored/detected language (i18n.ts's own LanguageDetector already
@@ -439,7 +522,9 @@ function Shell() {
   if (routeResult.kind === 'market-unavailable') {
     return (
       <RouteProviders locale={routeResult.locale} navigate={navigate}>
-        <MarketUnavailablePage />
+        <ScrollableView>
+          <MarketUnavailablePage />
+        </ScrollableView>
       </RouteProviders>
     )
   }
@@ -449,7 +534,9 @@ function Shell() {
   if (route.name === 'public-page') {
     return (
       <RouteProviders locale={locale} navigate={navigate}>
-        <PublicPageView id={route.id} />
+        <ScrollableView>
+          <PublicPageView id={route.id} />
+        </ScrollableView>
       </RouteProviders>
     )
   }
@@ -457,7 +544,9 @@ function Shell() {
   if (route.name === 'moderation-transparency') {
     return (
       <RouteProviders locale={locale} navigate={navigate}>
-        <ModerationTransparencyPage />
+        <ScrollableView>
+          <ModerationTransparencyPage />
+        </ScrollableView>
       </RouteProviders>
     )
   }
@@ -465,7 +554,9 @@ function Shell() {
   if (route.name === 'not-found') {
     return (
       <RouteProviders locale={locale} navigate={navigate}>
-        <ErrorPage code={404} title={t('notFound.title')} message={t('notFound.message')} />
+        <ScrollableView>
+          <ErrorPage code={404} title={t('notFound.title')} message={t('notFound.message')} />
+        </ScrollableView>
       </RouteProviders>
     )
   }
@@ -482,8 +573,25 @@ function Shell() {
           ].join(' ')}
         >
           {route.name === 'system-design' && <Catalog />}
-          {route.name === 'landing' && <LandingPage />}
+          {route.name === 'landing' && (
+            // Keyed on `unlocked`, not `open` and not `hasAccess`:
+            // - A real visitor who redeemed a valid invite link has
+            //   `unlocked: true` (their own gate cookie verifies) even
+            //   while the gate's global mode is still invite-only — they
+            //   see the real page, not the waitlist form, the moment
+            //   their link works.
+            // - An admin with no gate cookie of their own has
+            //   `hasAccess: true` (the admin.access bypass) but
+            //   `unlocked: false`, so they still see the waitlist
+            //   variant here as a preview of what a real visitor sees —
+            //   `hasAccess` alone would incorrectly hide that from them.
+            // The redirect effect above still uses `hasAccess`, so an
+            // admin can always reach every other route regardless of
+            // what renders here.
+            <LandingPage waitlistMode={platformGateStatus.kind === 'loaded' && !platformGateStatus.unlocked} />
+          )}
           {authStatus.kind === 'verified' &&
+            platformGateOk &&
             (route.name === 'session' || route.name === 'p' || route.name === 'p-join' || route.name === 'p-new') && (
               // One persistent connection across every gated page below,
               // not one per page — see SessionSocketProvider.tsx. Mounted
@@ -512,11 +620,11 @@ function Shell() {
                 </SessionSocketProvider>
               </PreferencesProvider>
             )}
-          {route.name === 'login' && authStatus.kind === 'anonymous' && <LoginPage />}
-          {route.name === 'register' && authStatus.kind === 'needs-profile' && (
+          {route.name === 'login' && authStatus.kind === 'anonymous' && platformGateOk && <LoginPage />}
+          {route.name === 'register' && authStatus.kind === 'needs-profile' && platformGateOk && (
             <RegisterPage onComplete={() => navigate(pPath(locale))} />
           )}
-          {route.name === 'manage' && authStatus.kind === 'verified' && (
+          {route.name === 'manage' && authStatus.kind === 'verified' && platformGateOk && (
             <ManagePage section={route.section} onNavigate={(section) => navigate(managePath(locale, section))} />
           )}
         </div>

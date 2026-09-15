@@ -7,6 +7,7 @@
     "about": "About",
     "safety": "Safety",
     "joinNow": "Join now",
+    "joinWaitlist": "Join the waitlist",
     "start": "Start",
     "logOut": "Log out"
   },
@@ -41,6 +42,15 @@
     "lead": "Anonymous, moderated peer-support circles. We're brand new — join one of our first circles and help shape what this becomes.",
     "joinCircle": "Join a circle",
     "learnMore": "Learn more"
+  },
+  "waitlist": {
+    "badge": "Coming soon",
+    "lead": "We're not open yet. Leave your email and we'll let you know the moment your circle is ready.",
+    "emailLabel": "Email address",
+    "emailPlaceholder": "you@example.com",
+    "submit": "Join the waitlist",
+    "success": "You're on the list — we'll email you when it's your turn.",
+    "error": "Something went wrong. Try again in a moment."
   },
   "stats": {
     "anonymousValue": "Anonymous",

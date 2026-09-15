@@ -17,7 +17,7 @@
   padding: var(--space-3);
   text-align: left;
   border-bottom: 1px solid var(--border-subtle);
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 .ds-table th {

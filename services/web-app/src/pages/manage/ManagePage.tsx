@@ -12,6 +12,7 @@ import { hasAccess, useAccess, type Access } from './useAccess'
 import { RolesTab } from './RolesTab'
 import { UsersTab } from './UsersTab'
 import { ReviewQueueTab } from './ReviewQueueTab'
+import { GatesTab } from './GatesTab'
 
 const SIDEBAR_BG = '#171717'
 const SIDEBAR_TEXT = '#d4d4d4'
@@ -46,6 +47,10 @@ const NAV_GROUPS: NavGroup[] = [
       { section: 'users', label: 'Users', permission: 'users.read' },
       { section: 'roles', label: 'Roles & permissions', permission: 'roles.read' },
     ],
+  },
+  {
+    label: 'Early access',
+    items: [{ section: 'gates', label: 'Gates', permission: 'gates.read' }],
   },
 ]
 
@@ -212,6 +217,7 @@ function Sidebar({
 function SectionContent({ section }: { section: ManageSection }) {
   if (section === 'review') return <ReviewQueueTab />
   if (section === 'roles') return <RolesTab />
+  if (section === 'gates') return <GatesTab />
   return <UsersTab />
 }
 

@@ -7,6 +7,7 @@
     "about": "Om oss",
     "safety": "Säkerhet",
     "joinNow": "Gå med nu",
+    "joinWaitlist": "Gå med i väntelistan",
     "start": "Starta",
     "logOut": "Logga ut"
   },
@@ -41,6 +42,15 @@
     "lead": "Anonyma, modererade cirklar för kamratstöd. Vi är helt nya — gå med i en av våra första cirklar och hjälp till att forma vad detta blir.",
     "joinCircle": "Gå med i en cirkel",
     "learnMore": "Läs mer"
+  },
+  "waitlist": {
+    "badge": "Kommer snart",
+    "lead": "Vi har inte öppnat än. Lämna din e-postadress så hör vi av oss så snart din cirkel är redo.",
+    "emailLabel": "E-postadress",
+    "emailPlaceholder": "du@exempel.se",
+    "submit": "Gå med i väntelistan",
+    "success": "Du står på listan — vi mejlar dig när det är din tur.",
+    "error": "Något gick fel. Försök igen om en stund."
   },
   "stats": {
     "anonymousValue": "Anonymt",

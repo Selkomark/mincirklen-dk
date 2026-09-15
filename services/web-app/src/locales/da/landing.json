@@ -7,6 +7,7 @@
     "about": "Om",
     "safety": "Sikkerhed",
     "joinNow": "Bliv medlem nu",
+    "joinWaitlist": "Tilmeld dig ventelisten",
     "start": "Start",
     "logOut": "Log ud"
   },
@@ -41,6 +42,15 @@
     "lead": "Anonyme, modererede peer-support-cirkler. Vi er helt nye — bliv medlem af en af vores første cirkler og vær med til at forme, hvad dette bliver.",
     "joinCircle": "Bliv medlem af en cirkel",
     "learnMore": "Læs mere"
+  },
+  "waitlist": {
+    "badge": "Kommer snart",
+    "lead": "Vi har ikke åbnet endnu. Efterlad din e-mail, så giver vi dig besked, så snart din cirkel er klar.",
+    "emailLabel": "E-mailadresse",
+    "emailPlaceholder": "dig@eksempel.dk",
+    "submit": "Tilmeld dig ventelisten",
+    "success": "Du er på listen — vi sender dig en e-mail, når det er din tur.",
+    "error": "Noget gik galt. Prøv igen om lidt."
   },
   "stats": {
     "anonymousValue": "Anonymt",
