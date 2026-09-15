@@ -80,3 +80,44 @@ flagged): with zero context, the deliberate "flag when uncertain" bias
 correctly treats every "ending" phrase as ambiguous. More context should
 reduce false positives without weakening the crisis catch rate, since
 it's improving judgment quality, not adding a bypass path.
+
+## 2026-09-15 — Layered admin-security architecture ahead of public launch
+
+**Idea:** A defense-in-depth security package for `/manage` ahead of
+going public/livestreaming: a daily-rotating, randomized admin path
+distributed through Teams/email via service accounts; IP-pattern
+analysis of employee access to detect and block intruders; rate
+limiting and lockout on repeated failed logins; a weekly-retrained
+threat-detection model built on observed brute-force/attack patterns;
+and a physical/hardware token requirement for the platform's
+highest-severity actions, gated behind manual pipeline intervention.
+Incidentally, admin login timestamps would double as attendance/
+performance evidence, disclosed to staff via a data-collection clause
+in their employment contract.
+
+**Verdict:** promising (narrower: drop the rotating-URL obscurity and
+the weekly-retrained ML detection model; keep and prioritize hardware/
+WebAuthn step-up authentication for high-severity admin actions, an
+audited Teams-gated workflow for granting/revoking the `admin.access`
+RBAC role, and closing the already-open OAuth-callback rate-limiting
+gap. Also: key any lockout mechanism to the source (IP/session), never
+the target account, so it can't be turned into a denial-of-service
+against the platform's own admins.)
+
+**Why:** `CHARTER.md` doesn't directly govern internal admin-security
+architecture — its principles are about user-facing anonymity and
+safety, not staff tooling — so this isn't a mission conflict in the
+strict sense. The real tension is proportionality against the
+platform's own "earn trust by being inspectable, not by promising to be
+trustworthy" ethos (principle 5) and its explicitly deliberate,
+not-yet-at-scale growth (`docs/roadmap.md`): the rotating-URL piece adds
+no real protection on top of the RBAC permission check already gating
+every request (knowing the path grants nothing without a permissioned
+session), and a weekly-retrained detection model is a data-pipeline/
+labeling/drift-monitoring commitment this self-funded early pilot has
+no attack volume to justify yet. The parts that survive scrutiny map
+directly onto work already on record rather than new surface area:
+hardware-key step-up auth and an audited access-grant workflow close
+`DPIA_PRELAUNCH.md`'s R8 gap (no audit trail on who granted admin
+access, to whom, when), and the rate-limiting piece is
+`SECURITY_FINDINGS.md` H1, already flagged and still open.
