@@ -26,9 +26,12 @@ services:
     restart: unless-stopped
     cap_add:
       - NET_ADMIN
+    # DNS_BIND_ADDR defaults to all interfaces (macOS). On Linux,
+    # systemd-resolved already holds 127.0.0.53:53, so setup-local-dns.sh
+    # writes DNS_BIND_ADDR=<LAN IP> into .env to bind just that address.
     ports:
-      - '53:53/udp'
-      - '53:53/tcp'
+      - '${DNS_BIND_ADDR:-0.0.0.0}:53:53/udp'
+      - '${DNS_BIND_ADDR:-0.0.0.0}:53:53/tcp'
     volumes:
       - ./local-infra/dns/dnsmasq.conf:/etc/dnsmasq.conf
 

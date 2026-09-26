@@ -55,7 +55,12 @@ if [[ "${1:-}" == "--fix-permissions" ]]; then
   exit 0
 fi
 
-command -v mkcert >/dev/null 2>&1 || die "mkcert is required. Install it with: brew install mkcert (and 'brew install nss' if you also use Firefox)."
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  MKCERT_HINT="brew install mkcert (and 'brew install nss' if you also use Firefox)"
+else
+  MKCERT_HINT="sudo apt install mkcert libnss3-tools (libnss3-tools lets mkcert trust the CA in Chrome/Firefox)"
+fi
+command -v mkcert >/dev/null 2>&1 || die "mkcert is required. Install it with: ${MKCERT_HINT}."
 
 if [[ "$(id -u)" -eq 0 ]]; then
   die "Don't run this with sudo. mkcert prompts for elevation itself if it actually needs it for the system trust store; running the whole script as root instead makes the CA install into root's trust store (browsers won't trust it) and leaves the generated cert/key owned by root. Docker Desktop's file-sharing daemon runs as your normal user, so a root-owned key file can't be bind-mounted into containers and Caddy fails with 'permission denied'. If you already hit that, fix it in isolation with: sudo ./setup-local-certs.sh --fix-permissions"
@@ -63,6 +68,20 @@ fi
 
 log "Ensuring mkcert's local CA is trusted (installs it into the system/browser trust stores if not already; no-op otherwise)."
 mkcert -install
+
+# mkcert 1.4.x only looks for Firefox profiles under ~/.mozilla/firefox, but
+# newer Firefox on Linux keeps them under ~/.config/mozilla/firefox (XDG), so
+# the CA silently never reaches Firefox there. Add it to those profiles too.
+if [[ "$(uname -s)" == "Linux" ]] && command -v certutil >/dev/null 2>&1; then
+  CA_NAME="mkcert development CA (dev-mincirklen.dk)"
+  for profile in "${HOME}"/.config/mozilla/firefox/*/; do
+    [[ -f "${profile}cert9.db" ]] || continue
+    if ! certutil -L -d "sql:${profile}" -n "$CA_NAME" >/dev/null 2>&1; then
+      log "Trusting mkcert's CA in Firefox profile ${profile} (restart Firefox to pick it up)."
+      certutil -A -d "sql:${profile}" -t "C,," -n "$CA_NAME" -i "$(mkcert -CAROOT)/rootCA.pem"
+    fi
+  done
+fi
 
 mkdir -p "$CERT_DIR"
 

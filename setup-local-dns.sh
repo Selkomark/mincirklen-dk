@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Sets up local DNS so dev-mincirklen.dk (and its subdomains) resolve to
-# this Mac's current LAN IP for the docker-compose.yml stack. Answering
+# this machine's current LAN IP for the docker-compose.yml stack. Answering
 # with the LAN IP (rather than 127.0.0.1) means the same hostname works
 # both for local browsing and for a device tunneled in over the optional
 # `vpn` service (./setup-local-vpn.sh) — a remote client can't do anything with a
@@ -22,10 +22,18 @@
 #      to answer dev-mincirklen.dk with it.
 #   2. Starts (or recreates, if the answer changed) this repo's `dns`
 #      container, bound to host port 53 on all interfaces.
-#   3. Writes /etc/resolver/dev-mincirklen.dk (macOS's per-domain resolver
-#      mechanism) so only queries for this domain go to the local dnsmasq —
-#      every other domain keeps resolving normally. Requires sudo.
-#   4. Flushes the macOS DNS cache and verifies resolution.
+#   3. macOS: writes /etc/resolver/dev-mincirklen.dk (macOS's per-domain
+#      resolver mechanism) so only queries for this domain go to the local
+#      dnsmasq — every other domain keeps resolving normally.
+#      Linux: systemd-resolved has no clean per-domain equivalent, so
+#      instead it maintains a marked block in /etc/hosts pointing each
+#      hostname in local-infra/caddy/Caddyfile at 127.0.0.1. Requires sudo.
+#   4. Flushes the OS DNS cache and verifies resolution.
+#
+# Linux note: systemd-resolved already binds 127.0.0.53:53, so the `dns`
+# container can't bind 0.0.0.0:53 there. The script writes
+# DNS_BIND_ADDR=<LAN IP> into .env so it binds only the LAN address
+# (which is all a VPN client needs anyway).
 #
 # Safe to re-run: every step checks current state before changing anything.
 # Re-run any time your LAN IP changes (new Wi-Fi network, DHCP lease
@@ -44,16 +52,16 @@ die() {
   exit 1
 }
 
-if [[ "$(uname -s)" != "Darwin" ]]; then
-  die "This script only supports macOS (/etc/resolver is a macOS-specific mechanism). On Linux, point dev-mincirklen.dk at 127.0.0.1 via /etc/hosts or your systemd-resolved config instead."
-fi
+OS="$(uname -s)"
+[[ "$OS" == "Darwin" || "$OS" == "Linux" ]] || die "Unsupported OS: ${OS} (macOS and Linux only)."
 
 if [[ "$(id -u)" -eq 0 ]]; then
-  die "Don't run this with sudo. The individual steps that need elevation (/etc/resolver, dscacheutil) already sudo themselves; running the whole script as root instead makes 'docker compose up' create host-mounted files owned by root, which then breaks bind mounts (like the caddy certs) for other containers running as your normal user. Just run: ./setup-local-dns.sh"
+  die "Don't run this with sudo. The individual steps that need elevation (/etc/resolver or /etc/hosts, cache flush) already sudo themselves; running the whole script as root instead makes 'docker compose up' create host-mounted files owned by root, which then breaks bind mounts (like the caddy certs) for other containers running as your normal user. Just run: ./setup-local-dns.sh"
 fi
 
 command -v docker >/dev/null 2>&1 || die "docker is required (Docker Desktop or compatible) and wasn't found on PATH."
-docker info >/dev/null 2>&1 || die "Docker daemon isn't running. Start Docker Desktop and try again."
+docker info >/dev/null 2>&1 || die "Docker daemon isn't running. Start Docker Desktop (or the docker service) and try again."
+docker compose version >/dev/null 2>&1 || die "The docker compose plugin is required (Linux: sudo apt install docker-compose-v2)."
 
 # --- Step 1: detect LAN IP and (re)generate dnsmasq.conf ---
 
@@ -61,11 +69,18 @@ docker info >/dev/null 2>&1 || die "Docker daemon isn't running. Start Docker De
 # Ethernet, and USB/personal-hotspot tethering (e.g. iPhone USB shows up as
 # en7, not en0/en1). Falls back to the old en0/en1 probe if that fails for
 # any reason.
-DEFAULT_IFACE="$(route -n get default 2>/dev/null | awk '/interface: /{print $2}')"
 LAN_IP=""
-[[ -n "$DEFAULT_IFACE" ]] && LAN_IP="$(ipconfig getifaddr "$DEFAULT_IFACE" 2>/dev/null || true)"
-[[ -n "$LAN_IP" ]] || LAN_IP="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)"
-[[ -n "$LAN_IP" ]] || die "Couldn't detect a LAN IP on the default-route interface (${DEFAULT_IFACE:-none found}) or en0/en1 — connect to Wi-Fi, Ethernet, or a tethered hotspot and re-run."
+if [[ "$OS" == "Darwin" ]]; then
+  DEFAULT_IFACE="$(route -n get default 2>/dev/null | awk '/interface: /{print $2}')"
+  [[ -n "$DEFAULT_IFACE" ]] && LAN_IP="$(ipconfig getifaddr "$DEFAULT_IFACE" 2>/dev/null || true)"
+  [[ -n "$LAN_IP" ]] || LAN_IP="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)"
+else
+  # Source address the kernel would use for an outbound packet, i.e. the
+  # default-route interface's IP.
+  DEFAULT_IFACE="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i < NF; i++) if ($i == "dev") print $(i + 1)}')"
+  LAN_IP="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i < NF; i++) if ($i == "src") print $(i + 1)}')"
+fi
+[[ -n "$LAN_IP" ]] || die "Couldn't detect a LAN IP on the default-route interface (${DEFAULT_IFACE:-none found}) — connect to Wi-Fi, Ethernet, or a tethered hotspot and re-run."
 
 DNSMASQ_CONF="${REPO_ROOT}/local-infra/dns/dnsmasq.conf"
 DNSMASQ_CONTENT="# Generated by setup-local-dns.sh — answers dev-mincirklen.dk with this
@@ -89,8 +104,31 @@ fi
 
 if [[ "$CONF_CHANGED" -eq 1 ]]; then
   log "Writing ${DNSMASQ_CONF} (LAN IP: ${LAN_IP})."
+  mkdir -p "$(dirname "$DNSMASQ_CONF")"
   printf '%s\n' "$DNSMASQ_CONTENT" > "$DNSMASQ_CONF"
 fi
+
+# Linux: bind the dns container to the LAN IP only (see header note).
+# Upserts just this one key in .env, leaving every other line untouched.
+if [[ "$OS" == "Linux" ]]; then
+  ENV_FILE="${REPO_ROOT}/.env"
+  if ! grep -qxF "DNS_BIND_ADDR=${LAN_IP}" "$ENV_FILE" 2>/dev/null; then
+    log "Setting DNS_BIND_ADDR=${LAN_IP} in ${ENV_FILE}."
+    touch "$ENV_FILE"
+    grep -v '^DNS_BIND_ADDR=' "$ENV_FILE" > "${ENV_FILE}.tmp" || true
+    printf 'DNS_BIND_ADDR=%s\n' "$LAN_IP" >> "${ENV_FILE}.tmp"
+    mv "${ENV_FILE}.tmp" "$ENV_FILE"
+    CONF_CHANGED=1
+  fi
+fi
+
+port_53_in_use() {
+  if [[ "$OS" == "Darwin" ]]; then
+    lsof -nP -iUDP:53 >/dev/null 2>&1
+  else
+    ss -Hlnu 'sport = :53' | awk '{print $4}' | grep -qE "^(${LAN_IP//./\\.}|0\.0\.0\.0|\*|\[::\]):53$"
+  fi
+}
 
 # --- Step 2: start (or recreate) this repo's own dns container ---
 
@@ -102,12 +140,14 @@ if docker ps --filter 'name=^mincirklen-dns$' --format '{{.Names}}' | grep -q mi
     log "mincirklen-dns is already running with the current config."
   fi
 else
-  if lsof -nP -iUDP:53 >/dev/null 2>&1; then
-    die "Host UDP port 53 is already in use by something else (check: lsof -nP -iUDP:53). Free it up — e.g. stop another project's DNS container — and re-run this script."
+  if port_53_in_use; then
+    die "Host UDP port 53 is already in use by something else (check: lsof -nP -iUDP:53, or ss -lnup on Linux). Free it up — e.g. stop another project's DNS container — and re-run this script."
   fi
   log "Starting the dns service."
   docker compose -f "${REPO_ROOT}/docker-compose.yml" up -d dns
 fi
+
+if [[ "$OS" == "Darwin" ]]; then
 
 # --- Step 3: macOS per-domain resolver (still points at the local dnsmasq
 # on 127.0.0.1 — it's this machine's own resolver config, not the answer
@@ -139,11 +179,58 @@ else
   warn "dig didn't return the expected answer — give the DNS container a few seconds and try: dig ${DOMAIN} @127.0.0.1"
 fi
 
+else
+
+# --- Step 3 (Linux): marked /etc/hosts block for every Caddy hostname ---
+
+HOSTS_BEGIN="# BEGIN ${DOMAIN} (managed by setup-local-dns.sh)"
+HOSTS_END="# END ${DOMAIN}"
+HOSTNAMES="$(grep -oE "([a-z0-9-]+\\.)*${DOMAIN//./\\.}" "${REPO_ROOT}/local-infra/caddy/Caddyfile" | sort -u | tr '\n' ' ')"
+[[ -n "$HOSTNAMES" ]] || die "Found no ${DOMAIN} hostnames in local-infra/caddy/Caddyfile."
+HOSTS_BLOCK="${HOSTS_BEGIN}
+127.0.0.1 ${HOSTNAMES% }
+${HOSTS_END}"
+
+CURRENT_BLOCK="$(sed -n "/^${HOSTS_BEGIN}\$/,/^${HOSTS_END}\$/p" /etc/hosts)"
+if [[ "$CURRENT_BLOCK" == "$HOSTS_BLOCK" ]]; then
+  log "/etc/hosts already has the current ${DOMAIN} entries — leaving it as-is."
+else
+  log "Updating the ${DOMAIN} block in /etc/hosts (requires sudo)."
+  HOSTS_TMP="$(mktemp)"
+  { sed "/^${HOSTS_BEGIN}\$/,/^${HOSTS_END}\$/d" /etc/hosts; printf '%s\n' "$HOSTS_BLOCK"; } > "$HOSTS_TMP"
+  sudo cp "$HOSTS_TMP" /etc/hosts
+  rm -f "$HOSTS_TMP"
+fi
+
+# --- Step 4 (Linux): flush cache and verify ---
+
+if command -v resolvectl >/dev/null 2>&1; then
+  log "Flushing systemd-resolved cache."
+  sudo resolvectl flush-caches || true
+fi
+
+log "Verifying resolution for ${DOMAIN} ..."
+if [[ "$(getent hosts "$DOMAIN" | awk '{print $1; exit}')" == "127.0.0.1" ]]; then
+  log "Resolved correctly (-> 127.0.0.1)."
+else
+  warn "getent didn't return 127.0.0.1 for ${DOMAIN} — check /etc/hosts and /etc/nsswitch.conf."
+fi
+if command -v dig >/dev/null 2>&1; then
+  sleep 1
+  if [[ "$(dig +short "$DOMAIN" @"$LAN_IP")" == "$LAN_IP" ]]; then
+    log "dnsmasq (for VPN clients) answers correctly on ${LAN_IP}."
+  else
+    warn "dnsmasq didn't answer as expected — give the container a few seconds and try: dig ${DOMAIN} @${LAN_IP}"
+  fi
+fi
+
+fi
+
 cat <<EOF
 
 Done. Next steps:
   docker compose up -d --build
-  open https://${DOMAIN}
+  https://${DOMAIN}
 
 Subdomains also route through Caddy:
   https://trpc.${DOMAIN}
