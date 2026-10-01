@@ -1,5 +1,5 @@
-import type { Database } from '@mincirklen/shared'
-import type { Kysely } from 'kysely'
+import type { Database, SessionPolicyAttributes } from '@mincirklen/shared'
+import { sql, type Kysely } from 'kysely'
 import { type KmsConfig, decryptField } from '../adapters/kmsAdapter'
 
 // Never ships the full plaintext address to the browser for a list view —
@@ -21,6 +21,7 @@ export interface Role {
   name: string
   description: string | null
   isSystem: boolean
+  sessionPolicyId: string | null
 }
 
 export interface Permission {
@@ -29,31 +30,31 @@ export interface Permission {
   description: string | null
 }
 
-export async function findRoleByName(db: Kysely<Database>, name: string): Promise<Role | null> {
-  const row = await db
-    .selectFrom('roles')
-    .select(['id', 'name', 'description', 'is_system'])
-    .where('name', '=', name)
-    .executeTakeFirst()
+const ROLE_COLUMNS = ['id', 'name', 'description', 'is_system', 'session_policy_id'] as const
 
-  if (!row) return null
-  return { id: row.id, name: row.name, description: row.description, isSystem: row.is_system }
+function toRole(row: { id: string; name: string; description: string | null; is_system: boolean; session_policy_id: string | null }): Role {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    isSystem: row.is_system,
+    sessionPolicyId: row.session_policy_id,
+  }
+}
+
+export async function findRoleByName(db: Kysely<Database>, name: string): Promise<Role | null> {
+  const row = await db.selectFrom('roles').select(ROLE_COLUMNS).where('name', '=', name).executeTakeFirst()
+  return row ? toRole(row) : null
 }
 
 export async function findRoleById(db: Kysely<Database>, roleId: string): Promise<Role | null> {
-  const row = await db
-    .selectFrom('roles')
-    .select(['id', 'name', 'description', 'is_system'])
-    .where('id', '=', roleId)
-    .executeTakeFirst()
-
-  if (!row) return null
-  return { id: row.id, name: row.name, description: row.description, isSystem: row.is_system }
+  const row = await db.selectFrom('roles').select(ROLE_COLUMNS).where('id', '=', roleId).executeTakeFirst()
+  return row ? toRole(row) : null
 }
 
 export async function listRoles(db: Kysely<Database>): Promise<Role[]> {
-  const rows = await db.selectFrom('roles').select(['id', 'name', 'description', 'is_system']).orderBy('name').execute()
-  return rows.map((row) => ({ id: row.id, name: row.name, description: row.description, isSystem: row.is_system }))
+  const rows = await db.selectFrom('roles').select(ROLE_COLUMNS).orderBy('name').execute()
+  return rows.map(toRole)
 }
 
 export async function createRole(
@@ -63,10 +64,10 @@ export async function createRole(
   const row = await db
     .insertInto('roles')
     .values({ name: params.name, description: params.description })
-    .returning(['id', 'name', 'description', 'is_system'])
+    .returning(ROLE_COLUMNS)
     .executeTakeFirstOrThrow()
 
-  return { id: row.id, name: row.name, description: row.description, isSystem: row.is_system }
+  return toRole(row)
 }
 
 export async function updateRole(
@@ -78,6 +79,88 @@ export async function updateRole(
     .set({ name: params.name, description: params.description })
     .where('id', '=', params.roleId)
     .execute()
+}
+
+// Deliberately a separate mutation from updateRole above, not folded into
+// it — updateRole's own caller (rbacService.ts) throws
+// SystemRoleImmutableError for any is_system role, and the seeded `admin`
+// role is exactly the role this feature's motivating use case (rate-
+// limiting a high-privilege role's idle session) needs to stay
+// attachable to. This bypasses that guard on purpose; it's a different
+// kind of edit than renaming/re-describing a system role.
+export async function setRoleSessionPolicy(db: Kysely<Database>, roleId: string, sessionPolicyId: string | null): Promise<void> {
+  await db.updateTable('roles').set({ session_policy_id: sessionPolicyId }).where('id', '=', roleId).execute()
+}
+
+export interface SessionPolicy {
+  id: string
+  name: string
+  attributes: SessionPolicyAttributes
+}
+
+export async function listSessionPolicies(db: Kysely<Database>): Promise<SessionPolicy[]> {
+  const rows = await db.selectFrom('session_policies').select(['id', 'name', 'attributes']).orderBy('name').execute()
+  return rows.map((row) => ({ id: row.id, name: row.name, attributes: row.attributes }))
+}
+
+export async function findSessionPolicyById(db: Kysely<Database>, policyId: string): Promise<SessionPolicy | null> {
+  const row = await db
+    .selectFrom('session_policies')
+    .select(['id', 'name', 'attributes'])
+    .where('id', '=', policyId)
+    .executeTakeFirst()
+
+  if (!row) return null
+  return { id: row.id, name: row.name, attributes: row.attributes }
+}
+
+export async function createSessionPolicy(
+  db: Kysely<Database>,
+  params: { name: string; attributes: SessionPolicyAttributes },
+): Promise<SessionPolicy> {
+  const row = await db
+    .insertInto('session_policies')
+    // Explicit ::jsonb cast, same convention as sessionReportRepository.ts's
+    // insertSessionReport — the pg driver doesn't implicitly serialize a
+    // plain JS object into the jsonb column type on its own.
+    .values({ name: params.name, attributes: sql`${JSON.stringify(params.attributes)}::jsonb` })
+    .returning(['id', 'name', 'attributes'])
+    .executeTakeFirstOrThrow()
+
+  return { id: row.id, name: row.name, attributes: row.attributes }
+}
+
+export async function updateSessionPolicy(
+  db: Kysely<Database>,
+  params: { policyId: string; name: string; attributes: SessionPolicyAttributes },
+): Promise<void> {
+  await db
+    .updateTable('session_policies')
+    .set({ name: params.name, attributes: sql`${JSON.stringify(params.attributes)}::jsonb` })
+    .where('id', '=', params.policyId)
+    .execute()
+}
+
+// The core resolution query behind sessionPolicyService.ts's
+// resolveEffectiveMaxIdleSeconds — inner join, not left join: a role with
+// no attached policy (session_policy_id null) simply doesn't appear in
+// the result, same "absence = no override" shape as the rest of this
+// feature. Callers must treat an empty/short result as "fall back to the
+// platform default," not as an error.
+export async function findSessionPolicyAttributesForRoles(
+  db: Kysely<Database>,
+  roleIds: string[],
+): Promise<SessionPolicyAttributes[]> {
+  if (roleIds.length === 0) return []
+
+  const rows = await db
+    .selectFrom('roles')
+    .innerJoin('session_policies', 'session_policies.id', 'roles.session_policy_id')
+    .select('session_policies.attributes as attributes')
+    .where('roles.id', 'in', roleIds)
+    .execute()
+
+  return rows.map((row) => row.attributes)
 }
 
 export async function listPermissions(db: Kysely<Database>): Promise<Permission[]> {

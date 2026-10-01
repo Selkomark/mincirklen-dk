@@ -9,6 +9,7 @@ import { ThemeToggle } from '../../ThemeToggle'
 import { ErrorPage } from '../ErrorPage'
 import { useDocumentTitle } from '../../useDocumentTitle'
 import { hasAccess, useAccess, type Access } from './useAccess'
+import { useIdleLogout } from './useIdleLogout'
 import { RolesTab } from './RolesTab'
 import { UsersTab } from './UsersTab'
 import { ReviewQueueTab } from './ReviewQueueTab'
@@ -236,6 +237,10 @@ export function ManagePage({
   const { t } = useTranslation('errors')
   useDocumentTitle('Manage — MinCirklen')
   const status = useAccess()
+  // Called unconditionally (hooks rule) ahead of the loading/error
+  // returns below — null while status isn't 'loaded' yet just means no
+  // timer is armed until the real duration is known.
+  useIdleLogout(status.kind === 'loaded' ? status.access.maxIdleSeconds : null)
 
   if (status.kind === 'loading') {
     return (

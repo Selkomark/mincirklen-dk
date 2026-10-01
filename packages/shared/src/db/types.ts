@@ -1,4 +1,5 @@
 import type { ColumnType, Generated, JSONColumnType } from 'kysely'
+import type { SessionPolicyAttributes } from '../schemas/rbac'
 
 // timestamptz columns: selected as Date, inserted as Date|string|undefined
 // (defaults to now() when omitted), never updated directly through a raw
@@ -27,6 +28,19 @@ export interface RolesTable {
   name: string
   description: string | null
   is_system: Generated<boolean>
+  // Null = platform default (sessionToken.ts's DEFAULT_MAX_AGE_SECONDS).
+  // See SessionPoliciesTable and services/sessionPolicyService.ts.
+  session_policy_id: string | null
+  created_at: Timestamp
+}
+
+// Shape reused from schemas/rbac.ts (not redefined here) so there's one
+// source of truth for what a policy's jsonb attributes can hold — that
+// file also owns the floor/ceiling validation on maxIdleSeconds.
+export interface SessionPoliciesTable {
+  id: Generated<string>
+  name: string
+  attributes: JSONColumnType<SessionPolicyAttributes, SessionPolicyAttributes | undefined>
   created_at: Timestamp
 }
 
@@ -266,6 +280,7 @@ export interface Database {
   account_ban_evidence: AccountBanEvidenceTable
   data_export_requests: DataExportRequestsTable
   roles: RolesTable
+  session_policies: SessionPoliciesTable
   permissions: PermissionsTable
   role_permissions: RolePermissionsTable
   user_roles: UserRolesTable

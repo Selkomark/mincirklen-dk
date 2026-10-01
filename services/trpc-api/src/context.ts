@@ -1,5 +1,10 @@
 import type { Database } from '@mincirklen/shared'
-import { verifySessionToken } from '@mincirklen/shared'
+import {
+  createSessionToken,
+  DEFAULT_MAX_AGE_SECONDS,
+  shouldReissueSessionToken,
+  verifySessionTokenSignature,
+} from '@mincirklen/shared'
 import type { FetchCreateContextFnOptions } from '@trpc/server/adapters/fetch'
 import { getCookie } from 'hono/cookie'
 import type { Context as HonoContext } from 'hono'
@@ -8,12 +13,12 @@ import type { GcsConfig } from './adapters/gcsAdapter'
 import type { GoogleOAuthEndpoints } from './adapters/googleOAuthAdapter'
 import type { KmsConfig } from './adapters/kmsAdapter'
 import type { PubSubConfig } from './adapters/pubsubAdapter'
-import { getUserRolesAndPermissions } from './repositories/rbacRepository'
+import { findSessionPolicyAttributesForRoles, getUserRolesAndPermissions } from './repositories/rbacRepository'
 import { isUserBanned, touchUser } from './repositories/userRepository'
 import { resolveSession } from './services/authService'
+import { resolveEffectiveMaxIdleSeconds } from './services/sessionPolicyService'
 
 export const SESSION_COOKIE_NAME = 'mc_session'
-const SESSION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 180 // 180 days
 
 // Without an explicit Domain, a cookie is host-only to whatever exact host
 // set it — it would never reach a sibling subdomain like
@@ -26,11 +31,18 @@ export function sessionCookieDomain(publicBaseUrl: string): string {
   return new URL(publicBaseUrl).hostname
 }
 
-// Shared by authRouter.ts (anonymous login) and oauthController.ts (Google
-// login) — both issue the same token format for the same cookie, so the
-// attributes must never drift between the two call sites.
-export function buildSessionCookie(token: string, publicBaseUrl: string): string {
-  return `${SESSION_COOKIE_NAME}=${token}; Domain=${sessionCookieDomain(publicBaseUrl)}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${SESSION_COOKIE_MAX_AGE_SECONDS}`
+// Shared by authRouter.ts (anonymous login), oauthController.ts (Google
+// login), and createContextFactory's own sliding-expiration reissue below
+// — all three issue the same token format for the same cookie, so the
+// attributes must never drift between call sites. maxAgeSeconds defaults
+// to the platform default: the two login call sites don't yet know the
+// signed-in user's roles at the moment they issue this cookie, so they
+// pass nothing and the cookie self-corrects to the real role-resolved
+// duration on the first post-login reissue (see createContextFactory) —
+// the browser's Max-Age was never the real security boundary anyway,
+// isSessionTokenFresh's per-request check is.
+export function buildSessionCookie(token: string, publicBaseUrl: string, maxAgeSeconds: number = DEFAULT_MAX_AGE_SECONDS): string {
+  return `${SESSION_COOKIE_NAME}=${token}; Domain=${sessionCookieDomain(publicBaseUrl)}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${maxAgeSeconds}`
 }
 
 // Same name/attributes as buildSessionCookie (a browser matches a cookie to
@@ -144,6 +156,12 @@ export interface AppContext {
   // and controllers/trpc.ts::hasPermission, which reads this.
   roles: { id: string; name: string }[]
   permissions: string[]
+  // The resolved idle-session ceiling this request was actually checked
+  // against (see sessionPolicyService.ts::resolveEffectiveMaxIdleSeconds)
+  // — the platform default when roles carries no session-policy-bearing
+  // role. Exposed via rbac.myAccess so /manage's client-side idle timer
+  // can seed itself without a second lookup duplicating this one.
+  maxIdleSeconds: number
   // Every `mc_gate_*` cookie on the request, keyed by gate key with the
   // prefix stripped — raw, unverified tokens (controllers/trpc.ts's
   // requireGateAccess and gatesRouter.ts's getStatus verify on demand).
@@ -165,18 +183,56 @@ export function createContextFactory(env: AppEnv) {
   ): Promise<AppContext> {
     const token = getCookie(c, SESSION_COOKIE_NAME) ?? bearerToken(c)
 
+    // Two-phase, deliberately: signature/tamper verification first (no
+    // duration opinion yet — see sessionToken.ts), THEN a role lookup,
+    // THEN the freshness check inside resolveSession — because the
+    // user's effective max idle duration (resolveEffectiveMaxIdleSeconds)
+    // isn't knowable until the token's own userId has been trusted and
+    // their roles hydrated. getUserRolesAndPermissions already runs
+    // unconditionally for a verified token today, so threading the role
+    // lookup through here adds no duplicate query.
+    const verified = token ? verifySessionTokenSignature(token, env.authSecret) : null
+
+    let roles: { id: string; name: string }[] = []
+    let permissions: string[] = []
+    let maxIdleSeconds = DEFAULT_MAX_AGE_SECONDS
+
+    if (verified) {
+      const hydrated = await getUserRolesAndPermissions(env.db, verified.userId)
+      roles = hydrated.roles
+      permissions = hydrated.permissions
+      maxIdleSeconds = await resolveEffectiveMaxIdleSeconds(
+        { findSessionPolicyAttributesForRoles: (roleIds) => findSessionPolicyAttributesForRoles(env.db, roleIds) },
+        roles.map((role) => role.id),
+        DEFAULT_MAX_AGE_SECONDS,
+      )
+    }
+
     const userId = await resolveSession(
       {
-        verifyToken: (t) => verifySessionToken(t, env.authSecret),
-        touchUser: (userId) => touchUser(env.db, userId),
-        isBanned: (userId) => isUserBanned(env.db, userId),
+        touchUser: (id) => touchUser(env.db, id),
+        isBanned: (id) => isUserBanned(env.db, id),
       },
-      token,
+      verified,
+      maxIdleSeconds,
     )
 
-    const { roles, permissions } = userId
-      ? await getUserRolesAndPermissions(env.db, userId)
-      : { roles: [], permissions: [] }
+    if (!verified || !userId) {
+      // Either there was no token, it failed verification, it's stale
+      // past its role-resolved duration, the user no longer exists, or
+      // they're banned — none of those should carry roles/permissions
+      // forward (a stale-but-signature-valid token must act fully
+      // logged-out, not partially authorized).
+      roles = []
+      permissions = []
+    } else if (shouldReissueSessionToken(verified.issuedAt, maxIdleSeconds)) {
+      // Sliding expiration: idle time resets on activity without a DB-
+      // backed session table — re-stamp issuedAt (a fresh token) once
+      // more than half the resolved duration has elapsed, so a user
+      // actively working never hits the duration ceiling mid-task.
+      const freshToken = createSessionToken(userId, env.authSecret)
+      opts.resHeaders.append('set-cookie', buildSessionCookie(freshToken, env.publicBaseUrl, maxIdleSeconds))
+    }
 
     const gateTokens: Record<string, string> = {}
     for (const [name, value] of Object.entries(getCookie(c))) {
@@ -185,6 +241,6 @@ export function createContextFactory(env: AppEnv) {
       }
     }
 
-    return { resHeaders: opts.resHeaders, userId, appEnv: env, roles, permissions, gateTokens }
+    return { resHeaders: opts.resHeaders, userId, appEnv: env, roles, permissions, maxIdleSeconds, gateTokens }
   }
 }

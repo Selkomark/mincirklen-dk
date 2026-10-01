@@ -1,6 +1,18 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 
-const DEFAULT_MAX_AGE_SECONDS = 60 * 60 * 24 * 180 // 180 days
+// Platform default when a user holds no role carrying a shorter
+// session-policy duration (rbacRepository.ts's
+// findSessionPolicyAttributesForRoles / services/sessionPolicyService.ts).
+// Exported (was private) so context.ts's cookie Max-Age can reference this
+// instead of separately re-hardcoding the same number.
+export const DEFAULT_MAX_AGE_SECONDS = 60 * 60 * 24 * 180 // 180 days
+
+// Reissue once more than half the resolved duration has elapsed — a
+// standard sliding-session "renew at half-life" heuristic: avoids a fresh
+// HMAC + Set-Cookie on literally every request while keeping idle-reset
+// accuracy within one half-life of the real idle time. See
+// shouldReissueSessionToken below.
+export const REISSUE_AFTER_FRACTION_OF_MAX_AGE = 0.5
 
 export interface VerifiedSessionToken {
   userId: string
@@ -17,11 +29,13 @@ export function createSessionToken(userId: string, secret: string): string {
   return `${payload}.${sign(payload, secret)}`
 }
 
-export function verifySessionToken(
-  token: string,
-  secret: string,
-  maxAgeSeconds: number = DEFAULT_MAX_AGE_SECONDS,
-): VerifiedSessionToken | null {
+// Signature + tamper check only — no max-age/duration opinion. A role's
+// effective max idle duration isn't knowable until *after* the userId
+// here has been trusted and looked up, so verification is deliberately
+// split in two: this phase first, then isSessionTokenFresh once the
+// caller has resolved the right maxAgeSeconds for this specific user. See
+// context.ts's createContextFactory for the two-phase call site.
+export function verifySessionTokenSignature(token: string, secret: string): VerifiedSessionToken | null {
   const parts = token.split('.')
   if (parts.length !== 3) return null
 
@@ -37,8 +51,37 @@ export function verifySessionToken(
   const issuedAtSeconds = Number(issuedAtRaw)
   if (!Number.isInteger(issuedAtSeconds)) return null
 
+  // A future issuedAt isn't a "duration" problem, it's a tamper/clock-skew
+  // one — belongs in the signature-trust phase, not the freshness check.
   const ageSeconds = Math.floor(Date.now() / 1000) - issuedAtSeconds
-  if (ageSeconds < 0 || ageSeconds > maxAgeSeconds) return null
+  if (ageSeconds < 0) return null
 
   return { userId, issuedAt: new Date(issuedAtSeconds * 1000) }
+}
+
+// Pure and synchronous on purpose — trivially unit-testable with fixed
+// Dates, no token parsing/crypto involved.
+export function isSessionTokenFresh(issuedAt: Date, maxAgeSeconds: number): boolean {
+  const ageSeconds = Math.floor((Date.now() - issuedAt.getTime()) / 1000)
+  return ageSeconds <= maxAgeSeconds
+}
+
+export function shouldReissueSessionToken(issuedAt: Date, maxAgeSeconds: number): boolean {
+  const ageSeconds = Math.floor((Date.now() - issuedAt.getTime()) / 1000)
+  return ageSeconds >= maxAgeSeconds * REISSUE_AFTER_FRACTION_OF_MAX_AGE
+}
+
+// Thin composition of the two phases above, for any caller that just
+// wants one-shot verification against a single, already-known
+// maxAgeSeconds (e.g. this file's own tests). Request-time verification
+// in context.ts uses the two phases directly instead, since it needs a
+// role lookup to happen in between them.
+export function verifySessionToken(
+  token: string,
+  secret: string,
+  maxAgeSeconds: number = DEFAULT_MAX_AGE_SECONDS,
+): VerifiedSessionToken | null {
+  const verified = verifySessionTokenSignature(token, secret)
+  if (!verified) return null
+  return isSessionTokenFresh(verified.issuedAt, maxAgeSeconds) ? verified : null
 }

@@ -25,6 +25,21 @@ function loginErrorKey(): string | null {
   return LOGIN_ERROR_KEYS[code] ?? LOGIN_ERROR_KEYS.login_failed ?? null
 }
 
+// Set by manage/sessionExpiry.ts's hard redirect when a /manage session
+// expires mid-use (idle timeout or any other cause of a 401) — carries
+// the exact page to return to once re-authenticated. Deliberately a
+// separate param from `nextPath` below, not folded into it: `nextPath`
+// only ever names the bare /manage root (App.tsx's inline login), while
+// this names an arbitrary sub-path captured at the moment of expiry.
+// Validated as a same-origin relative path (leading single slash, no
+// scheme/host) before ever being trusted — never pass an unvalidated
+// query param straight into a redirect target.
+function returnToParam(): string | null {
+  const raw = new URLSearchParams(window.location.search).get('returnTo')
+  if (!raw) return null
+  return /^\/(?!\/)[A-Za-z0-9/_\-.~:?&=%]*$/.test(raw) ? raw : null
+}
+
 // Google is the only working provider. The others are kept (not deleted)
 // but hidden behind this flag so the layout/code is ready to re-enable
 // them once they're wired up — flip to true, don't re-add the list.
@@ -49,6 +64,10 @@ export function LoginPage({ nextPath }: LoginPageProps = {}) {
   const locale = useLocale()
   useDocumentTitle(t('login.documentTitle'))
   const errorKey = loginErrorKey()
+  // returnTo (an idle-expiry redirect's exact sub-path) takes precedence
+  // over nextPath (always just the bare /manage root) — nextPath winning
+  // would silently discard the specific page a user was bounced from.
+  const effectiveNext = returnToParam() ?? nextPath
 
   return (
     <div style={{ minHeight: '100vh', fontFamily: 'var(--font-family-base)' }}>
@@ -88,8 +107,8 @@ export function LoginPage({ nextPath }: LoginPageProps = {}) {
             <Button
               variant="secondary"
               onPress={() => {
-                window.location.href = nextPath
-                  ? `/api/auth/google/start?next=${encodeURIComponent(nextPath)}`
+                window.location.href = effectiveNext
+                  ? `/api/auth/google/start?next=${encodeURIComponent(effectiveNext)}`
                   : '/api/auth/google/start'
               }}
               style={{ width: '100%' }}

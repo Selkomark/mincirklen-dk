@@ -1,22 +1,30 @@
 import {
   createRoleInputSchema,
+  createSessionPolicyInputSchema,
   listUsersInputSchema,
+  setRoleSessionPolicyInputSchema,
   updateRoleInputSchema,
   updateRolePermissionsInputSchema,
+  updateSessionPolicyInputSchema,
   updateUserRolesInputSchema,
 } from '@mincirklen/shared'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 import {
   createRole,
+  createSessionPolicy,
   findRoleById,
+  findSessionPolicyById,
   getRolePermissionIds,
   listPermissions,
   listRoles,
+  listSessionPolicies,
   listUsersWithRoles,
   replaceRolePermissions,
   replaceUserRoles,
+  setRoleSessionPolicy,
   updateRole as updateRoleRow,
+  updateSessionPolicy,
 } from '../repositories/rbacRepository'
 import { SystemRoleImmutableError, updateRole as updateRoleService, updateRolePermissions } from '../services/rbacService'
 import { hasPermission, router, verifiedProcedure } from './trpc'
@@ -33,7 +41,14 @@ export const rbacRouter = router({
   // every procedure below is independently gated by hasPermission). Any
   // verified user can call this; it just reflects back whatever roles/
   // permissions they actually have, which is empty for most users.
-  myAccess: verifiedProcedure.query(({ ctx }) => ({ roles: ctx.roles, permissions: ctx.permissions })),
+  myAccess: verifiedProcedure.query(({ ctx }) => ({
+    roles: ctx.roles,
+    permissions: ctx.permissions,
+    // Seeds /manage's client-side idle timer (manageShared.ts) — the
+    // resolved ceiling this very request was already checked against,
+    // not a fresh lookup. See context.ts::createContextFactory.
+    maxIdleSeconds: ctx.maxIdleSeconds,
+  })),
 
   roles: router({
     list: hasPermission('roles.read').query(({ ctx }) => listRoles(ctx.appEnv.db)),
@@ -80,6 +95,42 @@ export const rbacRouter = router({
         } catch (err) {
           throw toTRPCError(err)
         }
+      }),
+
+    // Deliberately NOT routed through updateRoleService — that guard
+    // throws SystemRoleImmutableError for any is_system role, and the
+    // seeded `admin` role is exactly the role this feature's motivating
+    // use case (rate-limiting a high-privilege role's idle session) needs
+    // to stay attachable to. Calls the repository directly on purpose;
+    // see setRoleSessionPolicy's own doc comment.
+    setSessionPolicy: hasPermission('roles.update')
+      .input(setRoleSessionPolicyInputSchema)
+      .mutation(async ({ ctx, input }) => {
+        await setRoleSessionPolicy(ctx.appEnv.db, input.roleId, input.sessionPolicyId)
+        return { ok: true }
+      }),
+  }),
+
+  // A reusable, named idle-session-duration template a role can
+  // optionally attach to (roles.setSessionPolicy above). See
+  // migrations/0001_init.ts's session_policies table comment and
+  // services/sessionPolicyService.ts for how a user's effective duration
+  // is resolved across every role they hold.
+  sessionPolicies: router({
+    list: hasPermission('session_policies.read').query(({ ctx }) => listSessionPolicies(ctx.appEnv.db)),
+
+    create: hasPermission('session_policies.create')
+      .input(createSessionPolicyInputSchema)
+      .mutation(({ ctx, input }) => createSessionPolicy(ctx.appEnv.db, input)),
+
+    update: hasPermission('session_policies.update')
+      .input(updateSessionPolicyInputSchema)
+      .mutation(async ({ ctx, input }) => {
+        const existing = await findSessionPolicyById(ctx.appEnv.db, input.policyId)
+        if (!existing) throw new TRPCError({ code: 'NOT_FOUND' })
+
+        await updateSessionPolicy(ctx.appEnv.db, input)
+        return { ok: true }
       }),
   }),
 

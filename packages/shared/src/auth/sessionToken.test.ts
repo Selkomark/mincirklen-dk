@@ -1,6 +1,12 @@
 import { describe, expect, test } from 'bun:test'
 import { createHmac } from 'node:crypto'
-import { createSessionToken, verifySessionToken } from './sessionToken'
+import {
+  createSessionToken,
+  isSessionTokenFresh,
+  shouldReissueSessionToken,
+  verifySessionToken,
+  verifySessionTokenSignature,
+} from './sessionToken'
 
 const SECRET = 'test-secret'
 const USER_ID = '11111111-1111-1111-1111-111111111111'
@@ -67,5 +73,64 @@ describe('sessionToken', () => {
     const token = signToken(USER_ID, issuedAtSeconds, SECRET)
 
     expect(verifySessionToken(token, SECRET, 60)?.userId).toBe(USER_ID)
+  })
+})
+
+describe('verifySessionTokenSignature', () => {
+  test('verifies a valid token regardless of age, with no maxAgeSeconds opinion', () => {
+    const issuedAtSeconds = Math.floor(Date.now() / 1000) - 1_000_000
+    const token = signToken(USER_ID, issuedAtSeconds, SECRET)
+
+    const result = verifySessionTokenSignature(token, SECRET)
+    expect(result?.userId).toBe(USER_ID)
+  })
+
+  test('still rejects a token issued in the future (tamper/clock-skew, not a duration concern)', () => {
+    const issuedAtSeconds = Math.floor(Date.now() / 1000) + 1000
+    const token = signToken(USER_ID, issuedAtSeconds, SECRET)
+
+    expect(verifySessionTokenSignature(token, SECRET)).toBeNull()
+  })
+
+  test('rejects a tampered payload', () => {
+    const token = createSessionToken(USER_ID, SECRET)
+    const [, issuedAt, signature] = token.split('.')
+    const tampered = `22222222-2222-2222-2222-222222222222.${issuedAt}.${signature}`
+
+    expect(verifySessionTokenSignature(tampered, SECRET)).toBeNull()
+  })
+})
+
+describe('isSessionTokenFresh', () => {
+  test('true when age is under maxAgeSeconds', () => {
+    const issuedAt = new Date(Date.now() - 10_000)
+    expect(isSessionTokenFresh(issuedAt, 60)).toBe(true)
+  })
+
+  test('true exactly at the boundary', () => {
+    const issuedAt = new Date(Date.now() - 60_000)
+    expect(isSessionTokenFresh(issuedAt, 60)).toBe(true)
+  })
+
+  test('false once age exceeds maxAgeSeconds', () => {
+    const issuedAt = new Date(Date.now() - 120_000)
+    expect(isSessionTokenFresh(issuedAt, 60)).toBe(false)
+  })
+})
+
+describe('shouldReissueSessionToken', () => {
+  test('false before half the max age has elapsed', () => {
+    const issuedAt = new Date(Date.now() - 10_000)
+    expect(shouldReissueSessionToken(issuedAt, 60)).toBe(false)
+  })
+
+  test('true once at least half the max age has elapsed', () => {
+    const issuedAt = new Date(Date.now() - 31_000)
+    expect(shouldReissueSessionToken(issuedAt, 60)).toBe(true)
+  })
+
+  test('true for a token already past its full max age (still fresh-adjacent, caller checks freshness separately)', () => {
+    const issuedAt = new Date(Date.now() - 90_000)
+    expect(shouldReissueSessionToken(issuedAt, 60)).toBe(true)
   })
 })

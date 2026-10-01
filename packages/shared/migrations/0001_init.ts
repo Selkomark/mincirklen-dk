@@ -157,6 +157,23 @@ export async function up(db: Kysely<any>): Promise<void> {
     )
     .execute()
 
+  // A reusable, named session-idle-duration template a role can
+  // optionally point at (roles.session_policy_id below) — many roles may
+  // share one policy; it's deliberately one level of indirection, not a
+  // role-hierarchy/inheritance graph. `attributes` is jsonb (not a
+  // dedicated `max_idle_seconds` column) so a future attribute beyond
+  // duration never needs its own migration — same reasoning as
+  // session_users.agreements below. Resolution (effective duration across
+  // every role a user holds, minimum wins, never exceeding the platform
+  // default) lives in services/sessionPolicyService.ts, not here.
+  await db.schema
+    .createTable('session_policies')
+    .addColumn('id', 'uuid', (col) => col.primaryKey().defaultTo(sql`gen_random_uuid()`))
+    .addColumn('name', 'text', (col) => col.notNull().unique())
+    .addColumn('attributes', 'jsonb', (col) => col.notNull().defaultTo(sql`'{}'::jsonb`))
+    .addColumn('created_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
+    .execute()
+
   // RBAC — normalized roles/permissions, mirroring the mechanics already
   // proven out in the sibling selkomark.com repo (role_permissions/
   // user_roles as real many-to-many join tables, not a JSON/array column,
@@ -171,6 +188,12 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('name', 'text', (col) => col.notNull().unique())
     .addColumn('description', 'text')
     .addColumn('is_system', 'boolean', (col) => col.notNull().defaultTo(false))
+    // Null = platform default (sessionToken.ts's DEFAULT_MAX_AGE_SECONDS).
+    // `set null` on delete: a role must survive a policy going away
+    // without this needing to anticipate a delete path that doesn't
+    // exist yet (session_policies has no deleteSessionPolicy, same
+    // posture as roles themselves having no deleteRole).
+    .addColumn('session_policy_id', 'uuid', (col) => col.references('session_policies.id').onDelete('set null'))
     .addColumn('created_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
     .execute()
 
@@ -215,6 +238,9 @@ export async function up(db: Kysely<any>): Promise<void> {
     { slug: 'roles.read', description: 'View roles and their permissions' },
     { slug: 'roles.create', description: 'Create new roles' },
     { slug: 'roles.update', description: "Edit a role's name/description/permissions" },
+    { slug: 'session_policies.read', description: 'View session policies' },
+    { slug: 'session_policies.create', description: 'Create session policies' },
+    { slug: 'session_policies.update', description: 'Edit a session policy and attach it to roles' },
     { slug: 'users.read', description: 'View users and their assigned roles' },
     { slug: 'users.update', description: "Change a user's assigned roles" },
     { slug: 'moderation_events.review', description: 'Review flagged/crisis moderation events' },
@@ -543,6 +569,7 @@ export async function down(db: Kysely<any>): Promise<void> {
   await db.schema.dropTable('role_permissions').execute()
   await db.schema.dropTable('permissions').execute()
   await db.schema.dropTable('roles').execute()
+  await db.schema.dropTable('session_policies').execute()
   await db.schema.dropTable('user_profiles').execute()
   await db.schema.dropTable('user_identities').execute()
   await db.schema.dropTable('users').execute()

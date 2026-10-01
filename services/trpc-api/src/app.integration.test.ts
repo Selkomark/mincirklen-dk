@@ -1,9 +1,17 @@
 import { afterAll, describe, expect, test } from 'bun:test'
+import { createHmac } from 'node:crypto'
 import { DEFAULT_LOCAL_DATABASE_URL, createDb, createPgPool, createSessionToken, runMigrations } from '@mincirklen/shared'
 import { createApp } from './app'
 import { insertUser } from './repositories/userRepository'
 import { linkIdentity } from './repositories/userIdentityRepository'
 import { upsertState } from './repositories/featureGateStateRepository'
+import {
+  assignRoleToUser,
+  createRole,
+  createSessionPolicy,
+  findRoleByName,
+  setRoleSessionPolicy,
+} from './repositories/rbacRepository'
 
 const pool = createPgPool(
   process.env.TEST_DATABASE_URL ?? DEFAULT_LOCAL_DATABASE_URL,
@@ -84,6 +92,19 @@ async function mintBareUserCookie(): Promise<{ cookie: string; userId: string }>
   const user = await insertUser(db)
   const token = createSessionToken(user.id, AUTH_SECRET)
   return { cookie: `mc_session=${token}`, userId: user.id }
+}
+
+// Mirrors sessionToken.test.ts's own signToken helper — a hand-signed
+// token with an arbitrary issuedAt, so the session-policy idle-expiry
+// tests below don't need to actually wait out a real duration.
+function signTokenWithIssuedAt(userId: string, issuedAtSeconds: number, secret: string): string {
+  const payload = `${userId}.${issuedAtSeconds}`
+  const signature = createHmac('sha256', secret).update(payload).digest('base64url')
+  return `${payload}.${signature}`
+}
+
+function secondsAgo(seconds: number): number {
+  return Math.floor(Date.now() / 1000) - seconds
 }
 
 describe('auth flow through the Hono app', () => {
@@ -346,6 +367,132 @@ describe('auth flow through the Hono app', () => {
 
     const afterBan = await app.request('/trpc/auth.whoAmI', { headers: { cookie } })
     expect(afterBan.status).toBe(401)
+  })
+})
+
+describe('session-policy idle expiry', () => {
+  async function userWithPolicy(maxIdleSeconds: number): Promise<{ userId: string }> {
+    const user = await insertUser(db)
+    const policy = await createSessionPolicy(db, { name: `test-policy-${crypto.randomUUID()}`, attributes: { maxIdleSeconds } })
+    const role = await createRole(db, { name: `test-role-${crypto.randomUUID()}`, description: null })
+    await setRoleSessionPolicy(db, role.id, policy.id)
+    await assignRoleToUser(db, user.id, role.id)
+    return { userId: user.id }
+  }
+
+  test('a token stale against the role-resolved duration is rejected, even though it would be fine against the platform default', async () => {
+    const { userId } = await userWithPolicy(60)
+    const cookie = `mc_session=${signTokenWithIssuedAt(userId, secondsAgo(120), AUTH_SECRET)}`
+
+    const res = await app.request('/trpc/auth.whoAmI', { headers: { cookie } })
+    expect(res.status).toBe(401)
+  })
+
+  test('the same token age is accepted once it is within the role-resolved duration', async () => {
+    const { userId } = await userWithPolicy(60)
+    const cookie = `mc_session=${signTokenWithIssuedAt(userId, secondsAgo(10), AUTH_SECRET)}`
+
+    const res = await app.request('/trpc/auth.whoAmI', { headers: { cookie } })
+    expect(res.status).toBe(200)
+  })
+
+  test('a user holding no duration-bearing role is unaffected (falls back to the platform default)', async () => {
+    const { cookie } = await mintBareUserCookie()
+    // Old relative to any short test policy, nowhere near the 180-day default.
+    const user = await insertUser(db)
+    const oldButWithinDefault = `mc_session=${signTokenWithIssuedAt(user.id, secondsAgo(60 * 60 * 24 * 30), AUTH_SECRET)}`
+
+    const freshRes = await app.request('/trpc/auth.whoAmI', { headers: { cookie } })
+    expect(freshRes.status).toBe(200)
+
+    const oldRes = await app.request('/trpc/auth.whoAmI', { headers: { cookie: oldButWithinDefault } })
+    expect(oldRes.status).toBe(200)
+  })
+
+  test('min-wins: holding a second, longer-duration role does not rescue a token stale against the shorter one', async () => {
+    const user = await insertUser(db)
+
+    const shortPolicy = await createSessionPolicy(db, { name: `short-${crypto.randomUUID()}`, attributes: { maxIdleSeconds: 60 } })
+    const shortRole = await createRole(db, { name: `short-role-${crypto.randomUUID()}`, description: null })
+    await setRoleSessionPolicy(db, shortRole.id, shortPolicy.id)
+    await assignRoleToUser(db, user.id, shortRole.id)
+
+    const longPolicy = await createSessionPolicy(db, {
+      name: `long-${crypto.randomUUID()}`,
+      attributes: { maxIdleSeconds: 60 * 60 * 24 }, // 1 day
+    })
+    const longRole = await createRole(db, { name: `long-role-${crypto.randomUUID()}`, description: null })
+    await setRoleSessionPolicy(db, longRole.id, longPolicy.id)
+    await assignRoleToUser(db, user.id, longRole.id)
+
+    // Within the 1-day policy, but past the 60s one — the 60s policy must govern.
+    const cookie = `mc_session=${signTokenWithIssuedAt(user.id, secondsAgo(90), AUTH_SECRET)}`
+    const res = await app.request('/trpc/auth.whoAmI', { headers: { cookie } })
+    expect(res.status).toBe(401)
+  })
+
+  test('sliding expiration: a fresh token is reissued once past half the resolved duration, keeping the request authenticated', async () => {
+    const { userId } = await userWithPolicy(60)
+    const originalToken = signTokenWithIssuedAt(userId, secondsAgo(35), AUTH_SECRET) // > 30s half-life, < 60s ceiling
+
+    const res = await app.request('/trpc/auth.whoAmI', { headers: { cookie: `mc_session=${originalToken}` } })
+    expect(res.status).toBe(200)
+
+    const reissued = res.headers.getSetCookie().find((c) => c.startsWith('mc_session='))
+    expect(reissued).toBeDefined()
+    expect(reissued).not.toContain(originalToken)
+  })
+
+  test('rbac.sessionPolicies CRUD and rbac.roles.setSessionPolicy work end to end for an admin', async () => {
+    const admin = await findRoleByName(db, 'admin')
+    if (!admin) throw new Error('seeded admin role not found — check migrations/0001_init.ts')
+
+    // verifiedProcedure (which hasPermission builds on) requires a linked
+    // Google identity AND a completed profile, not just a role — a bare
+    // insertUser row 403s regardless of permissions. Same setup as
+    // 'completeProfile persists the submitted profile...' above.
+    const { cookie: adminCookie, userId } = await mintBareUserCookie()
+    await linkIdentity(db, userId, 'google', `test-subject-${userId}`)
+    const profileRes = await app.request('/trpc/auth.completeProfile', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: adminCookie },
+      body: JSON.stringify({
+        firstName: 'Admin',
+        lastName: 'Test',
+        gender: 'other',
+        country: 'GB',
+        mobileNumber: '+44 20 7946 0958',
+        stayAnonymous: true,
+      }),
+    })
+    expect(profileRes.status).toBe(200)
+    await assignRoleToUser(db, userId, admin.id)
+
+    const createRes = await app.request('/trpc/rbac.sessionPolicies.create', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: adminCookie },
+      body: JSON.stringify({ name: `e2e-policy-${crypto.randomUUID()}`, attributes: { maxIdleSeconds: 300 } }),
+    })
+    expect(createRes.status).toBe(200)
+    const created = (await createRes.json()) as { result: { data: { id: string; name: string } } }
+    expect(created.result.data.id).toBeDefined()
+
+    const listRes = await app.request('/trpc/rbac.sessionPolicies.list', { headers: { cookie: adminCookie } })
+    expect(listRes.status).toBe(200)
+    const list = (await listRes.json()) as { result: { data: { id: string }[] } }
+    expect(list.result.data.some((p) => p.id === created.result.data.id)).toBe(true)
+
+    const testRole = await createRole(db, { name: `e2e-role-${crypto.randomUUID()}`, description: null })
+    const setRes = await app.request('/trpc/rbac.roles.setSessionPolicy', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: adminCookie },
+      body: JSON.stringify({ roleId: testRole.id, sessionPolicyId: created.result.data.id }),
+    })
+    expect(setRes.status).toBe(200)
+
+    const rolesRes = await app.request('/trpc/rbac.roles.list', { headers: { cookie: adminCookie } })
+    const roles = (await rolesRes.json()) as { result: { data: { id: string; sessionPolicyId: string | null }[] } }
+    expect(roles.result.data.find((r) => r.id === testRole.id)?.sessionPolicyId).toBe(created.result.data.id)
   })
 })
 

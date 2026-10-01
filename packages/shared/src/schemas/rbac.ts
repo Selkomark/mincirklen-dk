@@ -5,6 +5,7 @@ export const roleSchema = z.object({
   name: z.string(),
   description: z.string().nullable(),
   isSystem: z.boolean(),
+  sessionPolicyId: z.string().uuid().nullable(),
 })
 export type Role = z.infer<typeof roleSchema>
 
@@ -45,3 +46,46 @@ export const updateUserRolesInputSchema = z.object({
   roleIds: z.array(z.string().uuid()),
 })
 export type UpdateUserRolesInput = z.infer<typeof updateUserRolesInputSchema>
+
+// 60s floor guards against a fat-fingered 0/negative value instantly
+// locking out everyone in a role; 1yr ceiling guards against an absurd
+// value defeating the point of the feature. The platform default
+// (sessionToken.ts's DEFAULT_MAX_AGE_SECONDS, 180 days) is enforced
+// separately as an upper clamp in sessionPolicyService.ts — a policy can
+// only ever shorten a role's effective session, never lengthen it past
+// that default, regardless of what's stored here.
+export const sessionPolicyAttributesSchema = z.object({
+  maxIdleSeconds: z
+    .number()
+    .int()
+    .min(60)
+    .max(60 * 60 * 24 * 365)
+    .optional(),
+})
+export type SessionPolicyAttributes = z.infer<typeof sessionPolicyAttributesSchema>
+
+export const sessionPolicySchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  attributes: sessionPolicyAttributesSchema,
+})
+export type SessionPolicy = z.infer<typeof sessionPolicySchema>
+
+export const createSessionPolicyInputSchema = z.object({
+  name: z.string().min(2).max(100),
+  attributes: sessionPolicyAttributesSchema,
+})
+export type CreateSessionPolicyInput = z.infer<typeof createSessionPolicyInputSchema>
+
+export const updateSessionPolicyInputSchema = z.object({
+  policyId: z.string().uuid(),
+  name: z.string().min(2).max(100),
+  attributes: sessionPolicyAttributesSchema,
+})
+export type UpdateSessionPolicyInput = z.infer<typeof updateSessionPolicyInputSchema>
+
+export const setRoleSessionPolicyInputSchema = z.object({
+  roleId: z.string().uuid(),
+  sessionPolicyId: z.string().uuid().nullable(),
+})
+export type SetRoleSessionPolicyInput = z.infer<typeof setRoleSessionPolicyInputSchema>
