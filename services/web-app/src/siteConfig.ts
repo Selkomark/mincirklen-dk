@@ -4,3 +4,5 @@
 // Update this the day a custom domain (mincirklen.dk) goes live.
 export const SITE_ORIGIN = 'https://selkomark.github.io'
 export const SITE_NAME = 'MinCirklen'
+export const X_URL = 'https://x.com/MinCirklen'
+export const X_HANDLE = '@MinCirklen'

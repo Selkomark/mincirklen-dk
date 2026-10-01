@@ -1,4 +1,5 @@
 import { formatLocaleSegment, type Locale } from '../locale'
+import { X_HANDLE, X_URL } from '../siteConfig'
 
 export type PublicPageId =
   | 'how-it-works'
@@ -17,7 +18,7 @@ export interface PublicPageData {
   id: PublicPageId
   title: string
   intro: string
-  sections: { heading: string; body: string }[]
+  sections: { heading: string; body: string; link?: { href: string; label: string } }[]
   urgent?: boolean
 }
 
@@ -329,6 +330,11 @@ export const PUBLIC_PAGES: Record<PublicPageId, PublicPageData> = {
       {
         heading: 'General inquiries',
         body: 'Email mahan@selkomark.com for anything not covered elsewhere on this site, including press and partnerships.',
+      },
+      {
+        heading: 'Follow us on X',
+        body: 'For news, updates, and public communication from MinCirklen, follow us on X.',
+        link: { href: X_URL, label: X_HANDLE },
       },
       {
         heading: 'Safety concerns',

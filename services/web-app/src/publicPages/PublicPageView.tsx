@@ -75,6 +75,12 @@ export function PublicPageView({ id }: { id: PublicPageId }) {
               </h2>
               <div style={{ fontSize: 'var(--font-size-md)', color: 'var(--text-secondary)', lineHeight: 'var(--line-height-base)' }}>
                 {s.body}
+                {s.link && (
+                  <>
+                    {' '}
+                    <a href={s.link.href} target="_blank" rel="noopener noreferrer">{s.link.label}</a>
+                  </>
+                )}
               </div>
             </div>
           ))}
