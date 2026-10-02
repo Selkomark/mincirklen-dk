@@ -367,13 +367,29 @@ function CreateSessionPolicyModal({ onClose, onCreated }: { onClose: () => void;
         </Text>
         {error && <Alert variant="urgent">{error}</Alert>}
         <TextField label="Policy name" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
-        <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-end' }}>
-          <TextField label="Max idle time" type="number" min={1} value={value} onChange={(e) => setValue(e.target.value)} style={{ flex: 1 }} />
-          <Select label="Unit" selectedKey={unit} onSelectionChange={(key) => setUnit(key as DurationUnit)} style={{ flex: 1 }}>
-            <SelectItem id="minutes">Minutes</SelectItem>
-            <SelectItem id="hours">Hours</SelectItem>
-            <SelectItem id="days">Days</SelectItem>
-          </Select>
+        {/* Each field sits in its own flex wrapper — TextField forwards
+            `style` to the inner <input>, whose own wrapper is a flex
+            column, so `flex: 1` there collapses the input's height
+            instead of widening it. Digits-only text instead of
+            type="number": the DS field has no styling for the native
+            spinner, which otherwise shows up next to every other
+            spinner-less control. */}
+        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+          <div style={{ flex: 1 }}>
+            <TextField
+              label="Max idle time"
+              inputMode="numeric"
+              value={value}
+              onChange={(e) => setValue(e.target.value.replace(/\D/g, ''))}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <Select label="Unit" selectedKey={unit} onSelectionChange={(key) => setUnit(key as DurationUnit)}>
+              <SelectItem id="minutes">Minutes</SelectItem>
+              <SelectItem id="hours">Hours</SelectItem>
+              <SelectItem id="days">Days</SelectItem>
+            </Select>
+          </div>
         </div>
         <ModalActions>
           <Button variant="ghost" onPress={onClose} isDisabled={creating}>
