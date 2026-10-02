@@ -11,6 +11,8 @@ import { Tab, TabList, TabPanel, Tabs } from '../../components/Tabs'
 import { Text } from '../../components/Text'
 import { TextField } from '../../components/TextField'
 import { getTrpc, postTrpc } from './manageShared'
+import { searchRoles } from './roleSearch'
+import './RolesTab.css'
 
 interface Role {
   id: string
@@ -133,7 +135,7 @@ function PermissionEditor({
   onChange: (next: Set<string>) => void
 }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+    <div className="roles-permission-grid">
       {groupByPrefix(allPermissions).map(([prefix, permissions]) => (
         <div key={prefix}>
           <div
@@ -241,7 +243,7 @@ function EditRoleModal({
   }
 
   return (
-    <Modal isOpen onOpenChange={(open) => !open && onClose()} title={role.name}>
+    <Modal isOpen onOpenChange={(open) => !open && onClose()} title={role.name} className="roles-edit-modal">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
         {role.description && (
           <Text variant="muted" style={{ margin: 0 }}>
@@ -406,31 +408,55 @@ function CreateSessionPolicyModal({ onClose, onCreated }: { onClose: () => void;
 
 function RolesPanel({
   roles,
-  permissionCounts,
+  rolePermissionIds,
   allPermissions,
   sessionPolicies,
   reload,
 }: {
   roles: Role[]
-  permissionCounts: Record<string, number>
+  rolePermissionIds: Record<string, string[]>
   allPermissions: Permission[]
   sessionPolicies: SessionPolicy[]
   reload: () => Promise<void>
 }) {
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<Role | null>(null)
+  const [query, setQuery] = useState('')
   const policyById = new Map(sessionPolicies.map((policy) => [policy.id, policy]))
+  const permissionById = new Map(allPermissions.map((permission) => [permission.id, permission]))
+
+  // What the search sees for each role — see roleSearch.ts. A system
+  // role holds every permission, so it's searchable by all of them.
+  const searchable = roles.map((role) => ({
+    ...role,
+    sessionPolicyName: role.sessionPolicyId ? (policyById.get(role.sessionPolicyId)?.name ?? null) : null,
+    permissions: role.isSystem
+      ? allPermissions
+      : (rolePermissionIds[role.id] ?? []).map((id) => permissionById.get(id)).filter((p): p is Permission => p !== undefined),
+  }))
+  const visibleRoles = searchRoles(searchable, query)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-      <PanelToolbar
-        description="Roles bundle permissions. Assign them to users from the Users page."
-        action={
-          <Button variant="safe" onPress={() => setCreating(true)}>
-            New role
-          </Button>
-        }
-      />
+      <Text variant="muted" style={{ margin: 0 }}>
+        Roles bundle permissions. Assign them to users from the Users page.
+      </Text>
+
+      {/* alignItems: flex-end lines the button up with the input, not
+          with the field's label above it. */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 240px', maxWidth: 420 }}>
+          <TextField
+            label="Search roles"
+            placeholder="Name, what it can do, or a policy…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+        <Button variant="safe" onPress={() => setCreating(true)}>
+          New role
+        </Button>
+      </div>
 
       <Table striped>
         <thead>
@@ -443,7 +469,14 @@ function RolesPanel({
           </tr>
         </thead>
         <tbody>
-          {roles.map((role) => {
+          {visibleRoles.length === 0 && (
+            <tr>
+              <td colSpan={5} style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>
+                No roles match “{query.trim()}”.
+              </td>
+            </tr>
+          )}
+          {visibleRoles.map((role) => {
             const policy = role.sessionPolicyId ? policyById.get(role.sessionPolicyId) : undefined
             return (
               <tr key={role.id}>
@@ -454,7 +487,7 @@ function RolesPanel({
                   </div>
                 </td>
                 <td>{role.description ?? EMPTY_CELL}</td>
-                <td>{role.isSystem ? 'All' : (permissionCounts[role.id] ?? 0)}</td>
+                <td>{role.isSystem ? 'All' : role.permissions.length}</td>
                 <td>
                   {policy ? (
                     <>
@@ -561,7 +594,7 @@ function SessionPoliciesPanel({
 export function RolesTab() {
   const [roles, setRoles] = useState<Role[] | null>(null)
   const [permissions, setPermissions] = useState<Permission[] | null>(null)
-  const [permissionCounts, setPermissionCounts] = useState<Record<string, number>>({})
+  const [rolePermissionIds, setRolePermissionIds] = useState<Record<string, string[]>>({})
   const [sessionPolicies, setSessionPolicies] = useState<SessionPolicy[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -573,16 +606,17 @@ export function RolesTab() {
         getTrpc<SessionPolicy[]>('rbac.sessionPolicies.list', undefined),
       ])
       // One getPermissions per non-system role — rbac.roles.list doesn't
-      // carry the permission set, and the roles list is small.
-      const counts = await Promise.all(
+      // carry the permission set, and the roles list is small. Feeds
+      // both the Permissions column and the search (roleSearch.ts).
+      const permissionIds = await Promise.all(
         roleList
           .filter((role) => !role.isSystem)
-          .map(async (role) => [role.id, (await getTrpc<string[]>('rbac.roles.getPermissions', { roleId: role.id })).length] as const),
+          .map(async (role) => [role.id, await getTrpc<string[]>('rbac.roles.getPermissions', { roleId: role.id })] as const),
       )
       setRoles(roleList)
       setPermissions(permissionList)
       setSessionPolicies(policyList)
-      setPermissionCounts(Object.fromEntries(counts))
+      setRolePermissionIds(Object.fromEntries(permissionIds))
       setError(null)
     } catch {
       setError('Failed to load roles.')
@@ -607,7 +641,7 @@ export function RolesTab() {
           {loaded ? (
             <RolesPanel
               roles={roles}
-              permissionCounts={permissionCounts}
+              rolePermissionIds={rolePermissionIds}
               allPermissions={permissions}
               sessionPolicies={sessionPolicies}
               reload={reload}

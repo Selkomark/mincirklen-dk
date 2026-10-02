@@ -1,0 +1,15 @@
+/* The edit-role dialog — wider than Modal.css's 480px default so the
+   permission list below can run in two columns without wrapping every
+   slug. Same approach as AccountModal.css. */
+.roles-edit-modal {
+  max-width: 720px;
+}
+
+/* Permission groups (one per slug prefix) flow into as many columns as
+   fit at ~260px each: two on the widened modal, one on a narrow
+   viewport. Each group stays whole in its own cell. */
+.roles-permission-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-4) var(--space-5);
+}
