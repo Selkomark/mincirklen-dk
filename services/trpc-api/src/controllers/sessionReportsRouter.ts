@@ -1,13 +1,22 @@
-import { listSessionReportsInputSchema, reviewSessionReportInputSchema } from '@mincirklen/shared'
+import {
+  listSessionReportsInputSchema,
+  reviewSessionReportInputSchema,
+  sessionReportTranscriptInputSchema,
+} from '@mincirklen/shared'
 import { TRPCError } from '@trpc/server'
+import { listTranscriptWindow } from '../repositories/messageRepository'
+import { getRoster } from '../repositories/sessionRepository'
 import {
   applySessionReportDecision,
+  findSessionReportAnchor,
   findSessionReportStatus,
   listSessionReports,
 } from '../repositories/sessionReportRepository'
+import { findDisplayNames } from '../repositories/userProfileRepository'
 import {
   reviewSessionReport,
   SessionReportAlreadyResolvedError,
+  SessionReportNoteRequiredError,
   SessionReportNotFoundError,
 } from '../services/sessionReportService'
 import { hasPermission, router } from './trpc'
@@ -18,6 +27,9 @@ function toTRPCError(err: unknown): TRPCError {
   }
   if (err instanceof SessionReportAlreadyResolvedError) {
     return new TRPCError({ code: 'CONFLICT', message: err.message })
+  }
+  if (err instanceof SessionReportNoteRequiredError) {
+    return new TRPCError({ code: 'BAD_REQUEST', message: err.message })
   }
   return new TRPCError({ code: 'INTERNAL_SERVER_ERROR', cause: err })
 }
@@ -37,13 +49,42 @@ export const sessionReportsRouter = router({
         await reviewSessionReport(
           {
             findReport: () => findSessionReportStatus(ctx.appEnv.db, input.reportId),
-            applyDecision: (status) => applySessionReportDecision(ctx.appEnv.db, { reportId: input.reportId, status, reviewedBy: ctx.userId }),
+            applyDecision: (status, note) =>
+              applySessionReportDecision(ctx.appEnv.db, { reportId: input.reportId, status, reviewedBy: ctx.userId, note }),
           },
-          { status: input.status },
+          { status: input.status, note: input.note },
         )
         return { ok: true }
       } catch (err) {
         throw toTRPCError(err)
       }
+    }),
+
+  // The reported circle's conversation, windowed around the report (see
+  // sessionReportTranscriptInputSchema). Members are labelled exactly as
+  // the circle itself labels them — turn-order roster plus the first
+  // name only for members who turned anonymity off (the same
+  // findDisplayNames session.getState uses) — so the reviewer sees what
+  // the members saw, never a decrypted identity (CHARTER.md §4).
+  transcript: hasPermission('session_reports.read')
+    .input(sessionReportTranscriptInputSchema)
+    .query(async ({ ctx, input }) => {
+      const anchor = await findSessionReportAnchor(ctx.appEnv.db, input.reportId)
+      if (!anchor) throw toTRPCError(new SessionReportNotFoundError('session report not found'))
+
+      const window =
+        input.direction === 'around' || !input.cursor
+          ? await listTranscriptWindow(ctx.appEnv.db, { sessionId: anchor.sessionId, direction: 'around', at: anchor.createdAtExact, limit: input.limit })
+          : await listTranscriptWindow(ctx.appEnv.db, { sessionId: anchor.sessionId, direction: input.direction, cursor: input.cursor, limit: input.limit })
+
+      const rosterEntries = await getRoster(ctx.appEnv.db, anchor.sessionId)
+      const displayNames = await findDisplayNames(
+        ctx.appEnv.db,
+        ctx.appEnv.vault,
+        rosterEntries.map((entry) => entry.userId),
+      )
+      const roster = rosterEntries.map((entry) => ({ ...entry, displayName: displayNames.get(entry.userId) ?? null }))
+
+      return { ...window, roster, reportedAt: anchor.createdAt, aboutUserIds: anchor.aboutUserIds }
     }),
 })

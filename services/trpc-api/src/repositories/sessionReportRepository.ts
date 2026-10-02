@@ -42,6 +42,7 @@ export interface SessionReportRow {
   createdAt: Date
   reviewedAt: Date | null
   reviewedBy: string | null
+  decisionNote: string | null
 }
 
 export interface ListSessionReportsResult {
@@ -74,6 +75,7 @@ export async function listSessionReports(
       sql<string>`session_reports.created_at::text`.as('created_at_cursor'),
       'session_reports.reviewed_at as reviewed_at',
       'session_reports.reviewed_by as reviewed_by',
+      'session_reports.decision_note as decision_note',
     ])
     .where('session_reports.status', '=', params.status)
 
@@ -106,6 +108,7 @@ export async function listSessionReports(
       createdAt: row.created_at,
       reviewedAt: row.reviewed_at,
       reviewedBy: row.reviewed_by,
+      decisionNote: row.decision_note,
     })),
     nextCursor: hasMore && last ? `${last.created_at_cursor}|${last.id}` : null,
   }
@@ -116,13 +119,36 @@ export async function findSessionReportStatus(db: Kysely<Database>, reportId: st
   return row ?? null
 }
 
+// What the transcript view needs to anchor itself: which circle, and
+// the instant the member hit "report" — the messages just before that
+// are what prompted it.
+//
+// `createdAtExact` is Postgres's own text form of the timestamp (same
+// precision rationale as messageRepository.ts's created_at_cursor): a JS
+// Date only keeps milliseconds, so comparing against it in SQL would put
+// a message stamped in the same millisecond as the report on the wrong
+// side of the window.
+export async function findSessionReportAnchor(
+  db: Kysely<Database>,
+  reportId: string,
+): Promise<{ sessionId: string; createdAt: Date; createdAtExact: string; aboutUserIds: string[] } | null> {
+  const row = await db
+    .selectFrom('session_reports')
+    .select(['session_id', 'created_at', 'about_user_ids', sql<string>`created_at::text`.as('created_at_exact')])
+    .where('id', '=', reportId)
+    .executeTakeFirst()
+  return row
+    ? { sessionId: row.session_id, createdAt: row.created_at, createdAtExact: row.created_at_exact, aboutUserIds: row.about_user_ids }
+    : null
+}
+
 export async function applySessionReportDecision(
   db: Kysely<Database>,
-  params: { reportId: string; status: SessionReportDecision; reviewedBy: string },
+  params: { reportId: string; status: SessionReportDecision; reviewedBy: string; note: string },
 ): Promise<void> {
   await db
     .updateTable('session_reports')
-    .set({ status: params.status, reviewed_at: sql`now()`, reviewed_by: params.reviewedBy })
+    .set({ status: params.status, reviewed_at: sql`now()`, reviewed_by: params.reviewedBy, decision_note: params.note })
     .where('id', '=', params.reportId)
     .execute()
 }

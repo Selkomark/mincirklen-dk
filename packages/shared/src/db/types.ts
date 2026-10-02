@@ -173,6 +173,11 @@ export interface SessionReportsTable {
   status: Generated<'open' | 'reviewed' | 'dismissed'>
   reviewed_at: NullableTimestamp
   reviewed_by: string | null
+  // The reviewer's reasoning, required with every decision
+  // (migrations/0004_session_report_decision_note.ts). Null only on rows
+  // decided before that migration — none in practice, the feature
+  // shipped together.
+  decision_note: string | null
 }
 
 // The abuse-prevention ledger — deliberately NOT foreign-keyed to

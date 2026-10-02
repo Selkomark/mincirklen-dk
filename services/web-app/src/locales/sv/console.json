@@ -188,7 +188,7 @@
     "logoutFailed": "Något gick fel vid utloggningen."
   },
   "reports": {
-    "intro": "Rapporter som medlemmar lämnat om en cirkel eller någon i den. Markera en som granskad när du har tittat på eller agerat på den; avfärda den när det inte finns något att göra. Slå upp ett användar-id under Användare för att agera på ett konto.",
+    "intro": "Rapporter som medlemmar lämnat om en cirkel eller någon i den. Öppna en för att läsa samtalet kring tidpunkten då den lämnades, och registrera sedan ett beslut med din motivering. Slå upp en medlem under Användare för att agera på ett konto.",
     "tabsLabel": "Sessionsrapporter efter status",
     "status": {
       "open": "Öppna",
@@ -198,11 +198,7 @@
     "columns": {
       "filed": "Inlämnad",
       "session": "Cirkel",
-      "reporter": "Anmälare",
-      "about": "Gäller",
-      "report": "Rapport",
-      "decision": "Beslut",
-      "decidedBy": "Beslutad"
+      "report": "Rapport"
     },
     "empty": {
       "open": "Inga öppna rapporter.",
@@ -210,9 +206,30 @@
       "dismissed": "Inga avfärdade rapporter ännu."
     },
     "unnamedSession": "Namnlös cirkel",
-    "wholeSession": "Hela cirkeln",
-    "markReviewed": "Markera som granskad",
-    "dismiss": "Avfärda",
+    "review": "Granska",
+    "view": "Visa",
+    "filedAt": "Inlämnad {{when}}",
+    "reporter": "Anmälare",
+    "reporterGone": "Konto raderat",
+    "about": "Gäller",
+    "reportBody": "Vad de rapporterade",
+    "makeDecision": "Fatta ett beslut",
+    "decided": "Beslutad {{when}}",
+    "noNote": "Ingen motivering registrerades.",
+    "transcriptTitle": "Samtal",
+    "reportFiledDivider": "Rapport inlämnad · {{when}}",
+    "reportedMember": "Rapporterad medlem",
+    "withheld": "Undanhållet av moderering — bara avsändaren såg detta",
+    "startOfConversation": "Samtalets början",
+    "endOfConversation": "Samtalets slut",
+    "noMessages": "Inget sades i den här cirkeln.",
+    "transcriptLoadFailed": "Kunde inte ladda samtalet.",
+    "decisionTitle": "Fatta ett beslut",
+    "decisionIntro": "Skriv ner din motivering först. Den sparas med rapporten som dokumentation av varför, och krävs innan du kan besluta.",
+    "noteLabel": "Din motivering",
+    "notePlaceholder": "Vad du såg i samtalet och varför du beslutar så här…",
+    "decisionReviewed": "Granskad — jag har tittat på eller agerat på det",
+    "decisionDismissed": "Avfärda — inget att agera på",
     "loadFailed": "Kunde inte ladda sessionsrapporter.",
     "decideFailed": "Kunde inte spara beslutet — det kan redan ha beslutats av någon annan."
   }

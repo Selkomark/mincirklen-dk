@@ -3,8 +3,9 @@ import { createHmac } from 'node:crypto'
 import { DEFAULT_LOCAL_DATABASE_URL, createDb, createPgPool, createSessionToken, runMigrations } from '@mincirklen/shared'
 import { createApp } from './app'
 import { insertUser } from './repositories/userRepository'
-import { createSession } from './repositories/sessionRepository'
+import { createSession, joinSession } from './repositories/sessionRepository'
 import { insertSessionReport } from './repositories/sessionReportRepository'
+import { insertMessage } from './repositories/messageRepository'
 import { linkIdentity } from './repositories/userIdentityRepository'
 import { upsertState } from './repositories/featureGateStateRepository'
 import {
@@ -532,7 +533,16 @@ describe('session reports review (sessionReports.*)', () => {
     return { sessionId: session.id, reporterId: reporter.id, aboutId: about.id }
   }
 
-  type ReportRow = { id: string; sessionId: string; reporterUserId: string | null; aboutUserIds: string[]; body: string; status: string; reviewedBy: string | null }
+  type ReportRow = {
+    id: string
+    sessionId: string
+    reporterUserId: string | null
+    aboutUserIds: string[]
+    body: string
+    status: string
+    reviewedBy: string | null
+    decisionNote: string | null
+  }
 
   async function listAll(cookie: string, status: 'open' | 'reviewed' | 'dismissed'): Promise<ReportRow[]> {
     const out: ReportRow[] = []
@@ -568,7 +578,7 @@ describe('session reports review (sessionReports.*)', () => {
     const res = await app.request('/trpc/sessionReports.review', {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({ reportId: target.id, status: 'reviewed' }),
+      body: JSON.stringify({ reportId: target.id, status: 'reviewed', note: 'Talked it through with both; resolved.' }),
     })
     expect(res.status).toBe(200)
 
@@ -576,6 +586,7 @@ describe('session reports review (sessionReports.*)', () => {
     const reviewed = (await listAll(cookie, 'reviewed')).find((r) => r.id === target.id)
     expect(reviewed?.status).toBe('reviewed')
     expect(reviewed?.reviewedBy).not.toBeNull()
+    expect(reviewed?.decisionNote).toBe('Talked it through with both; resolved.')
   })
 
   test('a decided report cannot be decided again (409), and an unknown id is 404', async () => {
@@ -587,22 +598,97 @@ describe('session reports review (sessionReports.*)', () => {
     const first = await app.request('/trpc/sessionReports.review', {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({ reportId: target.id, status: 'dismissed' }),
+      body: JSON.stringify({ reportId: target.id, status: 'dismissed', note: 'No grounds.' }),
     })
     expect(first.status).toBe(200)
 
     const again = await app.request('/trpc/sessionReports.review', {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({ reportId: target.id, status: 'reviewed' }),
+      body: JSON.stringify({ reportId: target.id, status: 'reviewed', note: 'Second thoughts.' }),
     })
     expect(again.status).toBe(409)
 
     const missing = await app.request('/trpc/sessionReports.review', {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({ reportId: crypto.randomUUID(), status: 'reviewed' }),
+      body: JSON.stringify({ reportId: crypto.randomUUID(), status: 'reviewed', note: 'x' }),
     })
+    expect(missing.status).toBe(404)
+  })
+
+  test('a decision without a note is rejected by input validation', async () => {
+    const cookie = await adminCookie()
+    const body = `e2e no-note ${crypto.randomUUID()}`
+    await fileReport(body)
+    const target = (await listAll(cookie, 'open')).find((r) => r.body === body)!
+
+    const res = await app.request('/trpc/sessionReports.review', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ reportId: target.id, status: 'reviewed', note: '   ' }),
+    })
+    expect(res.status).toBe(400)
+    expect((await listAll(cookie, 'open')).some((r) => r.id === target.id)).toBe(true)
+  })
+
+  test('the transcript opens around the report and pages both ways with the circle-style roster', async () => {
+    const cookie = await adminCookie()
+    const session = await createSession(db)
+    const reporter = await insertUser(db)
+    const about = await insertUser(db)
+    await joinSession(db, session.id, reporter.id)
+    await joinSession(db, session.id, about.id)
+
+    // Rows default to now() per statement; a short pause between the
+    // phases keeps "before", the report, and "after" in unambiguous
+    // order on a fast machine.
+    const pause = () => new Promise((resolve) => setTimeout(resolve, 5))
+    for (let i = 0; i < 4; i++) await insertMessage(db, { sessionId: session.id, userId: about.id, body: `before ${i}` })
+    await pause()
+    await insertSessionReport(db, { sessionId: session.id, reporterUserId: reporter.id, aboutUserIds: [about.id], body: 'e2e transcript' })
+    await pause()
+    const report = (await listAll(cookie, 'open')).find((r) => r.sessionId === session.id)!
+    for (let i = 0; i < 4; i++) await insertMessage(db, { sessionId: session.id, userId: reporter.id, body: `after ${i}` })
+
+    type Transcript = {
+      messages: { id: string; body: string; userId: string }[]
+      olderCursor: string | null
+      newerCursor: string | null
+      roster: { userId: string; turnOrder: number; displayName: string | null }[]
+      reportedAt: string
+      aboutUserIds: string[]
+    }
+    const fetchWindow = async (input: Record<string, unknown>): Promise<Transcript> => {
+      const res = await app.request(`/trpc/sessionReports.transcript?input=${encodeURIComponent(JSON.stringify(input))}`, { headers: { cookie } })
+      expect(res.status).toBe(200)
+      return ((await res.json()) as { result: { data: Transcript } }).result.data
+    }
+
+    // Two before + two after around the report, cursors pointing both ways.
+    const around = await fetchWindow({ reportId: report.id, direction: 'around', limit: 2 })
+    expect(around.messages.map((m) => m.body)).toEqual(['before 2', 'before 3', 'after 0', 'after 1'])
+    expect(around.olderCursor).not.toBeNull()
+    expect(around.newerCursor).not.toBeNull()
+    expect(around.aboutUserIds).toEqual([about.id])
+    // Roster is the circle's own view: turn order, anonymous (null) names
+    // for these bare test users — never an email or decrypted identity.
+    expect(around.roster.map((r) => r.userId).sort()).toEqual([reporter.id, about.id].sort())
+    expect(around.roster.every((r) => r.displayName === null)).toBe(true)
+    expect(Object.keys(around.roster[0]!).sort()).toEqual(['displayName', 'turnOrder', 'userId'])
+
+    // Scrolling up reaches the start; scrolling down reaches the end.
+    const older = await fetchWindow({ reportId: report.id, direction: 'before', cursor: around.olderCursor, limit: 10 })
+    expect(older.messages.map((m) => m.body)).toEqual(['before 0', 'before 1'])
+    expect(older.olderCursor).toBeNull()
+    const newer = await fetchWindow({ reportId: report.id, direction: 'after', cursor: around.newerCursor, limit: 10 })
+    expect(newer.messages.map((m) => m.body)).toEqual(['after 2', 'after 3'])
+    expect(newer.newerCursor).toBeNull()
+
+    const missing = await app.request(
+      `/trpc/sessionReports.transcript?input=${encodeURIComponent(JSON.stringify({ reportId: crypto.randomUUID() }))}`,
+      { headers: { cookie } },
+    )
     expect(missing.status).toBe(404)
   })
 

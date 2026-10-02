@@ -278,3 +278,112 @@ export async function applyHumanReviewOutcome(
     }
   })
 }
+
+// ---- Moderator transcript window (sessionReportsRouter.ts) ----
+//
+// Unlike listMessages above, this has NO per-viewer visibility filter:
+// a reviewer working a session report needs the whole conversation,
+// including rows the classifier withheld from other members — the same
+// access the moderation review queue (listPendingReview) already grants
+// the same permission holders. Never exposed to members; gated by
+// session_reports.read at the router.
+//
+// Bidirectional: `around` returns a page on each side of `at` (the
+// report's filing moment) in one call so the view can open centred on
+// it; `before`/`after` page outward from a cursor. Cursors are the same
+// created_at::text|id pair listMessages uses.
+
+export type TranscriptWindowParams =
+  // `at` is a timestamptz in Postgres text form (see
+  // sessionReportRepository.ts's findSessionReportAnchor), compared via
+  // ::timestamptz so microseconds are honoured.
+  | { sessionId: string; direction: 'around'; at: string; limit: number }
+  | { sessionId: string; direction: 'before' | 'after'; cursor: string; limit: number }
+
+export interface TranscriptWindowResult {
+  messages: MessageRow[]
+  // Cursor for the page immediately older than messages[0]; null when
+  // this already reaches the start.
+  olderCursor: string | null
+  // Cursor for the page immediately newer than the last message; null
+  // when this already reaches the end.
+  newerCursor: string | null
+}
+
+const TRANSCRIPT_COLUMNS = [
+  'id',
+  'session_id',
+  'user_id',
+  'body',
+  'type',
+  'moderation_status',
+  'false_positive_reported_at',
+  'created_at',
+  sql<string>`created_at::text`.as('created_at_cursor'),
+] as const
+
+type TranscriptRow = Parameters<typeof toMessageRow>[0] & { created_at_cursor: string }
+
+function cursorOf(row: TranscriptRow): string {
+  return `${row.created_at_cursor}|${row.id}`
+}
+
+export async function listTranscriptWindow(db: Kysely<Database>, params: TranscriptWindowParams): Promise<TranscriptWindowResult> {
+  const base = () => db.selectFrom('messages').select(TRANSCRIPT_COLUMNS).where('session_id', '=', params.sessionId)
+
+  if (params.direction === 'around') {
+    // "At or before" vs "strictly after" so a message stamped the exact
+    // same instant as the report lands on the before side, where a
+    // reader expects what prompted the report to be.
+    const [beforeRows, afterRows] = await Promise.all([
+      base()
+        .where(sql<boolean>`created_at <= ${params.at}::timestamptz`)
+        .orderBy('created_at', 'desc')
+        .orderBy('id', 'desc')
+        .limit(params.limit + 1)
+        .execute(),
+      base()
+        .where(sql<boolean>`created_at > ${params.at}::timestamptz`)
+        .orderBy('created_at', 'asc')
+        .orderBy('id', 'asc')
+        .limit(params.limit + 1)
+        .execute(),
+    ])
+    const hasOlder = beforeRows.length > params.limit
+    const hasNewer = afterRows.length > params.limit
+    const before = beforeRows.slice(0, params.limit).reverse()
+    const after = afterRows.slice(0, params.limit)
+    const oldest = before[0] ?? after[0]
+    const newest = after[after.length - 1] ?? before[before.length - 1]
+    return {
+      messages: [...before, ...after].map(toMessageRow),
+      olderCursor: hasOlder && oldest ? cursorOf(oldest) : null,
+      newerCursor: hasNewer && newest ? cursorOf(newest) : null,
+    }
+  }
+
+  const decoded = parseMessageCursor(params.cursor)
+  if (params.direction === 'before') {
+    const rows = await base()
+      .where(sql<boolean>`(created_at < ${decoded.value}::timestamptz) or (created_at = ${decoded.value}::timestamptz and id < ${decoded.id})`)
+      .orderBy('created_at', 'desc')
+      .orderBy('id', 'desc')
+      .limit(params.limit + 1)
+      .execute()
+    const hasOlder = rows.length > params.limit
+    const page = rows.slice(0, params.limit).reverse()
+    const oldest = page[0]
+    return { messages: page.map(toMessageRow), olderCursor: hasOlder && oldest ? cursorOf(oldest) : null, newerCursor: null }
+  }
+
+  const rows = await base()
+    .where(sql<boolean>`(created_at > ${decoded.value}::timestamptz) or (created_at = ${decoded.value}::timestamptz and id > ${decoded.id})`)
+    .orderBy('created_at', 'asc')
+    .orderBy('id', 'asc')
+    .limit(params.limit + 1)
+    .execute()
+  const hasNewer = rows.length > params.limit
+  const page = rows.slice(0, params.limit)
+  const newest = page[page.length - 1]
+  return { messages: page.map(toMessageRow), olderCursor: null, newerCursor: hasNewer && newest ? cursorOf(newest) : null }
+}

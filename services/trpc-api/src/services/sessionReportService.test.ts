@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   reviewSessionReport,
   SessionReportAlreadyResolvedError,
+  SessionReportNoteRequiredError,
   SessionReportNotFoundError,
   type ReviewSessionReportDeps,
 } from './sessionReportService'
@@ -11,8 +12,8 @@ function deps(overrides: Partial<ReviewSessionReportDeps> = {}): ReviewSessionRe
   return {
     applied,
     findReport: async () => ({ status: 'open' as const }),
-    applyDecision: async (status) => {
-      applied.push(status)
+    applyDecision: async (status, note) => {
+      applied.push(`${status}:${note}`)
     },
     ...overrides,
   }
@@ -21,25 +22,31 @@ function deps(overrides: Partial<ReviewSessionReportDeps> = {}): ReviewSessionRe
 describe('reviewSessionReport', () => {
   test('marks an open report reviewed', async () => {
     const d = deps()
-    await reviewSessionReport(d, { status: 'reviewed' })
-    expect(d.applied).toEqual(['reviewed'])
+    await reviewSessionReport(d, { status: 'reviewed', note: 'Spoke to both members.' })
+    expect(d.applied).toEqual(['reviewed:Spoke to both members.'])
   })
 
   test('marks an open report dismissed', async () => {
     const d = deps()
-    await reviewSessionReport(d, { status: 'dismissed' })
-    expect(d.applied).toEqual(['dismissed'])
+    await reviewSessionReport(d, { status: 'dismissed', note: 'Nothing in the transcript supports it.' })
+    expect(d.applied).toEqual(['dismissed:Nothing in the transcript supports it.'])
   })
 
   test('rejects an unknown report without touching storage', async () => {
     const d = deps({ findReport: async () => null })
-    await expect(reviewSessionReport(d, { status: 'reviewed' })).rejects.toBeInstanceOf(SessionReportNotFoundError)
+    await expect(reviewSessionReport(d, { status: 'reviewed', note: 'x' })).rejects.toBeInstanceOf(SessionReportNotFoundError)
+    expect(d.applied).toEqual([])
+  })
+
+  test('refuses a decision without a note — the reasoning is the record', async () => {
+    const d = deps()
+    await expect(reviewSessionReport(d, { status: 'reviewed', note: '   ' })).rejects.toBeInstanceOf(SessionReportNoteRequiredError)
     expect(d.applied).toEqual([])
   })
 
   test.each(['reviewed', 'dismissed'] as const)('refuses to re-decide a report already %s', async (existing) => {
     const d = deps({ findReport: async () => ({ status: existing }) })
-    await expect(reviewSessionReport(d, { status: 'dismissed' })).rejects.toBeInstanceOf(SessionReportAlreadyResolvedError)
+    await expect(reviewSessionReport(d, { status: 'dismissed', note: 'x' })).rejects.toBeInstanceOf(SessionReportAlreadyResolvedError)
     expect(d.applied).toEqual([])
   })
 })

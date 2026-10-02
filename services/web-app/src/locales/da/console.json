@@ -188,7 +188,7 @@
     "logoutFailed": "Noget gik galt under log ud."
   },
   "reports": {
-    "intro": "Rapporter, som medlemmer har indsendt om en cirkel eller en person i den. Markér en som gennemgået, når du har undersøgt eller handlet på den; afvis den, når der ikke er noget at gøre. Slå et bruger-id op under Brugere for at handle på en konto.",
+    "intro": "Rapporter, som medlemmer har indsendt om en cirkel eller en person i den. Åbn en for at læse samtalen omkring det tidspunkt, den blev indsendt, og registrér derefter en afgørelse med din begrundelse. Slå et medlem op under Brugere for at handle på en konto.",
     "tabsLabel": "Sessionsrapporter efter status",
     "status": {
       "open": "Åbne",
@@ -198,11 +198,7 @@
     "columns": {
       "filed": "Indsendt",
       "session": "Cirkel",
-      "reporter": "Anmelder",
-      "about": "Vedrører",
-      "report": "Rapport",
-      "decision": "Afgørelse",
-      "decidedBy": "Afgjort"
+      "report": "Rapport"
     },
     "empty": {
       "open": "Ingen åbne rapporter.",
@@ -210,9 +206,30 @@
       "dismissed": "Ingen afviste rapporter endnu."
     },
     "unnamedSession": "Unavngivet cirkel",
-    "wholeSession": "Hele cirklen",
-    "markReviewed": "Markér som gennemgået",
-    "dismiss": "Afvis",
+    "review": "Gennemgå",
+    "view": "Vis",
+    "filedAt": "Indsendt {{when}}",
+    "reporter": "Anmelder",
+    "reporterGone": "Konto slettet",
+    "about": "Vedrører",
+    "reportBody": "Hvad de rapporterede",
+    "makeDecision": "Træf en afgørelse",
+    "decided": "Afgjort {{when}}",
+    "noNote": "Der blev ikke registreret en begrundelse.",
+    "transcriptTitle": "Samtale",
+    "reportFiledDivider": "Rapport indsendt · {{when}}",
+    "reportedMember": "Rapporteret medlem",
+    "withheld": "Tilbageholdt af moderation — kun afsenderen så denne",
+    "startOfConversation": "Samtalens begyndelse",
+    "endOfConversation": "Samtalens afslutning",
+    "noMessages": "Der blev ikke sagt noget i denne cirkel.",
+    "transcriptLoadFailed": "Kunne ikke indlæse samtalen.",
+    "decisionTitle": "Træf en afgørelse",
+    "decisionIntro": "Skriv din begrundelse først. Den gemmes sammen med rapporten som dokumentation for hvorfor, og den er påkrævet, før du kan afgøre.",
+    "noteLabel": "Din begrundelse",
+    "notePlaceholder": "Hvad du fandt i samtalen, og hvorfor du afgør det sådan…",
+    "decisionReviewed": "Gennemgået — jeg har undersøgt eller handlet på det",
+    "decisionDismissed": "Afvis — intet at handle på",
     "loadFailed": "Kunne ikke indlæse sessionsrapporter.",
     "decideFailed": "Kunne ikke gemme afgørelsen — den er muligvis allerede afgjort af en anden."
   }

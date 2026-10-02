@@ -57,7 +57,9 @@ export async function submitSessionReport(deps: SubmitSessionReportDeps, params:
 // looked into it) or open → dismissed (nothing to do). No reopening and
 // no second decision — a decision is a record of what a human concluded
 // at the time, not a mutable field; if circumstances change, the member
-// files a new report and that gets its own decision.
+// files a new report and that gets its own decision. Every decision
+// carries the reviewer's own words on why — the note is the audit trail,
+// so an empty one is refused here, not just discouraged in the UI.
 
 export type SessionReportStatus = 'open' | 'reviewed' | 'dismissed'
 export type SessionReportDecision = Exclude<SessionReportStatus, 'open'>
@@ -74,12 +76,25 @@ export class SessionReportAlreadyResolvedError extends Error {
   }
 }
 
-export interface ReviewSessionReportDeps {
-  findReport(): Promise<{ status: SessionReportStatus } | null>
-  applyDecision(status: SessionReportDecision): Promise<void>
+export class SessionReportNoteRequiredError extends Error {
+  constructor(message: string) {
+    super(message)
+  }
 }
 
-export async function reviewSessionReport(deps: ReviewSessionReportDeps, params: { status: SessionReportDecision }): Promise<void> {
+export interface ReviewSessionReportDeps {
+  findReport(): Promise<{ status: SessionReportStatus } | null>
+  applyDecision(status: SessionReportDecision, note: string): Promise<void>
+}
+
+export async function reviewSessionReport(
+  deps: ReviewSessionReportDeps,
+  params: { status: SessionReportDecision; note: string },
+): Promise<void> {
+  const note = params.note.trim()
+  if (!note) {
+    throw new SessionReportNoteRequiredError('a decision needs a note explaining it')
+  }
   const report = await deps.findReport()
   if (!report) {
     throw new SessionReportNotFoundError('session report not found')
@@ -87,5 +102,5 @@ export async function reviewSessionReport(deps: ReviewSessionReportDeps, params:
   if (report.status !== 'open') {
     throw new SessionReportAlreadyResolvedError(`session report is already ${report.status}`)
   }
-  await deps.applyDecision(params.status)
+  await deps.applyDecision(params.status, note)
 }

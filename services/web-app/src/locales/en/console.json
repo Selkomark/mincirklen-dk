@@ -188,7 +188,7 @@
     "logoutFailed": "Something went wrong logging out."
   },
   "reports": {
-    "intro": "Reports members filed about a circle or someone in it. Mark one reviewed once you have looked into it or acted on it; dismiss it when there is nothing to do. Look a user id up in Users to act on an account.",
+    "intro": "Reports members filed about a circle or someone in it. Open one to read the conversation around the moment it was filed, then record a decision with your reasoning. Look a member up in Users to act on an account.",
     "tabsLabel": "Session reports by status",
     "status": {
       "open": "Open",
@@ -198,11 +198,7 @@
     "columns": {
       "filed": "Filed",
       "session": "Circle",
-      "reporter": "Reporter",
-      "about": "About",
-      "report": "Report",
-      "decision": "Decision",
-      "decidedBy": "Decided"
+      "report": "Report"
     },
     "empty": {
       "open": "No open reports.",
@@ -210,9 +206,30 @@
       "dismissed": "No dismissed reports yet."
     },
     "unnamedSession": "Unnamed circle",
-    "wholeSession": "Whole circle",
-    "markReviewed": "Mark reviewed",
-    "dismiss": "Dismiss",
+    "review": "Review",
+    "view": "View",
+    "filedAt": "Filed {{when}}",
+    "reporter": "Reporter",
+    "reporterGone": "Account deleted",
+    "about": "About",
+    "reportBody": "What they reported",
+    "makeDecision": "Make a decision",
+    "decided": "Decided {{when}}",
+    "noNote": "No note was recorded.",
+    "transcriptTitle": "Conversation",
+    "reportFiledDivider": "Report filed · {{when}}",
+    "reportedMember": "Reported member",
+    "withheld": "Withheld by moderation — only its author saw this",
+    "startOfConversation": "Start of the conversation",
+    "endOfConversation": "End of the conversation",
+    "noMessages": "Nothing was said in this circle.",
+    "transcriptLoadFailed": "Failed to load the conversation.",
+    "decisionTitle": "Make a decision",
+    "decisionIntro": "Write down your reasoning first. It is kept with the report as the record of why, and is required before you can decide.",
+    "noteLabel": "Your reasoning",
+    "notePlaceholder": "What you found in the conversation and why you are deciding this way…",
+    "decisionReviewed": "Reviewed — I looked into it or acted on it",
+    "decisionDismissed": "Dismiss — nothing to act on",
     "loadFailed": "Failed to load session reports.",
     "decideFailed": "Failed to save the decision — it may already have been decided by someone else."
   }
