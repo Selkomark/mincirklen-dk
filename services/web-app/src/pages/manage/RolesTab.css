@@ -39,3 +39,17 @@
 .roles-permission-item--matched {
   background: var(--accent-safe-surface);
 }
+
+/* The permission search's own label is redundant under the visible
+   "Permissions" section label — keep it for assistive tech only. */
+.roles-permission-search .ds-textfield__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

@@ -139,21 +139,17 @@ function PermissionEditor({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-      {/* alignItems: flex-end lines the section label up with the
-          search input, not with the input's own label above it. */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
-        <div style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-primary)', paddingBottom: 12 }}>
-          Permissions
-        </div>
-        <div style={{ flex: '1 1 200px', maxWidth: 300 }}>
-          <TextField
-            label="Search permissions"
-            placeholder="e.g. edit users, timeout…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </div>
-      </div>
+      <div style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-primary)' }}>Permissions</div>
+      {/* Full-width search directly under the section label; the field's
+          own label is for screen readers only — "Permissions" above it
+          already says what it searches. */}
+      <TextField
+        label="Search permissions"
+        className="roles-permission-search"
+        placeholder="Search permissions, e.g. edit users, timeout…"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
 
       {groups.length === 0 ? (
         <Text variant="muted" style={{ margin: 0 }}>
