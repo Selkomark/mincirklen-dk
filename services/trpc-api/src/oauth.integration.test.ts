@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import { createLoggingEmailSender } from './adapters/emailAdapter'
 import { DEFAULT_LOCAL_DATABASE_URL, createDb, createPgPool, createSessionToken, runMigrations } from '@mincirklen/shared'
 import { generateKeyPairSync, sign as signData } from 'node:crypto'
 import { createApp } from './app'
@@ -105,6 +106,9 @@ beforeAll(async () => {
     downloadTokenSecret: 'oauth-integration-test-download-token-secret',
     trpcPublicBaseUrl: 'https://trpc.dev-mincirklen.dk',
     gateInviteSecret: 'oauth-integration-test-gate-invite-secret',
+  emailSender: createLoggingEmailSender(() => {}),
+  emailProvider: 'log',
+  emailHashKey: 'oauth-integration-test-email-hash-key',
   })
 })
 
@@ -470,6 +474,9 @@ describe('when Google login is not configured', () => {
       downloadTokenSecret: 'oauth-integration-test-download-token-secret',
       trpcPublicBaseUrl: 'https://trpc.dev-mincirklen.dk',
       gateInviteSecret: 'oauth-integration-test-gate-invite-secret',
+  emailSender: createLoggingEmailSender(() => {}),
+  emailProvider: 'log',
+  emailHashKey: 'oauth-integration-test-email-hash-key',
     })
 
     expect((await unconfiguredApp.request('/auth/google/start')).status).toBe(503)

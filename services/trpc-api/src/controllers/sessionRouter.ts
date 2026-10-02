@@ -42,8 +42,7 @@ import {
 import { escalate } from '../services/crisisEscalationService'
 import { NotAMemberError, sendMessage as sendMessageService, skipTurn as skipTurnService } from '../services/messageService'
 import { submitSessionReport } from '../services/sessionReportService'
-import { reportReceivedEmail } from '../services/moderationEmails'
-import { emailMember } from './memberEmail'
+import { createEmailServiceDeps, sendToMember } from '../services/emailService'
 import * as sessionService from '../services/sessionService'
 import { router, verifiedProcedure } from './trpc'
 import type { AppEnv } from '../context'
@@ -378,7 +377,9 @@ export const sessionRouter = router({
             findMessageAuthors: (ids) => findMessageAuthors(db, sessionId, ids),
             insertReport: (resolved) => insertSessionReport(db, { sessionId, reporterUserId, body, ...resolved }),
             logReport: (params) => console.error('[REPORT] session reported', params),
-            notifyReporterReceived: () => emailMember(db, ctx.appEnv.vault, reporterUserId, reportReceivedEmail()),
+            notifyReporterReceived: async () => {
+              await sendToMember(createEmailServiceDeps(ctx.appEnv), reporterUserId, 'report_received', {})
+            },
           },
           { sessionId, reporterUserId, aboutUserIds, messageIds, body },
         )

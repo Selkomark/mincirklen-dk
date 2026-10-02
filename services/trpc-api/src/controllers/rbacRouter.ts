@@ -34,9 +34,8 @@ import { insertMemberNote, listMemberNotes } from '../repositories/memberNoteRep
 import { liftBansForIdentities } from '../repositories/accountBanRepository'
 import { listIdentitiesForUser } from '../repositories/userIdentityRepository'
 import { clearBannedAt, isUserBanned } from '../repositories/userRepository'
-import { memberUnbannedEmail } from '../services/moderationEmails'
+import { createEmailServiceDeps, sendToMember } from '../services/emailService'
 import { UnbanNoteRequiredError, UserNotBannedError, unbanUser } from '../services/unbanService'
-import { emailMember } from './memberEmail'
 import { hasPermission, router, verifiedProcedure } from './trpc'
 
 function toTRPCError(err: unknown): TRPCError {
@@ -172,7 +171,7 @@ export const rbacRouter = router({
     unban: hasPermission('users.ban')
       .input(unbanUserInputSchema)
       .mutation(async ({ ctx, input }) => {
-        const { db, vault, publicBaseUrl } = ctx.appEnv
+        const { db, publicBaseUrl } = ctx.appEnv
         try {
           await unbanUser(
             {
@@ -183,8 +182,12 @@ export const rbacRouter = router({
               addMemberNote: (note) => insertMemberNote(db, { userId: input.userId, body: note, createdBy: ctx.userId }),
               // Bare paths: App.tsx's locale redirect sends them to the
               // reader's own language.
-              notifyUnbanned: () =>
-                emailMember(db, vault, input.userId, memberUnbannedEmail({ terms: `${publicBaseUrl}/terms-and-conditions`, guidelines: `${publicBaseUrl}/community-guidelines` })),
+              notifyUnbanned: async () => {
+                await sendToMember(createEmailServiceDeps(ctx.appEnv), input.userId, 'member_unbanned', {
+                  termsUrl: `${publicBaseUrl}/terms-and-conditions`,
+                  guidelinesUrl: `${publicBaseUrl}/community-guidelines`,
+                })
+              },
             },
             { userId: input.userId, note: input.note, liftedBy: ctx.userId },
           )

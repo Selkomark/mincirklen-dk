@@ -1,29 +1,30 @@
-// Outbound email — currently a stand-in that only logs.
-//
-// TODO(email): this is NOT a delivery mechanism. `sendEmail` writes the
-// message to the server log and returns; nothing reaches the member. It
-// exists so the moderation "warn member" action (sessionReportService.ts)
-// has a stable seam today. Replace the body with a real transport (SMTP
-// or a provider API) behind this same signature — see TODO.md, "Email
-// delivery", for what that involves. Keep the interface; change only the
-// implementation.
+// Outbound email transport. Two implementations: this file's logging
+// sender (EMAIL_PROVIDER=log — local dev, writes the would-be message to
+// the server log and delivers nothing) and ahasendEmailAdapter.ts
+// (EMAIL_PROVIDER=ahasend — delivers). Both sit behind EmailSender; the
+// service layer (services/emailService.ts) only ever sees that.
 
-export interface EmailMessage {
+export interface OutboundEmail {
   to: string
   subject: string
+  html: string
   text: string
 }
 
+export interface EmailSendResult {
+  // The provider's id for the message, which its webhooks later refer
+  // to. Null when the transport has none (the logging sender).
+  providerMessageId: string | null
+}
+
 export interface EmailSender {
-  sendEmail(message: EmailMessage): Promise<void>
+  sendEmail(message: OutboundEmail): Promise<EmailSendResult>
 }
 
 // Masks the local part the same way rbacRepository.ts's maskEmail does,
-// so even the mock never writes a full address to the log. The body IS
-// logged in full — that's the point of the stand-in while there's no
-// delivery: it's the only way to inspect what members would be told.
-// Bodies are moderation wording plus a moderator's own warning text,
-// never a member's data.
+// so even the dev sender never writes a full address to the log. The
+// text body IS logged in full — that's the point while nothing is
+// delivered: it's the only way to see what a member would be told.
 function maskRecipient(email: string): string {
   const atIndex = email.indexOf('@')
   if (atIndex <= 0) return '***'
@@ -33,14 +34,14 @@ function maskRecipient(email: string): string {
 export function createLoggingEmailSender(log: (line: string) => void = console.log): EmailSender {
   return {
     async sendEmail(message) {
-      // TODO(email): replace with real delivery.
       log(
         [
-          `[EMAIL] (mock — not delivered) to=${maskRecipient(message.to)}`,
+          `[EMAIL] (log provider — not delivered) to=${maskRecipient(message.to)}`,
           `  subject: ${message.subject}`,
           ...message.text.split('\n').map((line) => `  | ${line}`),
         ].join('\n'),
       )
+      return { providerMessageId: null }
     },
   }
 }

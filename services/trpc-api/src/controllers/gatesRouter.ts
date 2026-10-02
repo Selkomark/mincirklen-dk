@@ -16,8 +16,7 @@ import { TRPCError } from '@trpc/server'
 import { countsByGateKey, findSignupById, insertSignup, listSignups, markGranted, markRejected, markRevoked } from '../repositories/gateSignupRepository'
 import { findState, listStates, upsertState } from '../repositories/featureGateStateRepository'
 import { maskEmail } from '../repositories/rbacRepository'
-import { gateInviteEmail } from '../services/gateEmails'
-import { emailAddress } from './memberEmail'
+import { createEmailServiceDeps, sendToAddress } from '../services/emailService'
 import {
   SignupNotFoundError,
   UnknownGateError,
@@ -167,7 +166,11 @@ export const gatesRouter = router({
         // The link goes to the person by email; the response still carries
         // it so the admin UI can copy it as a fallback. Best-effort — the
         // grant is recorded either way.
-        await emailAddress(email, gateInviteEmail(inviteUrl, isKnownGateKey(gateKey) ? GATE_REGISTRY[gateKey].name : gateKey))
+        await sendToAddress(createEmailServiceDeps(ctx.appEnv), {
+          to: email,
+          templateKey: 'gate_invite',
+          variables: { inviteUrl, gateName: isKnownGateKey(gateKey) ? GATE_REGISTRY[gateKey].name : gateKey },
+        })
         return { inviteUrl, gateKey }
       } catch (err) {
         throw toTRPCError(err)

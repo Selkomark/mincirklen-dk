@@ -1,4 +1,4 @@
-import type { Database } from '@mincirklen/shared'
+import type { Database, EmailProvider } from '@mincirklen/shared'
 import {
   createSessionToken,
   DEFAULT_MAX_AGE_SECONDS,
@@ -13,6 +13,7 @@ import type { Kysely } from 'kysely'
 import type { GcsConfig } from './adapters/gcsAdapter'
 import type { GoogleOAuthEndpoints } from './adapters/googleOAuthAdapter'
 import type { KmsConfig } from './adapters/kmsAdapter'
+import type { EmailSender } from './adapters/emailAdapter'
 import type { PubSubConfig } from './adapters/pubsubAdapter'
 import { findSessionPolicyAttributesForRoles, getUserRolesAndPermissions } from './repositories/rbacRepository'
 import { isUserBanned, touchUser } from './repositories/userRepository'
@@ -139,6 +140,18 @@ export interface AppEnv {
   // carries which gate a token is for, so there's no need for a
   // per-gate secret.
   gateInviteSecret: string
+  // Outbound email transport and which one it is (adapters/emailAdapter.ts,
+  // adapters/ahasendEmailAdapter.ts), selected by EMAIL_PROVIDER at boot.
+  // Tests inject a recording fake here.
+  emailSender: EmailSender
+  emailProvider: EmailProvider
+  // Keys the recipient hash on email_messages (auth/emailHash.ts) —
+  // separate from identityHashKey and the token secrets (key separation).
+  emailHashKey: string
+  // Verifies the provider's webhook deliveries
+  // (controllers/emailWebhookController.ts). Optional: without it the
+  // webhook route answers 503, same posture as the OAuth routes.
+  emailWebhookSecret?: string
 }
 
 export interface AppContext {

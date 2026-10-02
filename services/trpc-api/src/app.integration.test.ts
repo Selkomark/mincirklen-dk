@@ -1,4 +1,5 @@
 import { afterAll, describe, expect, test } from 'bun:test'
+import { createLoggingEmailSender } from './adapters/emailAdapter'
 import { createHmac } from 'node:crypto'
 import { DEFAULT_LOCAL_DATABASE_URL, createDb, createPgPool, createSessionToken, runMigrations } from '@mincirklen/shared'
 import { createApp } from './app'
@@ -80,6 +81,9 @@ const app = createApp({
   downloadTokenSecret: 'app-integration-test-download-token-secret',
   trpcPublicBaseUrl: 'https://trpc.dev-mincirklen.dk',
   gateInviteSecret: 'app-integration-test-gate-invite-secret',
+  emailSender: createLoggingEmailSender(() => {}),
+  emailProvider: 'log',
+  emailHashKey: 'app-integration-test-email-hash-key',
 })
 
 afterAll(async () => {

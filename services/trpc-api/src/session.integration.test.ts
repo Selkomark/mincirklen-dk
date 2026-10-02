@@ -1,4 +1,5 @@
 import * as http from 'node:http'
+import { createLoggingEmailSender } from './adapters/emailAdapter'
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test'
 import { DEFAULT_LOCAL_DATABASE_URL, createDb, createPgPool, createSessionToken, runMigrations } from '@mincirklen/shared'
 import { sql } from 'kysely'
@@ -233,6 +234,9 @@ beforeAll(async () => {
     downloadTokenSecret: 'session-integration-test-download-token-secret',
     trpcPublicBaseUrl: 'https://trpc.dev-mincirklen.dk',
     gateInviteSecret: 'session-integration-test-gate-invite-secret',
+  emailSender: createLoggingEmailSender(() => {}),
+  emailProvider: 'log',
+  emailHashKey: 'session-integration-test-email-hash-key',
   })
 })
 

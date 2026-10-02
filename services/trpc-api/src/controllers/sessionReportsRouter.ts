@@ -23,7 +23,8 @@ import { listIdentitiesForUser } from '../repositories/userIdentityRepository'
 import { findDisplayNames } from '../repositories/userProfileRepository'
 import { setBannedAt } from '../repositories/userRepository'
 import { banUser } from '../services/banService'
-import { memberActionEmail, memberWarnedEmail, reportDecidedEmail } from '../services/moderationEmails'
+import { memberActionTemplate } from '@mincirklen/emails'
+import { createEmailServiceDeps, sendToMember } from '../services/emailService'
 import {
   reviewSessionReport,
   SessionReportAlreadyResolvedError,
@@ -32,7 +33,6 @@ import {
   SessionReportNoteRequiredError,
   SessionReportNotFoundError,
 } from '../services/sessionReportService'
-import { emailMember } from './memberEmail'
 import { hasPermission, router } from './trpc'
 import { z } from 'zod'
 
@@ -138,12 +138,13 @@ export const sessionReportsRouter = router({
   review: hasPermission('session_reports.review')
     .input(reviewSessionReportInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const { db, vault } = ctx.appEnv
+      const { db } = ctx.appEnv
       // Resolved once up front so every action dep can close over the
       // circle without a second lookup; the service re-reads via
       // findReport for the open/decided check.
       const report = await findSessionReportForReview(db, input.reportId)
       if (!report) throw toTRPCError(new SessionReportNotFoundError('session report not found'))
+      const email = createEmailServiceDeps(ctx.appEnv)
 
       try {
         await reviewSessionReport(
@@ -151,7 +152,9 @@ export const sessionReportsRouter = router({
             findReport: () => findSessionReportForReview(db, input.reportId),
             applyDecision: (decision) => applySessionReportDecision(db, { reportId: input.reportId, reviewedBy: ctx.userId, ...decision }),
             addMemberNote: (userId, note) => insertMemberNote(db, { userId, body: note, createdBy: ctx.userId, reportId: input.reportId }),
-            sendWarning: (userId, message) => emailMember(db, vault, userId, memberWarnedEmail(message)),
+            sendWarning: async (userId, message) => {
+              await sendToMember(email, userId, 'member_warned', { message })
+            },
             removeFromSession: (userId) => leaveSession(db, report.sessionId, userId),
             hideMessages: (messageIds) => removeMessages(db, { sessionId: report.sessionId, messageIds, removedBy: ctx.userId }),
             banUser: async (userId, reasonCategory, decisionSummary) => {
@@ -175,7 +178,7 @@ export const sessionReportsRouter = router({
             notifyDecision: async ({ status, outcomes }) => {
               // The reporter: that it was decided, never what was done.
               const reporterId = await findReporterId(db, input.reportId)
-              if (reporterId) await emailMember(db, vault, reporterId, reportDecidedEmail(status))
+              if (reporterId) await sendToMember(email, reporterId, 'report_decided', { status })
 
               // Members acted on, outcome by outcome. 'warn' already went
               // out via sendWarning; 'note' is internal. Hidden messages:
@@ -183,20 +186,16 @@ export const sessionReportsRouter = router({
               const circleName = await findSessionName(db, report.sessionId)
               for (const outcome of outcomes) {
                 if (outcome.action === 'remove_from_session' || outcome.action === 'ban') {
+                  const template = memberActionTemplate(outcome.action, { circleName, hiddenCount: 0, banReasonCategory: outcome.banReasonCategory })
                   for (const userId of outcome.targetUserIds) {
-                    await emailMember(
-                      db,
-                      vault,
-                      userId,
-                      memberActionEmail(outcome.action, { circleName, hiddenCount: 0, banReasonCategory: outcome.banReasonCategory }),
-                    )
+                    await sendToMember(email, userId, template.templateKey, template.variables)
                   }
                 } else if (outcome.action === 'hide_messages') {
                   const hidden = await findMessagesByIds(db, report.sessionId, report.messageIds)
                   const byAuthor = new Map<string, number>()
                   for (const m of hidden) byAuthor.set(m.userId, (byAuthor.get(m.userId) ?? 0) + 1)
                   for (const [userId, count] of byAuthor) {
-                    await emailMember(db, vault, userId, memberActionEmail('hide_messages', { circleName, hiddenCount: count, banReasonCategory: null }))
+                    await sendToMember(email, userId, 'member_messages_hidden', { circleName, count })
                   }
                 }
               }

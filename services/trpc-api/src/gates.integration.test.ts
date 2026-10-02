@@ -1,4 +1,6 @@
 import { afterAll, beforeEach, describe, expect, test } from 'bun:test'
+import { createLoggingEmailSender } from './adapters/emailAdapter'
+import { hashEmail } from './auth/emailHash'
 import { DEFAULT_LOCAL_DATABASE_URL, createDb, createPgPool, createSessionToken, runMigrations } from '@mincirklen/shared'
 import { createApp } from './app'
 import { insertUser } from './repositories/userRepository'
@@ -36,6 +38,9 @@ const app = createApp({
   downloadTokenSecret: 'gates-integration-test-download-token-secret',
   trpcPublicBaseUrl: 'https://trpc.dev-mincirklen.dk',
   gateInviteSecret: 'gates-integration-test-gate-invite-secret',
+  emailSender: createLoggingEmailSender(() => {}),
+  emailProvider: 'log',
+  emailHashKey: 'gates-integration-test-email-hash-key',
 })
 
 afterAll(async () => {
@@ -253,6 +258,19 @@ describe('grant -> redeem -> access, end to end', () => {
     const grantBody = (await grantRes.json()) as { result: { data: { inviteUrl: string } } }
     const { inviteUrl } = grantBody.result.data
     const token = new URL(inviteUrl).searchParams.get('invite')!
+
+    // The invite went out by email and left a record — masked recipient,
+    // the link in the stored variables, never the address itself.
+    const emailRow = await db
+      .selectFrom('email_messages')
+      .selectAll()
+      .where('template_key', '=', 'gate_invite')
+      .where('to_email_hash', '=', hashEmail(email, 'gates-integration-test-email-hash-key'))
+      .executeTakeFirstOrThrow()
+    expect(emailRow.status).toBe('sent')
+    expect(emailRow.to_email_masked).toBe(`${email[0]}***@${email.split('@')[1]}`)
+    expect(emailRow.variables).toMatchObject({ inviteUrl, gateName: 'Platform launch' })
+    expect(JSON.stringify(emailRow)).not.toContain(email)
 
     const redeemRes = await call('gates.redeemInvite', { token })
     expect(redeemRes.status).toBe(200)

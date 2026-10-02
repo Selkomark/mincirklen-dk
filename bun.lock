@@ -74,6 +74,7 @@
         "@connectrpc/connect-node": "^2.1.2",
         "@google-cloud/storage": "^7.14.0",
         "@hono/trpc-server": "^0.4.0",
+        "@mincirklen/emails": "workspace:*",
         "@mincirklen/proto": "workspace:*",
         "@mincirklen/shared": "workspace:*",
         "@sentry/bun": "^10.73.0",

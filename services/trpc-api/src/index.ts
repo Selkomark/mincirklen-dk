@@ -3,6 +3,8 @@ import { createApp } from './app'
 import type { GcsConfig } from './adapters/gcsAdapter'
 import type { KmsConfig } from './adapters/kmsAdapter'
 import type { PubSubConfig } from './adapters/pubsubAdapter'
+import { createLoggingEmailSender, type EmailSender } from './adapters/emailAdapter'
+import { createAhaSendEmailSender } from './adapters/ahasendEmailAdapter'
 
 // Never `public` — see packages/shared/src/db/pool.ts and docs/local_dev.md.
 const dbSchema = process.env.DB_SCHEMA ?? 'dev'
@@ -97,6 +99,39 @@ if (!gateInviteSecret) {
   throw new Error('GATE_INVITE_SECRET is required')
 }
 
+// EMAIL_PROVIDER unset/"log" -> the would-be message goes to the server
+// log and nothing is delivered (local dev); "ahasend" -> AhaSend's send
+// API (adapters/ahasendEmailAdapter.ts). Same unset-defaults-to-the-
+// local-stand-in convention as KMS_PROVIDER above. Either way every send
+// is recorded in email_messages and shown in /manage.
+const emailProvider = process.env.EMAIL_PROVIDER ?? 'log'
+let emailSender: EmailSender
+if (emailProvider === 'ahasend') {
+  const accountId = process.env.AHASEND_ACCOUNT_ID
+  const apiKey = process.env.AHASEND_API_KEY
+  const fromEmail = process.env.AHASEND_DEFAULT_FROM
+  if (!accountId || !apiKey || !fromEmail) {
+    throw new Error('AHASEND_ACCOUNT_ID, AHASEND_API_KEY and AHASEND_DEFAULT_FROM are required when EMAIL_PROVIDER=ahasend')
+  }
+  emailSender = createAhaSendEmailSender({
+    apiUrl: process.env.AHASEND_API_URL ?? 'https://send.ahasend.com/v2',
+    accountId,
+    apiKey,
+    from: { email: fromEmail, name: process.env.AHASEND_DEFAULT_FROM_NAME || undefined },
+  })
+} else if (emailProvider === 'log') {
+  emailSender = createLoggingEmailSender()
+} else {
+  throw new Error(`unknown EMAIL_PROVIDER "${emailProvider}" (expected "log" or "ahasend")`)
+}
+
+// Keys the recipient hash on sent-email rows — its own secret, same
+// key-separation reasoning as IDENTITY_HASH_KEY.
+const emailHashKey = process.env.EMAIL_HASH_KEY
+if (!emailHashKey) {
+  throw new Error('EMAIL_HASH_KEY is required')
+}
+
 await runMigrations(db, dbSchema)
 
 const app = createApp({
@@ -124,6 +159,12 @@ const app = createApp({
   downloadTokenSecret,
   trpcPublicBaseUrl: process.env.TRPC_PUBLIC_BASE_URL ?? 'https://trpc.dev-mincirklen.dk',
   gateInviteSecret,
+  emailSender,
+  emailProvider,
+  emailHashKey,
+  // Optional — the webhook route 503s until the provider's signing
+  // secret is configured. See controllers/emailWebhookController.ts.
+  emailWebhookSecret: process.env.AHASEND_WEBHOOK_SECRET || undefined,
 })
 
 const port = Number(process.env.PORT ?? 8787)
