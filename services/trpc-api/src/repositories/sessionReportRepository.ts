@@ -196,3 +196,10 @@ export async function applySessionReportDecision(
     .where('id', '=', params.reportId)
     .execute()
 }
+
+// Who filed it — null once they've deleted their account (0001_init's
+// set-null), in which case there's nobody to update.
+export async function findReporterId(db: Kysely<Database>, reportId: string): Promise<string | null> {
+  const row = await db.selectFrom('session_reports').select('reporter_user_id').where('id', '=', reportId).executeTakeFirst()
+  return row?.reporter_user_id ?? null
+}

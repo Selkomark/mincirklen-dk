@@ -209,6 +209,10 @@ stand-in: `sendEmail()` writes the would-be message to the server log and
 delivers nothing. It exists so the moderation "warn member" action
 (sessionReportService.ts) has a seam to call today.
 
+Every report-lifecycle email already goes through it (controllers/memberEmail.ts,
+services/moderationEmails.ts): report received, report decided, member warned /
+removed / messages hidden / banned.
+
 To do: wire a real transport behind the same `sendEmail(message)` shape —
 provider choice, credentials via env, bounce/complaint handling, a
 templated member-facing body in all supported languages, and an

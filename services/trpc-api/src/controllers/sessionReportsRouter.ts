@@ -4,21 +4,22 @@ import {
   sessionReportTranscriptInputSchema,
 } from '@mincirklen/shared'
 import { TRPCError } from '@trpc/server'
-import { createLoggingEmailSender } from '../adapters/emailAdapter'
 import { insertAccountBan, insertBanEvidence } from '../repositories/accountBanRepository'
 import { insertMemberNote } from '../repositories/memberNoteRepository'
 import { findMessagesByIds, listTranscriptWindow, removeMessages } from '../repositories/messageRepository'
-import { getRoster, leaveSession } from '../repositories/sessionRepository'
+import { findSessionName, getRoster, leaveSession } from '../repositories/sessionRepository'
 import {
   applySessionReportDecision,
+  findReporterId,
   findSessionReportAnchor,
   findSessionReportForReview,
   listSessionReports,
 } from '../repositories/sessionReportRepository'
 import { listIdentitiesForUser } from '../repositories/userIdentityRepository'
 import { findDisplayNames } from '../repositories/userProfileRepository'
-import { findEmailForUser, setBannedAt } from '../repositories/userRepository'
+import { setBannedAt } from '../repositories/userRepository'
 import { banUser } from '../services/banService'
+import { memberActionEmail, memberWarnedEmail, reportDecidedEmail } from '../services/moderationEmails'
 import {
   reviewSessionReport,
   SessionReportAlreadyResolvedError,
@@ -27,6 +28,7 @@ import {
   SessionReportNoteRequiredError,
   SessionReportNotFoundError,
 } from '../services/sessionReportService'
+import { emailMember } from './memberEmail'
 import { hasPermission, router } from './trpc'
 
 function toTRPCError(err: unknown): TRPCError {
@@ -43,20 +45,6 @@ function toTRPCError(err: unknown): TRPCError {
     return new TRPCError({ code: 'FORBIDDEN', message: err.message })
   }
   return new TRPCError({ code: 'INTERNAL_SERVER_ERROR', cause: err })
-}
-
-// TODO(email): the logging stand-in — see adapters/emailAdapter.ts and
-// TODO.md. Swap for a real sender here; nothing else changes.
-const emailSender = createLoggingEmailSender()
-
-// Member-facing warning. Plain text, English for now — the member's own
-// language lives in their profile and a translated template belongs with
-// the real email integration (TODO.md).
-function warningEmail(message: string): { subject: string; text: string } {
-  return {
-    subject: 'A note from the MinCirklen moderators',
-    text: `${message}\n\nThis message was sent by the MinCirklen moderation team about something that happened in one of your circles. You don't need to reply.`,
-  }
 }
 
 // The review side of member-filed session reports (filing is
@@ -84,13 +72,7 @@ export const sessionReportsRouter = router({
             findReport: () => findSessionReportForReview(db, input.reportId),
             applyDecision: (decision) => applySessionReportDecision(db, { reportId: input.reportId, reviewedBy: ctx.userId, ...decision }),
             addMemberNote: (userId, note) => insertMemberNote(db, { userId, body: note, createdBy: ctx.userId, reportId: input.reportId }),
-            sendWarning: async (userId, message) => {
-              const to = await findEmailForUser(db, vault, userId)
-              // A member with no email on file (legacy/failure rows — see
-              // rbacRepository.ts) can't be warned by email; the decision
-              // still records that a warning was the outcome.
-              if (to) await emailSender.sendEmail({ to, ...warningEmail(message) })
-            },
+            sendWarning: (userId, message) => emailMember(db, vault, userId, memberWarnedEmail(message)),
             removeFromSession: (userId) => leaveSession(db, report.sessionId, userId),
             hideMessages: (messageIds) => removeMessages(db, { sessionId: report.sessionId, messageIds, removedBy: ctx.userId }),
             banUser: async (userId, reasonCategory, decisionSummary) => {
@@ -110,6 +92,29 @@ export const sessionReportsRouter = router({
                   messages: reported.filter((m) => m.userId === userId).map((m) => ({ id: m.id, body: m.body, createdAt: m.createdAt })),
                 },
               )
+            },
+            notifyDecision: async ({ status, action, targetUserIds, banReasonCategory }) => {
+              // The reporter: that it was decided, never what was done.
+              const anchor = await findSessionReportAnchor(db, input.reportId)
+              const reporterId = anchor ? await findReporterId(db, input.reportId) : null
+              if (reporterId) await emailMember(db, vault, reporterId, reportDecidedEmail(status))
+
+              // Members acted on. 'warn' already went out via sendWarning;
+              // 'note' is internal. Hidden messages: tell each author.
+              if (action === 'remove_from_session' || action === 'ban') {
+                const circleName = await findSessionName(db, report.sessionId)
+                for (const userId of targetUserIds) {
+                  await emailMember(db, vault, userId, memberActionEmail(action, { circleName, hiddenCount: 0, banReasonCategory }))
+                }
+              } else if (action === 'hide_messages') {
+                const circleName = await findSessionName(db, report.sessionId)
+                const hidden = await findMessagesByIds(db, report.sessionId, report.messageIds)
+                const byAuthor = new Map<string, number>()
+                for (const m of hidden) byAuthor.set(m.userId, (byAuthor.get(m.userId) ?? 0) + 1)
+                for (const [userId, count] of byAuthor) {
+                  await emailMember(db, vault, userId, memberActionEmail('hide_messages', { circleName, hiddenCount: count, banReasonCategory: null }))
+                }
+              }
             },
           },
           {

@@ -912,3 +912,9 @@ export async function leaveSession(db: Kysely<Database>, sessionId: string, user
     .where('left_at', 'is', null)
     .execute()
 }
+
+// Display name only, for member-facing wording (moderationEmails.ts).
+export async function findSessionName(db: Kysely<Database>, sessionId: string): Promise<string | null> {
+  const row = await db.selectFrom('sessions').select('name').where('id', '=', sessionId).executeTakeFirst()
+  return row?.name ?? null
+}

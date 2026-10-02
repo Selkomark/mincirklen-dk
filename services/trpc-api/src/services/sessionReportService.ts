@@ -41,6 +41,9 @@ export interface SubmitSessionReportDeps {
   findMessageAuthors(messageIds: string[]): Promise<Map<string, string>>
   insertReport(params: { aboutUserIds: string[]; messageIds: string[] }): Promise<void>
   logReport(params: SubmitSessionReportParams): void
+  // "We received your report" — after the insert, best-effort (the
+  // router's implementation never throws). The report exists either way.
+  notifyReporterReceived(): Promise<void>
 }
 
 export async function submitSessionReport(deps: SubmitSessionReportDeps, params: SubmitSessionReportParams): Promise<void> {
@@ -70,6 +73,7 @@ export async function submitSessionReport(deps: SubmitSessionReportDeps, params:
 
   await deps.insertReport({ aboutUserIds, messageIds })
   deps.logReport({ ...params, aboutUserIds, messageIds })
+  await deps.notifyReporterReceived()
 }
 
 // ---- Review (the /manage "Session reports" tab) ----
@@ -134,6 +138,17 @@ export interface ReviewSessionReportDeps {
   removeFromSession(userId: string): Promise<void>
   hideMessages(messageIds: string[]): Promise<void>
   banUser(userId: string, reasonCategory: BanReasonCategory, decisionSummary: string): Promise<void>
+  // Member-facing follow-up, once the decision is on record: the
+  // reporter hears their report was decided; members an action was
+  // taken on hear what happened to them (warn carries its own text and
+  // is sent by sendWarning above; note is internal, so nothing). Best-
+  // effort — the router's implementation never throws.
+  notifyDecision(params: {
+    status: SessionReportDecision
+    action: SessionReportAction
+    targetUserIds: string[]
+    banReasonCategory: BanReasonCategory | null
+  }): Promise<void>
 }
 
 export interface ReviewSessionReportParams {
@@ -211,5 +226,7 @@ export async function reviewSessionReport(deps: ReviewSessionReportDeps, params:
       break
   }
 
-  await deps.applyDecision({ status: params.status, note, action, targetUserIds: MEMBER_TARGETED_ACTIONS.has(action) ? targets : [] })
+  const recordedTargets = MEMBER_TARGETED_ACTIONS.has(action) ? targets : []
+  await deps.applyDecision({ status: params.status, note, action, targetUserIds: recordedTargets })
+  await deps.notifyDecision({ status: params.status, action, targetUserIds: recordedTargets, banReasonCategory: params.banReasonCategory ?? null })
 }
