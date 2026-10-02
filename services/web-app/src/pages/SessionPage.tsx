@@ -1592,10 +1592,10 @@ function SessionCenterPanel({
                     // Only other members' messages can be reported — your
                     // own already has the "ask for another look" action.
                     // Hidden until the row is hovered/focused (SessionPage.css)
-                    // so a calm timeline isn't lined with flags; this is the
-                    // entry point, the checkboxes above take over once a
-                    // selection exists.
-                    m.userId !== myUserId ? (
+                    // so a calm timeline isn't lined with flags. This is only
+                    // the entry point: once a selection exists the checkboxes
+                    // above are the one control, and the flag goes away.
+                    m.userId !== myUserId && selectedMessageIds.size === 0 ? (
                       <IconButton
                         className={['dash-message-select', selectedMessageIds.has(m.id) && 'dash-message-select--selected'].filter(Boolean).join(' ')}
                         icon={FlagIcon}
