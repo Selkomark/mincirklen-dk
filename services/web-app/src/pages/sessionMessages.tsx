@@ -163,6 +163,7 @@ export const MessageRow = memo(function MessageRow({
   leading,
   trailing,
   className,
+  onRowClick,
   t,
 }: {
   message: ChatMessage
@@ -176,13 +177,28 @@ export const MessageRow = memo(function MessageRow({
   leading?: ReactNode
   trailing?: ReactNode
   className?: string
+  // Whole-row click target (the circle's selection mode, where tapping a
+  // message toggles its checkbox). Skipped when the click is actually a
+  // text selection, so copying a quote out of a message doesn't flip it.
+  onRowClick?: () => void
   t: TFunction<'session'>
 }) {
   const isWithheld = isOwn && message.moderationStatus !== 'pass'
   const alreadyReported = isReported || message.falsePositiveReportedAt !== null
 
   return (
-    <div className={className} style={{ display: 'flex', gap: 10, maxWidth: 560 }}>
+    <div
+      className={className}
+      style={{ display: 'flex', gap: 10, maxWidth: 560 }}
+      onClick={
+        onRowClick
+          ? () => {
+              if (window.getSelection()?.toString()) return
+              onRowClick()
+            }
+          : undefined
+      }
+    >
       {leading}
       <MemberAvatar member={member} size={32} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

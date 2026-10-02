@@ -1568,7 +1568,17 @@ function SessionCenterPanel({
                   onReportFalsePositive={handleReportFalsePositive}
                   isReported={reportedMessageIds.has(m.id)}
                   highlight={selectedMessageIds.has(m.id)}
-                  className={['dash-message-row', selectedMessageIds.has(m.id) && 'dash-message-row--selected'].filter(Boolean).join(' ')}
+                  className={[
+                    'dash-message-row',
+                    selectedMessageIds.has(m.id) && 'dash-message-row--selected',
+                    selectedMessageIds.size > 0 && m.userId !== myUserId && 'dash-message-row--selectable',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  // In selection mode the whole row is the target, not just
+                  // the checkbox — the checkbox stops its own click from
+                  // bubbling so one tap never toggles twice.
+                  onRowClick={selectedMessageIds.size > 0 && m.userId !== myUserId ? () => onToggleSelectMessage(m) : undefined}
                   leading={
                     // Once anything is selected the timeline switches into
                     // a pick-list: every reportable message gets a checkbox
@@ -1577,12 +1587,13 @@ function SessionCenterPanel({
                     // a spacer so the bubbles stay aligned.
                     selectedMessageIds.size > 0 ? (
                       m.userId !== myUserId ? (
-                        <Checkbox
-                          className="dash-message-check"
-                          aria-label={selectedMessageIds.has(m.id) ? t('composer.unreportMessage') : t('composer.reportMessage')}
-                          isSelected={selectedMessageIds.has(m.id)}
-                          onChange={() => onToggleSelectMessage(m)}
-                        />
+                        <span className="dash-message-check" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            aria-label={selectedMessageIds.has(m.id) ? t('composer.unreportMessage') : t('composer.reportMessage')}
+                            isSelected={selectedMessageIds.has(m.id)}
+                            onChange={() => onToggleSelectMessage(m)}
+                          />
+                        </span>
                       ) : (
                         <span className="dash-message-check" aria-hidden="true" />
                       )

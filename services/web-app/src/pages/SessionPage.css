@@ -354,6 +354,19 @@
   background: var(--signal-urgent-surface);
 }
 
+.dash-message-row--selectable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.dash-message-row--selectable:hover {
+  background: var(--surface-sunken);
+}
+
+.dash-message-row--selectable.dash-message-row--selected:hover {
+  background: var(--signal-urgent-surface);
+}
+
 /* Selection-mode checkbox (or an equal-width spacer on own messages) in
    front of the avatar — a fixed column so every bubble shifts right by
    the same amount when the pick-list appears. */
