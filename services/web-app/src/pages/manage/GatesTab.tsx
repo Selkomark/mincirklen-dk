@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CalendarDate, Time } from '@internationalized/date'
 import { Button } from '../../components/Button'
+import { CopyText } from '../../components/CopyText'
 import { Badge } from '../../components/Badge'
 import { Alert } from '../../components/Alert'
 import { Table } from '../../components/Table'
@@ -215,7 +216,11 @@ function SignupsPanel({ gateKey, onChanged }: { gateKey: string; onChanged: () =
           <tbody>
             {signups.map((signup) => (
               <tr key={signup.id}>
-                <td>{signup.email}</td>
+                <td>
+                  <CopyText copyLabel={t('users.copy')} copiedLabel={t('users.copied')}>
+                    {signup.email}
+                  </CopyText>
+                </td>
                 <td>
                   {signup.status === 'granted' ? (
                     <Badge variant="safe">{t('gates.signups.granted')}</Badge>
