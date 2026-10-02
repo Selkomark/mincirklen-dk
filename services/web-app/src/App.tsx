@@ -65,7 +65,7 @@ export const sessionPath = (locale: Locale, sessionId: string) => `${BASE}${form
 export const loginPath = (locale: Locale) => `${BASE}${formatLocaleSegment(locale)}/login`
 export const registerPath = (locale: Locale) => `${BASE}${formatLocaleSegment(locale)}/register`
 export const moderationTransparencyPath = (locale: Locale) => `${BASE}${formatLocaleSegment(locale)}/moderation-transparency`
-export type ManageSection = 'review' | 'roles' | 'users' | 'gates'
+export type ManageSection = 'review' | 'reports' | 'roles' | 'users' | 'gates'
 export const managePath = (locale: Locale, section?: ManageSection) =>
   `${BASE}${formatLocaleSegment(locale)}/${ADMIN_ROUTE_SEGMENT}${section ? `/${section}` : ''}`
 
@@ -218,7 +218,7 @@ function parsePageRoute(normalized: string): PageRoute {
   if (adminSegments[0] === ADMIN_ROUTE_SEGMENT && adminSegments.length <= 2) {
     const sub = adminSegments[1]
     if (sub === undefined) return { name: 'manage', section: null }
-    if (sub === 'review' || sub === 'roles' || sub === 'users' || sub === 'gates') return { name: 'manage', section: sub }
+    if (sub === 'review' || sub === 'reports' || sub === 'roles' || sub === 'users' || sub === 'gates') return { name: 'manage', section: sub }
   }
 
   const sessionMatch = normalized.match(/^s\/([^/]+)$/)

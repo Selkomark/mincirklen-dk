@@ -9,7 +9,8 @@
     "earlyAccess": "Tidig åtkomst",
     "gates": "Åtkomstgrindar",
     "noSections": "Inga sektioner tillgängliga",
-    "backToSite": "← Tillbaka till webbplatsen"
+    "backToSite": "← Tillbaka till webbplatsen",
+    "reports": "Sessionsrapporter"
   },
   "noSectionPermissions": "Inget att visa — du har adminåtkomst men ännu inga behörigheter för någon sektion.",
   "common": {
@@ -174,7 +175,8 @@
       "moderation_events": "Modereringshändelser",
       "roles": "Roller",
       "session_policies": "Sessionspolicyer",
-      "users": "Användare"
+      "users": "Användare",
+      "session_reports": "Sessionsrapporter"
     }
   },
   "menu": {
@@ -184,5 +186,34 @@
     "lightMode": "Ljust läge",
     "logOut": "Logga ut",
     "logoutFailed": "Något gick fel vid utloggningen."
+  },
+  "reports": {
+    "intro": "Rapporter som medlemmar lämnat om en cirkel eller någon i den. Markera en som granskad när du har tittat på eller agerat på den; avfärda den när det inte finns något att göra. Slå upp ett användar-id under Användare för att agera på ett konto.",
+    "tabsLabel": "Sessionsrapporter efter status",
+    "status": {
+      "open": "Öppna",
+      "reviewed": "Granskade",
+      "dismissed": "Avfärdade"
+    },
+    "columns": {
+      "filed": "Inlämnad",
+      "session": "Cirkel",
+      "reporter": "Anmälare",
+      "about": "Gäller",
+      "report": "Rapport",
+      "decision": "Beslut",
+      "decidedBy": "Beslutad"
+    },
+    "empty": {
+      "open": "Inga öppna rapporter.",
+      "reviewed": "Inga granskade rapporter ännu.",
+      "dismissed": "Inga avfärdade rapporter ännu."
+    },
+    "unnamedSession": "Namnlös cirkel",
+    "wholeSession": "Hela cirkeln",
+    "markReviewed": "Markera som granskad",
+    "dismiss": "Avfärda",
+    "loadFailed": "Kunde inte ladda sessionsrapporter.",
+    "decideFailed": "Kunde inte spara beslutet — det kan redan ha beslutats av någon annan."
   }
 }

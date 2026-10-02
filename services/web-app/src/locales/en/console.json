@@ -9,7 +9,8 @@
     "earlyAccess": "Early access",
     "gates": "Gates",
     "noSections": "No sections available",
-    "backToSite": "← Back to site"
+    "backToSite": "← Back to site",
+    "reports": "Session reports"
   },
   "noSectionPermissions": "Nothing to show — you have admin access but no section permissions yet.",
   "common": {
@@ -174,7 +175,8 @@
       "moderation_events": "Moderation events",
       "roles": "Roles",
       "session_policies": "Session policies",
-      "users": "Users"
+      "users": "Users",
+      "session_reports": "Session reports"
     }
   },
   "menu": {
@@ -184,5 +186,34 @@
     "lightMode": "Light mode",
     "logOut": "Log out",
     "logoutFailed": "Something went wrong logging out."
+  },
+  "reports": {
+    "intro": "Reports members filed about a circle or someone in it. Mark one reviewed once you have looked into it or acted on it; dismiss it when there is nothing to do. Look a user id up in Users to act on an account.",
+    "tabsLabel": "Session reports by status",
+    "status": {
+      "open": "Open",
+      "reviewed": "Reviewed",
+      "dismissed": "Dismissed"
+    },
+    "columns": {
+      "filed": "Filed",
+      "session": "Circle",
+      "reporter": "Reporter",
+      "about": "About",
+      "report": "Report",
+      "decision": "Decision",
+      "decidedBy": "Decided"
+    },
+    "empty": {
+      "open": "No open reports.",
+      "reviewed": "No reviewed reports yet.",
+      "dismissed": "No dismissed reports yet."
+    },
+    "unnamedSession": "Unnamed circle",
+    "wholeSession": "Whole circle",
+    "markReviewed": "Mark reviewed",
+    "dismiss": "Dismiss",
+    "loadFailed": "Failed to load session reports.",
+    "decideFailed": "Failed to save the decision — it may already have been decided by someone else."
   }
 }

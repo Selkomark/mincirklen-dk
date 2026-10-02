@@ -11,6 +11,7 @@ import { RolesTab } from './RolesTab'
 import { UsersTab } from './UsersTab'
 import { ReviewQueueTab } from './ReviewQueueTab'
 import { GatesTab } from './GatesTab'
+import { ReportsTab } from './ReportsTab'
 import { SidebarMenu } from './SidebarMenu'
 
 const SIDEBAR_BG = '#171717'
@@ -24,7 +25,7 @@ const SIDEBAR_BORDER = '#2e2e2e'
 // language like the rest of the app.
 interface NavItem {
   section: ManageSection
-  labelKey: 'nav.review' | 'nav.users' | 'nav.roles' | 'nav.gates'
+  labelKey: 'nav.review' | 'nav.reports' | 'nav.users' | 'nav.roles' | 'nav.gates'
   permission: string
 }
 
@@ -41,7 +42,10 @@ interface NavGroup {
 const NAV_GROUPS: NavGroup[] = [
   {
     labelKey: 'nav.moderation',
-    items: [{ section: 'review', labelKey: 'nav.review', permission: 'moderation_events.review' }],
+    items: [
+      { section: 'review', labelKey: 'nav.review', permission: 'moderation_events.review' },
+      { section: 'reports', labelKey: 'nav.reports', permission: 'session_reports.read' },
+    ],
   },
   {
     labelKey: 'nav.accessControl',
@@ -199,6 +203,7 @@ function Sidebar({
 
 function SectionContent({ section }: { section: ManageSection }) {
   if (section === 'review') return <ReviewQueueTab />
+  if (section === 'reports') return <ReportsTab />
   if (section === 'roles') return <RolesTab />
   if (section === 'gates') return <GatesTab />
   return <UsersTab />

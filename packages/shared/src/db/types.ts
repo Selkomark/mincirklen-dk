@@ -165,6 +165,14 @@ export interface SessionReportsTable {
   about_user_ids: JSONColumnType<string[]>
   body: string
   created_at: Timestamp
+  // Review state for the /manage "Session reports" tab — see
+  // migrations/0003_session_report_review.ts. One-way: open → reviewed
+  // or dismissed, never back (sessionReportService.ts::reviewSessionReport).
+  // reviewed_by mirrors moderation_events.reviewed_by: a users.id, set
+  // null if that reviewer's account is later deleted.
+  status: Generated<'open' | 'reviewed' | 'dismissed'>
+  reviewed_at: NullableTimestamp
+  reviewed_by: string | null
 }
 
 // The abuse-prevention ledger — deliberately NOT foreign-keyed to

@@ -3,6 +3,8 @@ import { createHmac } from 'node:crypto'
 import { DEFAULT_LOCAL_DATABASE_URL, createDb, createPgPool, createSessionToken, runMigrations } from '@mincirklen/shared'
 import { createApp } from './app'
 import { insertUser } from './repositories/userRepository'
+import { createSession } from './repositories/sessionRepository'
+import { insertSessionReport } from './repositories/sessionReportRepository'
 import { linkIdentity } from './repositories/userIdentityRepository'
 import { upsertState } from './repositories/featureGateStateRepository'
 import {
@@ -493,6 +495,152 @@ describe('session-policy idle expiry', () => {
     const rolesRes = await app.request('/trpc/rbac.roles.list', { headers: { cookie: adminCookie } })
     const roles = (await rolesRes.json()) as { result: { data: { id: string; sessionPolicyId: string | null }[] } }
     expect(roles.result.data.find((r) => r.id === testRole.id)?.sessionPolicyId).toBe(created.result.data.id)
+  })
+})
+
+describe('session reports review (sessionReports.*)', () => {
+  // Same admin setup as the rbac.sessionPolicies CRUD test above —
+  // hasPermission builds on verifiedProcedure, which needs a linked
+  // identity and a completed profile, not just the ADMIN role.
+  async function adminCookie(): Promise<string> {
+    const admin = await findRoleByName(db, 'ADMIN')
+    if (!admin) throw new Error('seeded ADMIN role not found — check migrations/0001_init.ts')
+    const { cookie, userId } = await mintBareUserCookie()
+    await linkIdentity(db, userId, 'google', `test-subject-${userId}`)
+    const profileRes = await app.request('/trpc/auth.completeProfile', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({
+        firstName: 'Admin',
+        lastName: 'Test',
+        gender: 'other',
+        country: 'GB',
+        mobileNumber: '+44 20 7946 0958',
+        stayAnonymous: true,
+      }),
+    })
+    expect(profileRes.status).toBe(200)
+    await assignRoleToUser(db, userId, admin.id)
+    return cookie
+  }
+
+  async function fileReport(body: string): Promise<{ sessionId: string; reporterId: string; aboutId: string }> {
+    const session = await createSession(db)
+    const reporter = await insertUser(db)
+    const about = await insertUser(db)
+    await insertSessionReport(db, { sessionId: session.id, reporterUserId: reporter.id, aboutUserIds: [about.id], body })
+    return { sessionId: session.id, reporterId: reporter.id, aboutId: about.id }
+  }
+
+  type ReportRow = { id: string; sessionId: string; reporterUserId: string | null; aboutUserIds: string[]; body: string; status: string; reviewedBy: string | null }
+
+  async function listAll(cookie: string, status: 'open' | 'reviewed' | 'dismissed'): Promise<ReportRow[]> {
+    const out: ReportRow[] = []
+    let cursor: string | undefined
+    do {
+      const input = encodeURIComponent(JSON.stringify({ status, limit: 50, ...(cursor ? { cursor } : {}) }))
+      const res = await app.request(`/trpc/sessionReports.list?input=${input}`, { headers: { cookie } })
+      expect(res.status).toBe(200)
+      const page = (await res.json()) as { result: { data: { reports: ReportRow[]; nextCursor: string | null } } }
+      out.push(...page.result.data.reports)
+      cursor = page.result.data.nextCursor ?? undefined
+    } while (cursor)
+    return out
+  }
+
+  test('a filed report shows up open with its session, reporter, subjects and body', async () => {
+    const cookie = await adminCookie()
+    const body = `e2e report ${crypto.randomUUID()}`
+    const { sessionId, reporterId, aboutId } = await fileReport(body)
+
+    const open = await listAll(cookie, 'open')
+    const row = open.find((r) => r.body === body)
+    expect(row).toBeDefined()
+    expect(row).toMatchObject({ sessionId, reporterUserId: reporterId, aboutUserIds: [aboutId], status: 'open', reviewedBy: null })
+  })
+
+  test('reviewing moves a report from open to reviewed, attributed to the reviewer', async () => {
+    const cookie = await adminCookie()
+    const body = `e2e review ${crypto.randomUUID()}`
+    await fileReport(body)
+    const target = (await listAll(cookie, 'open')).find((r) => r.body === body)!
+
+    const res = await app.request('/trpc/sessionReports.review', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ reportId: target.id, status: 'reviewed' }),
+    })
+    expect(res.status).toBe(200)
+
+    expect((await listAll(cookie, 'open')).some((r) => r.id === target.id)).toBe(false)
+    const reviewed = (await listAll(cookie, 'reviewed')).find((r) => r.id === target.id)
+    expect(reviewed?.status).toBe('reviewed')
+    expect(reviewed?.reviewedBy).not.toBeNull()
+  })
+
+  test('a decided report cannot be decided again (409), and an unknown id is 404', async () => {
+    const cookie = await adminCookie()
+    const body = `e2e dismiss ${crypto.randomUUID()}`
+    await fileReport(body)
+    const target = (await listAll(cookie, 'open')).find((r) => r.body === body)!
+
+    const first = await app.request('/trpc/sessionReports.review', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ reportId: target.id, status: 'dismissed' }),
+    })
+    expect(first.status).toBe(200)
+
+    const again = await app.request('/trpc/sessionReports.review', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ reportId: target.id, status: 'reviewed' }),
+    })
+    expect(again.status).toBe(409)
+
+    const missing = await app.request('/trpc/sessionReports.review', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ reportId: crypto.randomUUID(), status: 'reviewed' }),
+    })
+    expect(missing.status).toBe(404)
+  })
+
+  test('pages through open reports with the cursor', async () => {
+    const cookie = await adminCookie()
+    const marker = crypto.randomUUID()
+    for (let i = 0; i < 3; i++) await fileReport(`e2e page ${marker} ${i}`)
+
+    const seen = new Set<string>()
+    let cursor: string | undefined
+    let pages = 0
+    do {
+      const input = encodeURIComponent(JSON.stringify({ status: 'open', limit: 1, ...(cursor ? { cursor } : {}) }))
+      const res = await app.request(`/trpc/sessionReports.list?input=${input}`, { headers: { cookie } })
+      const page = (await res.json()) as { result: { data: { reports: ReportRow[]; nextCursor: string | null } } }
+      for (const r of page.result.data.reports) {
+        expect(seen.has(r.id)).toBe(false)
+        seen.add(r.id)
+      }
+      cursor = page.result.data.nextCursor ?? undefined
+      pages++
+    } while (cursor && pages < 200)
+
+    const mine = [...seen].length
+    expect(mine).toBeGreaterThanOrEqual(3)
+  })
+
+  test('a verified user without the permission is forbidden', async () => {
+    const { cookie, userId } = await mintBareUserCookie()
+    await linkIdentity(db, userId, 'google', `test-subject-${userId}`)
+    await app.request('/trpc/auth.completeProfile', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ firstName: 'No', lastName: 'Perms', gender: 'other', country: 'GB', mobileNumber: '+44 20 7946 0958', stayAnonymous: true }),
+    })
+    const input = encodeURIComponent(JSON.stringify({ status: 'open', limit: 10 }))
+    const res = await app.request(`/trpc/sessionReports.list?input=${input}`, { headers: { cookie } })
+    expect(res.status).toBe(403)
   })
 })
 

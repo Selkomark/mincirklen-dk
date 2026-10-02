@@ -9,7 +9,8 @@
     "earlyAccess": "Tidlig adgang",
     "gates": "Adgangsporte",
     "noSections": "Ingen sektioner tilgængelige",
-    "backToSite": "← Tilbage til sitet"
+    "backToSite": "← Tilbage til sitet",
+    "reports": "Sessionsrapporter"
   },
   "noSectionPermissions": "Intet at vise — du har adminadgang, men endnu ingen rettigheder til nogen sektion.",
   "common": {
@@ -174,7 +175,8 @@
       "moderation_events": "Moderationshændelser",
       "roles": "Roller",
       "session_policies": "Sessionspolitikker",
-      "users": "Brugere"
+      "users": "Brugere",
+      "session_reports": "Sessionsrapporter"
     }
   },
   "menu": {
@@ -184,5 +186,34 @@
     "lightMode": "Lys tilstand",
     "logOut": "Log ud",
     "logoutFailed": "Noget gik galt under log ud."
+  },
+  "reports": {
+    "intro": "Rapporter, som medlemmer har indsendt om en cirkel eller en person i den. Markér en som gennemgået, når du har undersøgt eller handlet på den; afvis den, når der ikke er noget at gøre. Slå et bruger-id op under Brugere for at handle på en konto.",
+    "tabsLabel": "Sessionsrapporter efter status",
+    "status": {
+      "open": "Åbne",
+      "reviewed": "Gennemgået",
+      "dismissed": "Afvist"
+    },
+    "columns": {
+      "filed": "Indsendt",
+      "session": "Cirkel",
+      "reporter": "Anmelder",
+      "about": "Vedrører",
+      "report": "Rapport",
+      "decision": "Afgørelse",
+      "decidedBy": "Afgjort"
+    },
+    "empty": {
+      "open": "Ingen åbne rapporter.",
+      "reviewed": "Ingen gennemgåede rapporter endnu.",
+      "dismissed": "Ingen afviste rapporter endnu."
+    },
+    "unnamedSession": "Unavngivet cirkel",
+    "wholeSession": "Hele cirklen",
+    "markReviewed": "Markér som gennemgået",
+    "dismiss": "Afvis",
+    "loadFailed": "Kunne ikke indlæse sessionsrapporter.",
+    "decideFailed": "Kunne ikke gemme afgørelsen — den er muligvis allerede afgjort af en anden."
   }
 }

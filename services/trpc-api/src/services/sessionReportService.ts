@@ -50,3 +50,42 @@ export async function submitSessionReport(deps: SubmitSessionReportDeps, params:
   await deps.insertReport()
   deps.logReport(params)
 }
+
+// ---- Review (the /manage "Session reports" tab) ----
+//
+// A report moves exactly once: open → reviewed (someone acted on or
+// looked into it) or open → dismissed (nothing to do). No reopening and
+// no second decision — a decision is a record of what a human concluded
+// at the time, not a mutable field; if circumstances change, the member
+// files a new report and that gets its own decision.
+
+export type SessionReportStatus = 'open' | 'reviewed' | 'dismissed'
+export type SessionReportDecision = Exclude<SessionReportStatus, 'open'>
+
+export class SessionReportNotFoundError extends Error {
+  constructor(message: string) {
+    super(message)
+  }
+}
+
+export class SessionReportAlreadyResolvedError extends Error {
+  constructor(message: string) {
+    super(message)
+  }
+}
+
+export interface ReviewSessionReportDeps {
+  findReport(): Promise<{ status: SessionReportStatus } | null>
+  applyDecision(status: SessionReportDecision): Promise<void>
+}
+
+export async function reviewSessionReport(deps: ReviewSessionReportDeps, params: { status: SessionReportDecision }): Promise<void> {
+  const report = await deps.findReport()
+  if (!report) {
+    throw new SessionReportNotFoundError('session report not found')
+  }
+  if (report.status !== 'open') {
+    throw new SessionReportAlreadyResolvedError(`session report is already ${report.status}`)
+  }
+  await deps.applyDecision(params.status)
+}
