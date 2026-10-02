@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { CalendarDate, Time } from '@internationalized/date'
 import { Button } from '../../components/Button'
 import { Badge } from '../../components/Badge'
@@ -61,6 +62,7 @@ function combineToISOString(date: CalendarDate, time: Time): string {
 // independently — this never invalidates an earlier link the person
 // might already have.
 function CopyInviteLinkButton({ signupId, variant = 'ghost' }: { signupId: string; variant?: 'ghost' | 'safe' }) {
+  const { t } = useTranslation('console')
   const [state, setState] = useState<'idle' | 'copying' | 'copied' | 'error'>('idle')
 
   async function copy() {
@@ -77,7 +79,7 @@ function CopyInviteLinkButton({ signupId, variant = 'ghost' }: { signupId: strin
 
   return (
     <Button variant={state === 'error' ? 'urgent' : variant} isPending={state === 'copying'} onPress={() => void copy()}>
-      {state === 'copied' ? 'Copied!' : state === 'error' ? 'Failed — retry' : 'Copy invite link'}
+      {state === 'copied' ? t('gates.signups.copied') : state === 'error' ? t('gates.signups.copyFailed') : t('gates.signups.copyLink')}
     </Button>
   )
 }
@@ -92,6 +94,7 @@ function CopyInviteLinkButton({ signupId, variant = 'ghost' }: { signupId: strin
 // already redeemed their link before this click; see gatesRouter.ts's
 // revokeSignup comment for why that's a real limit, not an oversight.
 function RevokeAccessButton({ email, signupId, onRevoked }: { email: string; signupId: string; onRevoked: () => void }) {
+  const { t } = useTranslation('console')
   const [isOpen, setIsOpen] = useState(false)
   const [isRevoking, setIsRevoking] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -105,7 +108,7 @@ function RevokeAccessButton({ email, signupId, onRevoked }: { email: string; sig
       close()
       onRevoked()
     } catch {
-      setError('Failed to revoke access.')
+      setError(t('gates.signups.revokeFailed'))
       setIsRevoking(false)
     }
   }
@@ -113,21 +116,19 @@ function RevokeAccessButton({ email, signupId, onRevoked }: { email: string; sig
   return (
     <>
       <Button variant="urgent" onPress={() => setIsOpen(true)}>
-        Revoke
+        {t('gates.signups.revoke')}
       </Button>
-      <Modal isOpen={isOpen} onOpenChange={setIsOpen} title="Revoke access?">
+      <Modal isOpen={isOpen} onOpenChange={setIsOpen} title={t('gates.signups.revokeTitle')}>
         {(close) => (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-            <Alert variant="urgent">
-              {email} won't be able to use their invite link anymore. You can grant them access again later if you change your mind.
-            </Alert>
+            <Alert variant="urgent">{t('gates.signups.revokeBody', { email })}</Alert>
             {error && <Alert variant="urgent">{error}</Alert>}
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <Button variant="secondary" onPress={close}>
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button variant="urgent" isPending={isRevoking} onPress={() => void revoke(close)}>
-                Revoke access
+                {t('gates.signups.revokeConfirm')}
               </Button>
             </div>
           </div>
@@ -138,6 +139,7 @@ function RevokeAccessButton({ email, signupId, onRevoked }: { email: string; sig
 }
 
 function SignupsPanel({ gateKey, onChanged }: { gateKey: string; onChanged: () => void }) {
+  const { t, i18n } = useTranslation('console')
   const [signups, setSignups] = useState<GateSignup[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [grantingId, setGrantingId] = useState<string | null>(null)
@@ -148,9 +150,9 @@ function SignupsPanel({ gateKey, onChanged }: { gateKey: string; onChanged: () =
       const page = await getTrpc<{ signups: GateSignup[] }>('gates.listSignups', { gateKey, limit: 50 })
       setSignups(page.signups)
     } catch {
-      setError('Failed to load signups.')
+      setError(t('gates.signups.loadFailed'))
     }
-  }, [gateKey])
+  }, [gateKey, t])
 
   useEffect(() => {
     void load()
@@ -179,7 +181,7 @@ function SignupsPanel({ gateKey, onChanged }: { gateKey: string; onChanged: () =
       await load()
       onChanged()
     } catch {
-      setError('Failed to grant access.')
+      setError(t('gates.signups.grantFailed'))
     } finally {
       setGrantingId(null)
     }
@@ -191,22 +193,22 @@ function SignupsPanel({ gateKey, onChanged }: { gateKey: string; onChanged: () =
   }
 
   if (signups === null) {
-    return <div style={{ color: 'var(--text-secondary)' }}>Loading…</div>
+    return <div style={{ color: 'var(--text-secondary)' }}>{t('common.loading')}</div>
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
       {error && <Alert variant="urgent">{error}</Alert>}
-      {copiedForEmail && <Alert variant="safe">Invite link copied to clipboard — ready to send to {copiedForEmail}.</Alert>}
+      {copiedForEmail && <Alert variant="safe">{t('gates.signups.copiedFor', { email: copiedForEmail })}</Alert>}
       {signups.length === 0 ? (
-        <span style={{ color: 'var(--text-secondary)' }}>No signups yet.</span>
+        <span style={{ color: 'var(--text-secondary)' }}>{t('gates.signups.empty')}</span>
       ) : (
         <Table striped>
           <thead>
             <tr>
-              <th>Email</th>
-              <th>Status</th>
-              <th>Signed up</th>
+              <th>{t('gates.signups.columns.email')}</th>
+              <th>{t('gates.signups.columns.status')}</th>
+              <th>{t('gates.signups.columns.signedUp')}</th>
               <th></th>
             </tr>
           </thead>
@@ -216,14 +218,14 @@ function SignupsPanel({ gateKey, onChanged }: { gateKey: string; onChanged: () =
                 <td>{signup.email}</td>
                 <td>
                   {signup.status === 'granted' ? (
-                    <Badge variant="safe">Granted</Badge>
+                    <Badge variant="safe">{t('gates.signups.granted')}</Badge>
                   ) : signup.status === 'revoked' ? (
-                    <Badge variant="urgent">Revoked</Badge>
+                    <Badge variant="urgent">{t('gates.signups.revoked')}</Badge>
                   ) : (
-                    <Badge>Pending</Badge>
+                    <Badge>{t('gates.signups.pending')}</Badge>
                   )}
                 </td>
-                <td>{new Date(signup.createdAt).toLocaleString()}</td>
+                <td>{new Date(signup.createdAt).toLocaleString(i18n.language)}</td>
                 <td>
                   {signup.status === 'granted' ? (
                     <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
@@ -232,7 +234,7 @@ function SignupsPanel({ gateKey, onChanged }: { gateKey: string; onChanged: () =
                     </div>
                   ) : (
                     <Button variant="safe" isPending={grantingId === signup.id} onPress={() => void grant(signup.id, signup.email)}>
-                      Grant access
+                      {t('gates.signups.grantAccess')}
                     </Button>
                   )}
                 </td>
@@ -246,6 +248,7 @@ function SignupsPanel({ gateKey, onChanged }: { gateKey: string; onChanged: () =
 }
 
 function GateRow({ gate, onUpdated }: { gate: GateStat; onUpdated: () => void }) {
+  const { t } = useTranslation('console')
   const [expanded, setExpanded] = useState(false)
   const [saving, setSaving] = useState(false)
   const seeded = gate.scheduledOpenAt ? splitFromISOString(gate.scheduledOpenAt) : null
@@ -261,7 +264,7 @@ function GateRow({ gate, onUpdated }: { gate: GateStat; onUpdated: () => void })
       await postTrpc('gates.update', { gateKey: gate.key, mode, scheduledOpenAt: gate.scheduledOpenAt })
       onUpdated()
     } catch {
-      setError('Failed to update.')
+      setError(t('gates.updateFailed'))
     } finally {
       setSaving(false)
     }
@@ -274,7 +277,7 @@ function GateRow({ gate, onUpdated }: { gate: GateStat; onUpdated: () => void })
       await postTrpc('gates.update', { gateKey: gate.key, mode: gate.mode, scheduledOpenAt })
       onUpdated()
     } catch {
-      setError('Failed to update schedule.')
+      setError(t('gates.scheduleUpdateFailed'))
     } finally {
       setSaving(false)
     }
@@ -301,17 +304,17 @@ function GateRow({ gate, onUpdated }: { gate: GateStat; onUpdated: () => void })
           <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>{gate.description}</div>
           <div style={{ fontFamily: 'monospace', fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>{gate.key}</div>
         </td>
-        <td>{gate.open ? <Badge variant="safe">Open</Badge> : <Badge variant="urgent">Invite-only</Badge>}</td>
+        <td>{gate.open ? <Badge variant="safe">{t('gates.open')}</Badge> : <Badge variant="urgent">{t('gates.inviteOnly')}</Badge>}</td>
         <td>{gate.pendingCount}</td>
         <td>{gate.grantedCount}</td>
         <td>{gate.revokedCount}</td>
         <td>
           <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
             <Switch isSelected={gate.mode === 'open'} isDisabled={saving} onChange={(isSelected) => void setMode(isSelected ? 'open' : 'invite_only')}>
-              {gate.mode === 'open' ? 'Open to everyone' : 'Invite-only'}
+              {gate.mode === 'open' ? t('gates.openToEveryone') : t('gates.inviteOnly')}
             </Switch>
             <Button variant="ghost" onPress={() => setExpanded((e) => !e)}>
-              {expanded ? 'Hide signups' : 'Manage signups'}
+              {expanded ? t('gates.hideSignups') : t('gates.manageSignups')}
             </Button>
           </div>
         </td>
@@ -324,19 +327,19 @@ function GateRow({ gate, onUpdated }: { gate: GateStat; onUpdated: () => void })
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
                   <Switch isSelected={scheduleEnabled} isDisabled={saving} onChange={toggleSchedule}>
-                    Auto-open on a schedule (opens regardless of the switch above once due)
+                    {t('gates.autoOpen')}
                   </Switch>
                 </div>
                 <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center', flexWrap: 'wrap' }}>
                   <DatePicker
-                    aria-label="Auto-open date"
+                    aria-label={t('gates.autoOpenDate')}
                     value={scheduleDate}
                     onChange={setScheduleDate}
                     isDisabled={!scheduleEnabled}
                     style={{ flex: '1 1 200px' }}
                   />
                   <TimePicker
-                    aria-label="Auto-open time"
+                    aria-label={t('gates.autoOpenTime')}
                     value={scheduleTime}
                     onChange={setScheduleTime}
                     isDisabled={!scheduleEnabled}
@@ -348,7 +351,7 @@ function GateRow({ gate, onUpdated }: { gate: GateStat; onUpdated: () => void })
                     isDisabled={!scheduleEnabled || !scheduleDate || !scheduleTime}
                     onPress={() => scheduleDate && scheduleTime && void saveSchedule(combineToISOString(scheduleDate, scheduleTime))}
                   >
-                    Save schedule
+                    {t('gates.saveSchedule')}
                   </Button>
                 </div>
               </div>
@@ -362,6 +365,7 @@ function GateRow({ gate, onUpdated }: { gate: GateStat; onUpdated: () => void })
 }
 
 export function GatesTab() {
+  const { t } = useTranslation('console')
   const [gates, setGates] = useState<GateStat[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -369,16 +373,16 @@ export function GatesTab() {
     try {
       setGates(await getTrpc<GateStat[]>('gates.list', undefined))
     } catch {
-      setError('Failed to load gates.')
+      setError(t('gates.loadFailed'))
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     void load()
   }, [load])
 
   if (gates === null) {
-    return <div style={{ color: 'var(--text-secondary)' }}>Loading…</div>
+    return <div style={{ color: 'var(--text-secondary)' }}>{t('common.loading')}</div>
   }
 
   return (
@@ -388,11 +392,11 @@ export function GatesTab() {
         <Table striped>
           <thead>
             <tr>
-              <th>Gate</th>
-              <th>Status</th>
-              <th>Pending</th>
-              <th>Granted</th>
-              <th>Revoked</th>
+              <th>{t('gates.columns.gate')}</th>
+              <th>{t('gates.columns.status')}</th>
+              <th>{t('gates.columns.pending')}</th>
+              <th>{t('gates.columns.granted')}</th>
+              <th>{t('gates.columns.revoked')}</th>
               <th></th>
             </tr>
           </thead>

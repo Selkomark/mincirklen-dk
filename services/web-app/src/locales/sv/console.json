@@ -1,0 +1,172 @@
+{
+  "documentTitle": "Administration — MinCirklen",
+  "nav": {
+    "moderation": "Moderering",
+    "review": "Granskningskö",
+    "accessControl": "Åtkomstkontroll",
+    "users": "Användare",
+    "roles": "Roller och behörigheter",
+    "earlyAccess": "Tidig åtkomst",
+    "gates": "Åtkomstgrindar",
+    "noSections": "Inga sektioner tillgängliga",
+    "backToSite": "← Tillbaka till webbplatsen"
+  },
+  "noSectionPermissions": "Inget att visa — du har adminåtkomst men ännu inga behörigheter för någon sektion.",
+  "common": {
+    "loading": "Laddar…",
+    "loadMore": "Ladda fler",
+    "cancel": "Avbryt",
+    "save": "Spara",
+    "create": "Skapa",
+    "edit": "Redigera",
+    "all": "Alla"
+  },
+  "duration": {
+    "minute_one": "{{count}} minut",
+    "minute_other": "{{count}} minuter",
+    "hour_one": "{{count}} timme",
+    "hour_other": "{{count}} timmar",
+    "day_one": "{{count}} dag",
+    "day_other": "{{count}} dagar",
+    "second_one": "{{count}} sekund",
+    "second_other": "{{count}} sekunder"
+  },
+  "review": {
+    "loadFailed": "Kunde inte ladda granskningskön.",
+    "submitFailed": "Kunde inte skicka beslutet — försök igen.",
+    "empty": "Inget väntar på granskning.",
+    "messageRemoved": "(meddelande borttaget)",
+    "columns": {
+      "flagged": "Flaggad",
+      "classification": "Klassificering",
+      "message": "Meddelande",
+      "decision": "Beslut"
+    },
+    "classification": {
+      "flag": "Flagga",
+      "crisis": "Kris"
+    },
+    "outcome": {
+      "true_positive": "Korrekt flaggad",
+      "false_positive": "Falskt positiv",
+      "true_negative": "Korrekt godkänd",
+      "false_negative": "Missad (borde ha flaggats)"
+    }
+  },
+  "users": {
+    "loadFailed": "Kunde inte ladda användare.",
+    "banned": "Avstängd",
+    "editRoles": "Redigera roller",
+    "columns": {
+      "user": "Användare",
+      "email": "E-post",
+      "roles": "Roller",
+      "status": "Status"
+    }
+  },
+  "gates": {
+    "loadFailed": "Kunde inte ladda åtkomstgrindar.",
+    "updateFailed": "Kunde inte uppdatera.",
+    "scheduleUpdateFailed": "Kunde inte uppdatera schemat.",
+    "columns": {
+      "gate": "Grind",
+      "status": "Status",
+      "pending": "Väntande",
+      "granted": "Beviljad",
+      "revoked": "Återkallad"
+    },
+    "open": "Öppen",
+    "inviteOnly": "Endast inbjudan",
+    "openToEveryone": "Öppen för alla",
+    "hideSignups": "Dölj anmälningar",
+    "manageSignups": "Hantera anmälningar",
+    "autoOpen": "Öppna automatiskt enligt schema (öppnar oavsett reglaget ovan när tiden är inne)",
+    "autoOpenDate": "Datum för automatisk öppning",
+    "autoOpenTime": "Tid för automatisk öppning",
+    "saveSchedule": "Spara schema",
+    "signups": {
+      "loadFailed": "Kunde inte ladda anmälningar.",
+      "grantFailed": "Kunde inte bevilja åtkomst.",
+      "revokeFailed": "Kunde inte återkalla åtkomst.",
+      "copiedFor": "Inbjudningslänk kopierad till urklipp — redo att skickas till {{email}}.",
+      "empty": "Inga anmälningar ännu.",
+      "columns": {
+        "email": "E-post",
+        "status": "Status",
+        "signedUp": "Anmäld"
+      },
+      "granted": "Beviljad",
+      "revoked": "Återkallad",
+      "pending": "Väntande",
+      "grantAccess": "Bevilja åtkomst",
+      "copyLink": "Kopiera inbjudningslänk",
+      "copied": "Kopierad!",
+      "copyFailed": "Misslyckades — försök igen",
+      "revoke": "Återkalla",
+      "revokeTitle": "Återkalla åtkomst?",
+      "revokeBody": "{{email}} kommer inte längre att kunna använda sin inbjudningslänk. Du kan bevilja åtkomst igen senare om du ändrar dig.",
+      "revokeConfirm": "Återkalla åtkomst"
+    }
+  },
+  "roles": {
+    "tabsLabel": "Roller och behörigheter",
+    "tabs": {
+      "roles": "Roller",
+      "policies": "Sessionspolicyer"
+    },
+    "loadFailed": "Kunde inte ladda roller.",
+    "intro": "Roller samlar behörigheter. Tilldela dem till användare från sidan Användare.",
+    "search": {
+      "label": "Sök roller",
+      "placeholder": "Namn, vad den kan göra eller en policy…",
+      "noMatch": "Inga roller matchar ”{{query}}”."
+    },
+    "newRole": "Ny roll",
+    "newRoleTitle": "Ny roll",
+    "system": "System",
+    "defaultPolicy": "Standard (2 veckor)",
+    "columns": {
+      "role": "Roll",
+      "description": "Beskrivning",
+      "permissions": "Behörigheter",
+      "timeout": "Inaktivitetstimeout för session"
+    },
+    "nameLabel": "Rollnamn",
+    "nameHint": "Versaler, siffror och bindestreck, t.ex. TRUST-SAFETY-LEAD",
+    "descriptionLabel": "Beskrivning",
+    "descriptionPlaceholder": "Vad rollen är till för",
+    "descriptionPlaceholderOptional": "Vad rollen är till för (valfritt)",
+    "createFailed": "Kunde inte skapa rollen — namnet kan redan vara upptaget.",
+    "saveFailed": "Kunde inte spara rollen.",
+    "systemLocked": "Systemroll — har alla behörigheter och kan inte redigeras.",
+    "policySelectLabel": "Inaktivitetstimeout för session",
+    "permissions": {
+      "label": "Behörigheter",
+      "searchLabel": "Sök behörigheter",
+      "searchPlaceholder": "Sök behörigheter, t.ex. redigera användare, timeout…",
+      "noMatch": "Inga behörigheter matchar ”{{query}}”."
+    },
+    "policies": {
+      "intro": "Inaktivitetsmallar kopplade till roller, högst 2 veckor. En roll utan en får hela 2 veckor.",
+      "newPolicy": "Ny policy",
+      "title": "Ny sessionspolicy",
+      "description": "En namngiven inaktivitetsmall som du kan koppla till roller, från 1 minut till 2 veckor. En användare med flera roller begränsas av den kortaste kopplade policyn.",
+      "columns": {
+        "policy": "Policy",
+        "maxIdle": "Max inaktiv tid",
+        "usedBy": "Används av"
+      },
+      "empty": "Inga sessionspolicyer ännu.",
+      "nameLabel": "Policynamn",
+      "valueLabel": "Max inaktiv tid",
+      "capHint": "Måste vara 2 veckor eller mindre",
+      "unitLabel": "Enhet",
+      "units": {
+        "minutes": "Minuter",
+        "hours": "Timmar",
+        "days": "Dagar"
+      },
+      "createFailed": "Kunde inte skapa sessionspolicyn — namnet kan vara upptaget, eller så är varaktigheten utanför intervallet (1 minut till 2 veckor)."
+    }
+  }
+}

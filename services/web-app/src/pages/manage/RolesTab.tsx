@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { Alert } from '../../components/Alert'
 import { Badge } from '../../components/Badge'
 import { Button } from '../../components/Button'
@@ -50,22 +52,22 @@ const SECONDS_PER_UNIT: Record<DurationUnit, number> = {
 // value and enforces it regardless of what's sent from here.
 const PLATFORM_DEFAULT_ID = ''
 const MAX_IDLE_SECONDS = 60 * 60 * 24 * 14
-const PLATFORM_DEFAULT_LABEL = 'Default (2 weeks)'
 
-function formatDuration(maxIdleSeconds: number | undefined): string {
+type ConsoleT = TFunction<'console'>
+
+function formatDuration(t: ConsoleT, maxIdleSeconds: number | undefined): string {
   if (!maxIdleSeconds) return '—'
-  const units: [DurationUnit, string][] = [
+  const units: [DurationUnit, 'day' | 'hour' | 'minute'][] = [
     ['days', 'day'],
     ['hours', 'hour'],
     ['minutes', 'minute'],
   ]
-  for (const [unit, label] of units) {
+  for (const [unit, key] of units) {
     if (maxIdleSeconds % SECONDS_PER_UNIT[unit] === 0) {
-      const count = maxIdleSeconds / SECONDS_PER_UNIT[unit]
-      return `${count} ${label}${count === 1 ? '' : 's'}`
+      return t(`duration.${key}`, { count: maxIdleSeconds / SECONDS_PER_UNIT[unit] })
     }
   }
-  return `${maxIdleSeconds} seconds`
+  return t('duration.second', { count: maxIdleSeconds })
 }
 
 // Role names are UPPERCASE-WITH-DASHES. The server enforces this via
@@ -83,16 +85,17 @@ function normalizeRoleName(raw: string): string {
   return raw.toUpperCase().replace(/[\s_]+/g, '-').replace(/[^A-Z0-9-]/g, '')
 }
 
-const ROLE_NAME_HINT = 'Uppercase letters, numbers and dashes, e.g. TRUST-SAFETY-LEAD'
-
 function isValidRoleName(name: string): boolean {
   return name.length >= 2 && ROLE_NAME_PATTERN.test(name)
 }
 
-// Seeded policies (migrations/0002) are named by their duration, so
-// "13 days (13 days)" would be noise — show the name alone then.
-function policyLabel(policy: SessionPolicy): string {
-  const duration = formatDuration(policy.attributes.maxIdleSeconds)
+// Seeded policies (migrations/0002) are named by their duration in
+// English, so in English "1 hour (1 hour)" would be noise — show the name
+// alone then. In other languages the formatted duration differs from the
+// stored English name, so both show: the admin-chosen name plus a
+// localized reading of it.
+function policyLabel(t: ConsoleT, policy: SessionPolicy): string {
+  const duration = formatDuration(t, policy.attributes.maxIdleSeconds)
   return policy.name === duration ? policy.name : `${policy.name} (${duration})`
 }
 
@@ -165,26 +168,29 @@ function PermissionEditor({
   selectedIds: Set<string>
   onChange: (next: Set<string>) => void
 }) {
+  const { t } = useTranslation('console')
   const [query, setQuery] = useState('')
   const groups = searchPermissionGroups(groupByPrefix(allPermissions), query)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-      <div style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-primary)' }}>Permissions</div>
+      <div style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-primary)' }}>
+        {t('roles.permissions.label')}
+      </div>
       {/* Full-width search directly under the section label; the field's
           own label is for screen readers only — "Permissions" above it
           already says what it searches. */}
       <TextField
-        label="Search permissions"
+        label={t('roles.permissions.searchLabel')}
         className="roles-permission-search"
-        placeholder="Search permissions, e.g. edit users, timeout…"
+        placeholder={t('roles.permissions.searchPlaceholder')}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
 
       {groups.length === 0 ? (
         <Text variant="muted" style={{ margin: 0 }}>
-          No permissions match “{query.trim()}”.
+          {t('roles.permissions.noMatch', { query: query.trim() })}
         </Text>
       ) : (
         <div className="roles-permission-grid">
@@ -232,12 +238,13 @@ function SessionPolicySelect({
   sessionPolicies: SessionPolicy[]
   isDisabled?: boolean
 }) {
+  const { t } = useTranslation('console')
   return (
-    <Select label="Session idle timeout" selectedKey={value} isDisabled={isDisabled} onSelectionChange={(key) => onChange(String(key))}>
-      <SelectItem id={PLATFORM_DEFAULT_ID}>{PLATFORM_DEFAULT_LABEL}</SelectItem>
+    <Select label={t('roles.policySelectLabel')} selectedKey={value} isDisabled={isDisabled} onSelectionChange={(key) => onChange(String(key))}>
+      <SelectItem id={PLATFORM_DEFAULT_ID}>{t('roles.defaultPolicy')}</SelectItem>
       {sessionPolicies.map((policy) => (
         <SelectItem key={policy.id} id={policy.id}>
-          {policyLabel(policy)}
+          {policyLabel(t, policy)}
         </SelectItem>
       ))}
     </Select>
@@ -257,6 +264,7 @@ function EditRoleModal({
   onClose: () => void
   onSaved: () => Promise<void>
 }) {
+  const { t } = useTranslation('console')
   const [name, setName] = useState(role.name)
   const [description, setDescription] = useState(role.description ?? '')
   const [policyId, setPolicyId] = useState(role.sessionPolicyId ?? PLATFORM_DEFAULT_ID)
@@ -304,7 +312,7 @@ function EditRoleModal({
       await onSaved()
       onClose()
     } catch {
-      setError('Failed to save the role.')
+      setError(t('roles.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -324,14 +332,14 @@ function EditRoleModal({
         ) : (
           <div className="roles-field-row">
             <TextField
-              label="Role name"
+              label={t('roles.nameLabel')}
               value={name}
               onChange={(e) => setName(normalizeRoleName(e.target.value))}
-              hint={ROLE_NAME_HINT}
+              hint={t('roles.nameHint')}
             />
             <TextField
-              label="Description"
-              placeholder="What this role is for"
+              label={t('roles.descriptionLabel')}
+              placeholder={t('roles.descriptionPlaceholder')}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
@@ -348,9 +356,9 @@ function EditRoleModal({
           {role.isSystem ? (
             <>
               <div style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-primary)', marginBottom: 'var(--space-2)' }}>
-                Permissions
+                {t('roles.permissions.label')}
               </div>
-              <Alert variant="info">System role — holds every permission and cannot be edited.</Alert>
+              <Alert variant="info">{t('roles.systemLocked')}</Alert>
             </>
           ) : selectedIds ? (
             <PermissionEditor allPermissions={allPermissions} selectedIds={selectedIds} onChange={setSelectedIds} />
@@ -365,10 +373,10 @@ function EditRoleModal({
 
         <ModalActions>
           <Button variant="ghost" onPress={onClose} isDisabled={saving}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button variant="safe" isPending={saving} isDisabled={!nameValid} onPress={() => void save()}>
-            Save
+            {t('common.save')}
           </Button>
         </ModalActions>
       </div>
@@ -377,6 +385,7 @@ function EditRoleModal({
 }
 
 function CreateRoleModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => Promise<void> }) {
+  const { t } = useTranslation('console')
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [creating, setCreating] = useState(false)
@@ -393,14 +402,14 @@ function CreateRoleModal({ onClose, onCreated }: { onClose: () => void; onCreate
       await onCreated()
       onClose()
     } catch {
-      setError('Failed to create role — name may already be taken.')
+      setError(t('roles.createFailed'))
     } finally {
       setCreating(false)
     }
   }
 
   return (
-    <Modal isOpen onOpenChange={(open) => !open && onClose()} title="New role">
+    <Modal isOpen onOpenChange={(open) => !open && onClose()} title={t('roles.newRoleTitle')}>
       <form
         onSubmit={(e) => {
           e.preventDefault()
@@ -410,24 +419,24 @@ function CreateRoleModal({ onClose, onCreated }: { onClose: () => void; onCreate
       >
         {error && <Alert variant="urgent">{error}</Alert>}
         <TextField
-          label="Role name"
+          label={t('roles.nameLabel')}
           value={name}
           onChange={(e) => setName(normalizeRoleName(e.target.value))}
-          hint={ROLE_NAME_HINT}
+          hint={t('roles.nameHint')}
           autoFocus
         />
         <TextField
-          label="Description"
-          placeholder="What this role is for (optional)"
+          label={t('roles.descriptionLabel')}
+          placeholder={t('roles.descriptionPlaceholderOptional')}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
         <ModalActions>
           <Button variant="ghost" onPress={onClose} isDisabled={creating}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button type="submit" variant="safe" isPending={creating} isDisabled={!nameValid}>
-            Create
+            {t('common.create')}
           </Button>
         </ModalActions>
       </form>
@@ -436,6 +445,7 @@ function CreateRoleModal({ onClose, onCreated }: { onClose: () => void; onCreate
 }
 
 function CreateSessionPolicyModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => Promise<void> }) {
+  const { t } = useTranslation('console')
   const [name, setName] = useState('')
   const [value, setValue] = useState('')
   const [unit, setUnit] = useState<DurationUnit>('minutes')
@@ -456,14 +466,14 @@ function CreateSessionPolicyModal({ onClose, onCreated }: { onClose: () => void;
       await onCreated()
       onClose()
     } catch {
-      setError('Failed to create session policy — name may already be taken, or the duration is out of range (1 minute to 2 weeks).')
+      setError(t('roles.policies.createFailed'))
     } finally {
       setCreating(false)
     }
   }
 
   return (
-    <Modal isOpen onOpenChange={(open) => !open && onClose()} title="New session policy">
+    <Modal isOpen onOpenChange={(open) => !open && onClose()} title={t('roles.policies.title')}>
       <form
         onSubmit={(e) => {
           e.preventDefault()
@@ -472,11 +482,10 @@ function CreateSessionPolicyModal({ onClose, onCreated }: { onClose: () => void;
         style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}
       >
         <Text variant="muted" style={{ margin: 0 }}>
-          A named idle-timeout template you can attach to roles, from 1 minute to 2 weeks. A user holding several roles is
-          bound by whichever attached policy is shortest.
+          {t('roles.policies.description')}
         </Text>
         {error && <Alert variant="urgent">{error}</Alert>}
-        <TextField label="Policy name" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+        <TextField label={t('roles.policies.nameLabel')} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
         {/* Each field sits in its own flex wrapper — TextField forwards
             `style` to the inner <input>, whose own wrapper is a flex
             column, so `flex: 1` there collapses the input's height
@@ -487,27 +496,27 @@ function CreateSessionPolicyModal({ onClose, onCreated }: { onClose: () => void;
         <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
           <div style={{ flex: 1 }}>
             <TextField
-              label="Max idle time"
+              label={t('roles.policies.valueLabel')}
               inputMode="numeric"
               value={value}
               onChange={(e) => setValue(e.target.value.replace(/\D/g, ''))}
-              hint={exceedsCap ? 'Must be 2 weeks or less' : undefined}
+              hint={exceedsCap ? t('roles.policies.capHint') : undefined}
             />
           </div>
           <div style={{ flex: 1 }}>
-            <Select label="Unit" selectedKey={unit} onSelectionChange={(key) => setUnit(key as DurationUnit)}>
-              <SelectItem id="minutes">Minutes</SelectItem>
-              <SelectItem id="hours">Hours</SelectItem>
-              <SelectItem id="days">Days</SelectItem>
+            <Select label={t('roles.policies.unitLabel')} selectedKey={unit} onSelectionChange={(key) => setUnit(key as DurationUnit)}>
+              <SelectItem id="minutes">{t('roles.policies.units.minutes')}</SelectItem>
+              <SelectItem id="hours">{t('roles.policies.units.hours')}</SelectItem>
+              <SelectItem id="days">{t('roles.policies.units.days')}</SelectItem>
             </Select>
           </div>
         </div>
         <ModalActions>
           <Button variant="ghost" onPress={onClose} isDisabled={creating}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button type="submit" variant="safe" isPending={creating} isDisabled={!isValid}>
-            Create
+            {t('common.create')}
           </Button>
         </ModalActions>
       </form>
@@ -528,6 +537,7 @@ function RolesPanel({
   sessionPolicies: SessionPolicy[]
   reload: () => Promise<void>
 }) {
+  const { t } = useTranslation('console')
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<Role | null>(null)
   const [query, setQuery] = useState('')
@@ -548,7 +558,7 @@ function RolesPanel({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
       <Text variant="muted" style={{ margin: 0 }}>
-        Roles bundle permissions. Assign them to users from the Users page.
+        {t('roles.intro')}
       </Text>
 
       {/* alignItems: flex-end lines the button up with the input, not
@@ -556,24 +566,24 @@ function RolesPanel({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
         <div style={{ flex: '1 1 240px', maxWidth: 420 }}>
           <TextField
-            label="Search roles"
-            placeholder="Name, what it can do, or a policy…"
+            label={t('roles.search.label')}
+            placeholder={t('roles.search.placeholder')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
         <Button variant="safe" onPress={() => setCreating(true)}>
-          New role
+          {t('roles.newRole')}
         </Button>
       </div>
 
       <Table striped>
         <thead>
           <tr>
-            <th>Role</th>
-            <th>Description</th>
-            <th>Permissions</th>
-            <th>Session idle timeout</th>
+            <th>{t('roles.columns.role')}</th>
+            <th>{t('roles.columns.description')}</th>
+            <th>{t('roles.columns.permissions')}</th>
+            <th>{t('roles.columns.timeout')}</th>
             <th></th>
           </tr>
         </thead>
@@ -581,7 +591,7 @@ function RolesPanel({
           {visibleRoles.length === 0 && (
             <tr>
               <td colSpan={5} style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>
-                No roles match “{query.trim()}”.
+                {t('roles.search.noMatch', { query: query.trim() })}
               </td>
             </tr>
           )}
@@ -592,21 +602,21 @@ function RolesPanel({
                 <td>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 'var(--font-weight-medium)' }}>{role.name}</span>
-                    {role.isSystem && <Badge variant="info">System</Badge>}
+                    {role.isSystem && <Badge variant="info">{t('roles.system')}</Badge>}
                   </div>
                 </td>
                 <td>{role.description ?? EMPTY_CELL}</td>
-                <td>{role.isSystem ? 'All' : role.permissions.length}</td>
+                <td>{role.isSystem ? t('common.all') : role.permissions.length}</td>
                 <td>
                   {policy ? (
-                    policyLabel(policy)
+                    policyLabel(t, policy)
                   ) : (
-                    <span style={{ color: 'var(--text-secondary)' }}>{PLATFORM_DEFAULT_LABEL}</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{t('roles.defaultPolicy')}</span>
                   )}
                 </td>
                 <td style={{ textAlign: 'right' }}>
                   <Button variant="ghost" onPress={() => setEditing(role)}>
-                    Edit
+                    {t('common.edit')}
                   </Button>
                 </td>
               </tr>
@@ -639,15 +649,16 @@ function SessionPoliciesPanel({
   sessionPolicies: SessionPolicy[]
   reload: () => Promise<void>
 }) {
+  const { t } = useTranslation('console')
   const [creating, setCreating] = useState(false)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
       <PanelToolbar
-        description="Idle-timeout templates attached to roles, 2 weeks at most. A role without one gets the full 2 weeks."
+        description={t('roles.policies.intro')}
         action={
           <Button variant="safe" onPress={() => setCreating(true)}>
-            New policy
+            {t('roles.policies.newPolicy')}
           </Button>
         }
       />
@@ -655,16 +666,16 @@ function SessionPoliciesPanel({
       <Table striped>
         <thead>
           <tr>
-            <th>Policy</th>
-            <th>Max idle time</th>
-            <th>Used by</th>
+            <th>{t('roles.policies.columns.policy')}</th>
+            <th>{t('roles.policies.columns.maxIdle')}</th>
+            <th>{t('roles.policies.columns.usedBy')}</th>
           </tr>
         </thead>
         <tbody>
           {sessionPolicies.length === 0 && (
             <tr>
               <td colSpan={3} style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>
-                No session policies yet.
+                {t('roles.policies.empty')}
               </td>
             </tr>
           )}
@@ -673,7 +684,7 @@ function SessionPoliciesPanel({
             return (
               <tr key={policy.id}>
                 <td style={{ fontWeight: 'var(--font-weight-medium)' }}>{policy.name}</td>
-                <td>{formatDuration(policy.attributes.maxIdleSeconds)}</td>
+                <td>{formatDuration(t, policy.attributes.maxIdleSeconds)}</td>
                 <td>
                   {users.length === 0 ? (
                     EMPTY_CELL
@@ -699,6 +710,7 @@ function SessionPoliciesPanel({
 }
 
 export function RolesTab() {
+  const { t } = useTranslation('console')
   const [roles, setRoles] = useState<Role[] | null>(null)
   const [permissions, setPermissions] = useState<Permission[] | null>(null)
   const [rolePermissionIds, setRolePermissionIds] = useState<Record<string, string[]>>({})
@@ -726,9 +738,9 @@ export function RolesTab() {
       setRolePermissionIds(Object.fromEntries(permissionIds))
       setError(null)
     } catch {
-      setError('Failed to load roles.')
+      setError(t('roles.loadFailed'))
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     void reload()
@@ -740,9 +752,9 @@ export function RolesTab() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
       {error && <Alert variant="urgent">{error}</Alert>}
       <Tabs defaultSelectedKey="roles">
-        <TabList aria-label="Roles and permissions">
-          <Tab id="roles">Roles</Tab>
-          <Tab id="policies">Session policies</Tab>
+        <TabList aria-label={t('roles.tabsLabel')}>
+          <Tab id="roles">{t('roles.tabs.roles')}</Tab>
+          <Tab id="policies">{t('roles.tabs.policies')}</Tab>
         </TabList>
         <TabPanel id="roles">
           {loaded ? (

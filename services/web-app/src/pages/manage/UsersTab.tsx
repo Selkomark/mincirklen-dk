@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '../../components/Button'
 import { Badge } from '../../components/Badge'
 import { Checkbox } from '../../components/Checkbox'
@@ -25,6 +26,7 @@ interface Role {
 }
 
 function EditRolesRow({ user, allRoles, onSaved }: { user: UserWithRoles; allRoles: Role[]; onSaved: () => void }) {
+  const { t } = useTranslation('console')
   const [editing, setEditing] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(user.roles.map((r) => r.id)))
   const [saving, setSaving] = useState(false)
@@ -58,10 +60,10 @@ function EditRolesRow({ user, allRoles, onSaved }: { user: UserWithRoles; allRol
             </div>
           )}
         </td>
-        <td>{user.bannedAt ? <Badge variant="urgent">Banned</Badge> : null}</td>
+        <td>{user.bannedAt ? <Badge variant="urgent">{t('users.banned')}</Badge> : null}</td>
         <td>
           <Button variant="ghost" onPress={() => setEditing(true)}>
-            Edit roles
+            {t('users.editRoles')}
           </Button>
         </td>
       </tr>
@@ -93,10 +95,10 @@ function EditRolesRow({ user, allRoles, onSaved }: { user: UserWithRoles; allRol
       <td>
         <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
           <Button variant="safe" isPending={saving} onPress={() => void save()}>
-            Save
+            {t('common.save')}
           </Button>
           <Button variant="ghost" onPress={() => setEditing(false)}>
-            Cancel
+            {t('common.cancel')}
           </Button>
         </div>
       </td>
@@ -105,23 +107,27 @@ function EditRolesRow({ user, allRoles, onSaved }: { user: UserWithRoles; allRol
 }
 
 export function UsersTab() {
+  const { t } = useTranslation('console')
   const [users, setUsers] = useState<UserWithRoles[] | null>(null)
   const [roles, setRoles] = useState<Role[] | null>(null)
   const [cursor, setCursor] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const load = useCallback(async (afterCursor?: string) => {
-    try {
-      const page = await getTrpc<{ users: UserWithRoles[]; nextCursor: string | null }>('rbac.users.list', {
-        cursor: afterCursor,
-        limit: 20,
-      })
-      setUsers((prev) => (afterCursor ? [...(prev ?? []), ...page.users] : page.users))
-      setCursor(page.nextCursor)
-    } catch {
-      setError('Failed to load users.')
-    }
-  }, [])
+  const load = useCallback(
+    async (afterCursor?: string) => {
+      try {
+        const page = await getTrpc<{ users: UserWithRoles[]; nextCursor: string | null }>('rbac.users.list', {
+          cursor: afterCursor,
+          limit: 20,
+        })
+        setUsers((prev) => (afterCursor ? [...(prev ?? []), ...page.users] : page.users))
+        setCursor(page.nextCursor)
+      } catch {
+        setError(t('users.loadFailed'))
+      }
+    },
+    [t],
+  )
 
   useEffect(() => {
     void load()
@@ -129,7 +135,7 @@ export function UsersTab() {
   }, [load])
 
   if (users === null || roles === null) {
-    return <div style={{ color: 'var(--text-secondary)' }}>Loading…</div>
+    return <div style={{ color: 'var(--text-secondary)' }}>{t('common.loading')}</div>
   }
 
   return (
@@ -140,10 +146,10 @@ export function UsersTab() {
         <Table striped>
           <thead>
             <tr>
-              <th>User</th>
-              <th>Email</th>
-              <th>Roles</th>
-              <th>Status</th>
+              <th>{t('users.columns.user')}</th>
+              <th>{t('users.columns.email')}</th>
+              <th>{t('users.columns.roles')}</th>
+              <th>{t('users.columns.status')}</th>
               <th></th>
             </tr>
           </thead>
@@ -157,7 +163,7 @@ export function UsersTab() {
 
       {cursor && (
         <Button variant="ghost" onPress={() => void load(cursor)}>
-          Load more
+          {t('common.loadMore')}
         </Button>
       )}
     </div>

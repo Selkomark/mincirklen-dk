@@ -21,14 +21,17 @@ const SIDEBAR_TEXT_MUTED = '#737373'
 const SIDEBAR_ACTIVE_BG = '#262626'
 const SIDEBAR_BORDER = '#2e2e2e'
 
+// Labels are `console` namespace keys (locales/*/console.json → nav.*),
+// resolved at render via t(), so the sidebar follows the admin's
+// language like the rest of the app.
 interface NavItem {
   section: ManageSection
-  label: string
+  labelKey: 'nav.review' | 'nav.users' | 'nav.roles' | 'nav.gates'
   permission: string
 }
 
 interface NavGroup {
-  label: string
+  labelKey: 'nav.moderation' | 'nav.accessControl' | 'nav.earlyAccess'
   items: NavItem[]
 }
 
@@ -39,19 +42,19 @@ interface NavGroup {
 // below); an empty group would be a dead heading.
 const NAV_GROUPS: NavGroup[] = [
   {
-    label: 'Moderation',
-    items: [{ section: 'review', label: 'Review queue', permission: 'moderation_events.review' }],
+    labelKey: 'nav.moderation',
+    items: [{ section: 'review', labelKey: 'nav.review', permission: 'moderation_events.review' }],
   },
   {
-    label: 'Access control',
+    labelKey: 'nav.accessControl',
     items: [
-      { section: 'users', label: 'Users', permission: 'users.read' },
-      { section: 'roles', label: 'Roles & permissions', permission: 'roles.read' },
+      { section: 'users', labelKey: 'nav.users', permission: 'users.read' },
+      { section: 'roles', labelKey: 'nav.roles', permission: 'roles.read' },
     ],
   },
   {
-    label: 'Early access',
-    items: [{ section: 'gates', label: 'Gates', permission: 'gates.read' }],
+    labelKey: 'nav.earlyAccess',
+    items: [{ section: 'gates', labelKey: 'nav.gates', permission: 'gates.read' }],
   },
 ]
 
@@ -77,6 +80,7 @@ function LogoMark({ onClick }: { onClick: () => void }) {
 }
 
 function NavLink({ item, isActive, onNavigate }: { item: NavItem; isActive: boolean; onNavigate: (section: ManageSection) => void }) {
+  const { t } = useTranslation('console')
   const locale = useLocale()
   return (
     <a
@@ -96,7 +100,7 @@ function NavLink({ item, isActive, onNavigate }: { item: NavItem; isActive: bool
         background: isActive ? SIDEBAR_ACTIVE_BG : 'transparent',
       }}
     >
-      {item.label}
+      {t(item.labelKey)}
     </a>
   )
 }
@@ -140,6 +144,7 @@ function Sidebar({
   onNavigate: (section: ManageSection) => void
   onLogoClick: () => void
 }) {
+  const { t } = useTranslation('console')
   const locale = useLocale()
   const visibleGroups = NAV_GROUPS.map((group) => ({
     ...group,
@@ -165,10 +170,10 @@ function Sidebar({
 
       <nav style={{ flex: 1, padding: '0 12px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
         {visibleGroups.length === 0 ? (
-          <div style={{ padding: '8px 12px', fontSize: 'var(--font-size-sm)', color: SIDEBAR_TEXT_MUTED }}>No sections available</div>
+          <div style={{ padding: '8px 12px', fontSize: 'var(--font-size-sm)', color: SIDEBAR_TEXT_MUTED }}>{t('nav.noSections')}</div>
         ) : (
           visibleGroups.map((group) => (
-            <div key={group.label} style={{ marginBottom: 4 }}>
+            <div key={group.labelKey} style={{ marginBottom: 4 }}>
               <div
                 style={{
                   padding: '8px 12px 4px',
@@ -179,7 +184,7 @@ function Sidebar({
                   letterSpacing: '0.04em',
                 }}
               >
-                {group.label}
+                {t(group.labelKey)}
               </div>
               {group.items.map((item) => (
                 <NavLink key={item.section} item={item} isActive={item.section === activeSection} onNavigate={onNavigate} />
@@ -207,7 +212,7 @@ function Sidebar({
           ))}
         </div>
         <a href={pPath(locale)} style={{ fontSize: 'var(--font-size-sm)', color: SIDEBAR_TEXT, textDecoration: 'none' }}>
-          ← Back to site
+          {t('nav.backToSite')}
         </a>
         <LogoutRow />
       </div>
@@ -235,7 +240,8 @@ export function ManagePage({
   onNavigate: (section: ManageSection) => void
 }) {
   const { t } = useTranslation('errors')
-  useDocumentTitle('Manage — MinCirklen')
+  const { t: ct } = useTranslation('console')
+  useDocumentTitle(ct('documentTitle'))
   const status = useAccess()
   // Called unconditionally (hooks rule) ahead of the loading/error
   // returns below — null while status isn't 'loaded' yet just means no
@@ -278,12 +284,12 @@ export function ManagePage({
         {activeSection ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
             <h1 style={{ margin: 0, fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-primary)' }}>
-              {NAV_ITEMS.find((item) => item.section === activeSection)?.label}
+              {ct(NAV_ITEMS.find((item) => item.section === activeSection)?.labelKey ?? 'nav.review')}
             </h1>
             <SectionContent section={activeSection} />
           </div>
         ) : (
-          <div style={{ color: 'var(--text-secondary)' }}>Nothing to show — you have admin access but no section permissions yet.</div>
+          <div style={{ color: 'var(--text-secondary)' }}>{ct('noSectionPermissions')}</div>
         )}
       </main>
     </div>

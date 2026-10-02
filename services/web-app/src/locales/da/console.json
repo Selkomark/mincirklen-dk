@@ -1,0 +1,172 @@
+{
+  "documentTitle": "Administration — MinCirklen",
+  "nav": {
+    "moderation": "Moderation",
+    "review": "Gennemgangskø",
+    "accessControl": "Adgangsstyring",
+    "users": "Brugere",
+    "roles": "Roller og rettigheder",
+    "earlyAccess": "Tidlig adgang",
+    "gates": "Adgangsporte",
+    "noSections": "Ingen sektioner tilgængelige",
+    "backToSite": "← Tilbage til sitet"
+  },
+  "noSectionPermissions": "Intet at vise — du har adminadgang, men endnu ingen rettigheder til nogen sektion.",
+  "common": {
+    "loading": "Indlæser…",
+    "loadMore": "Indlæs flere",
+    "cancel": "Annuller",
+    "save": "Gem",
+    "create": "Opret",
+    "edit": "Rediger",
+    "all": "Alle"
+  },
+  "duration": {
+    "minute_one": "{{count}} minut",
+    "minute_other": "{{count}} minutter",
+    "hour_one": "{{count}} time",
+    "hour_other": "{{count}} timer",
+    "day_one": "{{count}} dag",
+    "day_other": "{{count}} dage",
+    "second_one": "{{count}} sekund",
+    "second_other": "{{count}} sekunder"
+  },
+  "review": {
+    "loadFailed": "Kunne ikke indlæse gennemgangskøen.",
+    "submitFailed": "Kunne ikke indsende afgørelsen — prøv igen.",
+    "empty": "Intet afventer gennemgang.",
+    "messageRemoved": "(besked fjernet)",
+    "columns": {
+      "flagged": "Markeret",
+      "classification": "Klassificering",
+      "message": "Besked",
+      "decision": "Afgørelse"
+    },
+    "classification": {
+      "flag": "Markering",
+      "crisis": "Krise"
+    },
+    "outcome": {
+      "true_positive": "Korrekt markeret",
+      "false_positive": "Falsk positiv",
+      "true_negative": "Korrekt godkendt",
+      "false_negative": "Overset (burde være markeret)"
+    }
+  },
+  "users": {
+    "loadFailed": "Kunne ikke indlæse brugere.",
+    "banned": "Udelukket",
+    "editRoles": "Rediger roller",
+    "columns": {
+      "user": "Bruger",
+      "email": "E-mail",
+      "roles": "Roller",
+      "status": "Status"
+    }
+  },
+  "gates": {
+    "loadFailed": "Kunne ikke indlæse adgangsporte.",
+    "updateFailed": "Kunne ikke opdatere.",
+    "scheduleUpdateFailed": "Kunne ikke opdatere tidsplanen.",
+    "columns": {
+      "gate": "Adgangsport",
+      "status": "Status",
+      "pending": "Afventer",
+      "granted": "Tildelt",
+      "revoked": "Tilbagekaldt"
+    },
+    "open": "Åben",
+    "inviteOnly": "Kun efter invitation",
+    "openToEveryone": "Åben for alle",
+    "hideSignups": "Skjul tilmeldinger",
+    "manageSignups": "Administrer tilmeldinger",
+    "autoOpen": "Åbn automatisk efter en tidsplan (åbner uanset kontakten ovenfor, når tiden er inde)",
+    "autoOpenDate": "Dato for automatisk åbning",
+    "autoOpenTime": "Tidspunkt for automatisk åbning",
+    "saveSchedule": "Gem tidsplan",
+    "signups": {
+      "loadFailed": "Kunne ikke indlæse tilmeldinger.",
+      "grantFailed": "Kunne ikke tildele adgang.",
+      "revokeFailed": "Kunne ikke tilbagekalde adgang.",
+      "copiedFor": "Invitationslink kopieret til udklipsholderen — klar til at sende til {{email}}.",
+      "empty": "Ingen tilmeldinger endnu.",
+      "columns": {
+        "email": "E-mail",
+        "status": "Status",
+        "signedUp": "Tilmeldt"
+      },
+      "granted": "Tildelt",
+      "revoked": "Tilbagekaldt",
+      "pending": "Afventer",
+      "grantAccess": "Tildel adgang",
+      "copyLink": "Kopiér invitationslink",
+      "copied": "Kopieret!",
+      "copyFailed": "Mislykkedes — prøv igen",
+      "revoke": "Tilbagekald",
+      "revokeTitle": "Tilbagekald adgang?",
+      "revokeBody": "{{email}} vil ikke længere kunne bruge sit invitationslink. Du kan tildele adgang igen senere, hvis du ombestemmer dig.",
+      "revokeConfirm": "Tilbagekald adgang"
+    }
+  },
+  "roles": {
+    "tabsLabel": "Roller og rettigheder",
+    "tabs": {
+      "roles": "Roller",
+      "policies": "Sessionspolitikker"
+    },
+    "loadFailed": "Kunne ikke indlæse roller.",
+    "intro": "Roller samler rettigheder. Tildel dem til brugere fra siden Brugere.",
+    "search": {
+      "label": "Søg i roller",
+      "placeholder": "Navn, hvad den kan, eller en politik…",
+      "noMatch": "Ingen roller matcher “{{query}}”."
+    },
+    "newRole": "Ny rolle",
+    "newRoleTitle": "Ny rolle",
+    "system": "System",
+    "defaultPolicy": "Standard (2 uger)",
+    "columns": {
+      "role": "Rolle",
+      "description": "Beskrivelse",
+      "permissions": "Rettigheder",
+      "timeout": "Inaktivitetstimeout for session"
+    },
+    "nameLabel": "Rollenavn",
+    "nameHint": "Store bogstaver, tal og bindestreger, f.eks. TRUST-SAFETY-LEAD",
+    "descriptionLabel": "Beskrivelse",
+    "descriptionPlaceholder": "Hvad rollen er til",
+    "descriptionPlaceholderOptional": "Hvad rollen er til (valgfrit)",
+    "createFailed": "Kunne ikke oprette rollen — navnet er muligvis allerede i brug.",
+    "saveFailed": "Kunne ikke gemme rollen.",
+    "systemLocked": "Systemrolle — har alle rettigheder og kan ikke redigeres.",
+    "policySelectLabel": "Inaktivitetstimeout for session",
+    "permissions": {
+      "label": "Rettigheder",
+      "searchLabel": "Søg i rettigheder",
+      "searchPlaceholder": "Søg i rettigheder, f.eks. rediger brugere, timeout…",
+      "noMatch": "Ingen rettigheder matcher “{{query}}”."
+    },
+    "policies": {
+      "intro": "Inaktivitetsskabeloner knyttet til roller, højst 2 uger. En rolle uden en får de fulde 2 uger.",
+      "newPolicy": "Ny politik",
+      "title": "Ny sessionspolitik",
+      "description": "En navngivet inaktivitetsskabelon, du kan knytte til roller, fra 1 minut til 2 uger. En bruger med flere roller er bundet af den korteste tilknyttede politik.",
+      "columns": {
+        "policy": "Politik",
+        "maxIdle": "Maks. inaktiv tid",
+        "usedBy": "Bruges af"
+      },
+      "empty": "Ingen sessionspolitikker endnu.",
+      "nameLabel": "Politiknavn",
+      "valueLabel": "Maks. inaktiv tid",
+      "capHint": "Skal være 2 uger eller mindre",
+      "unitLabel": "Enhed",
+      "units": {
+        "minutes": "Minutter",
+        "hours": "Timer",
+        "days": "Dage"
+      },
+      "createFailed": "Kunne ikke oprette sessionspolitikken — navnet er muligvis i brug, eller varigheden er uden for intervallet (1 minut til 2 uger)."
+    }
+  }
+}

@@ -9,7 +9,13 @@ import resourcesToBackend from 'i18next-resources-to-backend'
 // populated for `en` — the long-form legal/policy prose is explicitly
 // excluded from this pass (mistranslating it carries real liability) and
 // stays English-only pending human/professional translation.
-export const NAMESPACES = ['common', 'landing', 'auth', 'start', 'session', 'moderation', 'errors', 'publicPages'] as const
+// `console` is the admin area (pages/manage/*). Named neutrally rather
+// than after its route on purpose: each namespace becomes its own built
+// chunk, and the chunk's filename would otherwise advertise the admin
+// path to anyone listing the site's assets. The route segment itself
+// stays per-deployment config (App.tsx's VITE_ADMIN_ROUTE); nothing in
+// these strings refers to it.
+export const NAMESPACES = ['common', 'landing', 'auth', 'start', 'session', 'moderation', 'errors', 'publicPages', 'console'] as const
 export type Namespace = (typeof NAMESPACES)[number]
 
 // Norwegian ('nb') and Finnish ('fi') were dropped from here (2026-09) —

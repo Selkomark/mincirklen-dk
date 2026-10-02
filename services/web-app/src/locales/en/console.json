@@ -1,0 +1,172 @@
+{
+  "documentTitle": "Manage — MinCirklen",
+  "nav": {
+    "moderation": "Moderation",
+    "review": "Review queue",
+    "accessControl": "Access control",
+    "users": "Users",
+    "roles": "Roles & permissions",
+    "earlyAccess": "Early access",
+    "gates": "Gates",
+    "noSections": "No sections available",
+    "backToSite": "← Back to site"
+  },
+  "noSectionPermissions": "Nothing to show — you have admin access but no section permissions yet.",
+  "common": {
+    "loading": "Loading…",
+    "loadMore": "Load more",
+    "cancel": "Cancel",
+    "save": "Save",
+    "create": "Create",
+    "edit": "Edit",
+    "all": "All"
+  },
+  "duration": {
+    "minute_one": "{{count}} minute",
+    "minute_other": "{{count}} minutes",
+    "hour_one": "{{count}} hour",
+    "hour_other": "{{count}} hours",
+    "day_one": "{{count}} day",
+    "day_other": "{{count}} days",
+    "second_one": "{{count}} second",
+    "second_other": "{{count}} seconds"
+  },
+  "review": {
+    "loadFailed": "Failed to load the review queue.",
+    "submitFailed": "Failed to submit the decision — try again.",
+    "empty": "Nothing awaiting review.",
+    "messageRemoved": "(message removed)",
+    "columns": {
+      "flagged": "Flagged",
+      "classification": "Classification",
+      "message": "Message",
+      "decision": "Decision"
+    },
+    "classification": {
+      "flag": "Flag",
+      "crisis": "Crisis"
+    },
+    "outcome": {
+      "true_positive": "Correctly flagged",
+      "false_positive": "False positive",
+      "true_negative": "Correctly passed",
+      "false_negative": "Missed (should have flagged)"
+    }
+  },
+  "users": {
+    "loadFailed": "Failed to load users.",
+    "banned": "Banned",
+    "editRoles": "Edit roles",
+    "columns": {
+      "user": "User",
+      "email": "Email",
+      "roles": "Roles",
+      "status": "Status"
+    }
+  },
+  "gates": {
+    "loadFailed": "Failed to load gates.",
+    "updateFailed": "Failed to update.",
+    "scheduleUpdateFailed": "Failed to update schedule.",
+    "columns": {
+      "gate": "Gate",
+      "status": "Status",
+      "pending": "Pending",
+      "granted": "Granted",
+      "revoked": "Revoked"
+    },
+    "open": "Open",
+    "inviteOnly": "Invite-only",
+    "openToEveryone": "Open to everyone",
+    "hideSignups": "Hide signups",
+    "manageSignups": "Manage signups",
+    "autoOpen": "Auto-open on a schedule (opens regardless of the switch above once due)",
+    "autoOpenDate": "Auto-open date",
+    "autoOpenTime": "Auto-open time",
+    "saveSchedule": "Save schedule",
+    "signups": {
+      "loadFailed": "Failed to load signups.",
+      "grantFailed": "Failed to grant access.",
+      "revokeFailed": "Failed to revoke access.",
+      "copiedFor": "Invite link copied to clipboard — ready to send to {{email}}.",
+      "empty": "No signups yet.",
+      "columns": {
+        "email": "Email",
+        "status": "Status",
+        "signedUp": "Signed up"
+      },
+      "granted": "Granted",
+      "revoked": "Revoked",
+      "pending": "Pending",
+      "grantAccess": "Grant access",
+      "copyLink": "Copy invite link",
+      "copied": "Copied!",
+      "copyFailed": "Failed — retry",
+      "revoke": "Revoke",
+      "revokeTitle": "Revoke access?",
+      "revokeBody": "{{email}} won't be able to use their invite link anymore. You can grant them access again later if you change your mind.",
+      "revokeConfirm": "Revoke access"
+    }
+  },
+  "roles": {
+    "tabsLabel": "Roles and permissions",
+    "tabs": {
+      "roles": "Roles",
+      "policies": "Session policies"
+    },
+    "loadFailed": "Failed to load roles.",
+    "intro": "Roles bundle permissions. Assign them to users from the Users page.",
+    "search": {
+      "label": "Search roles",
+      "placeholder": "Name, what it can do, or a policy…",
+      "noMatch": "No roles match “{{query}}”."
+    },
+    "newRole": "New role",
+    "newRoleTitle": "New role",
+    "system": "System",
+    "defaultPolicy": "Default (2 weeks)",
+    "columns": {
+      "role": "Role",
+      "description": "Description",
+      "permissions": "Permissions",
+      "timeout": "Session idle timeout"
+    },
+    "nameLabel": "Role name",
+    "nameHint": "Uppercase letters, numbers and dashes, e.g. TRUST-SAFETY-LEAD",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "What this role is for",
+    "descriptionPlaceholderOptional": "What this role is for (optional)",
+    "createFailed": "Failed to create role — name may already be taken.",
+    "saveFailed": "Failed to save the role.",
+    "systemLocked": "System role — holds every permission and cannot be edited.",
+    "policySelectLabel": "Session idle timeout",
+    "permissions": {
+      "label": "Permissions",
+      "searchLabel": "Search permissions",
+      "searchPlaceholder": "Search permissions, e.g. edit users, timeout…",
+      "noMatch": "No permissions match “{{query}}”."
+    },
+    "policies": {
+      "intro": "Idle-timeout templates attached to roles, 2 weeks at most. A role without one gets the full 2 weeks.",
+      "newPolicy": "New policy",
+      "title": "New session policy",
+      "description": "A named idle-timeout template you can attach to roles, from 1 minute to 2 weeks. A user holding several roles is bound by whichever attached policy is shortest.",
+      "columns": {
+        "policy": "Policy",
+        "maxIdle": "Max idle time",
+        "usedBy": "Used by"
+      },
+      "empty": "No session policies yet.",
+      "nameLabel": "Policy name",
+      "valueLabel": "Max idle time",
+      "capHint": "Must be 2 weeks or less",
+      "unitLabel": "Unit",
+      "units": {
+        "minutes": "Minutes",
+        "hours": "Hours",
+        "days": "Days"
+      },
+      "createFailed": "Failed to create session policy — name may already be taken, or the duration is out of range (1 minute to 2 weeks)."
+    }
+  }
+}
