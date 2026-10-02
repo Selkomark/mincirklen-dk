@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { PublicHeader } from '../PublicHeader'
 import { SiteFooter } from '../SiteFooter'
 import { usePageMeta } from '../usePageMeta'
@@ -10,6 +11,24 @@ export function PublicPageView({ id }: { id: PublicPageId }) {
   const locale = useLocale()
   const page = PUBLIC_PAGES[id]
   const path = publicPagePath(id, locale)
+
+  // Deep links to a section (…/privacy-policy#closed-accounts, from the
+  // closed-account notice on the sign-in page). The browser's own hash
+  // scroll runs when the document loads — before React has mounted this
+  // page — so the target doesn't exist yet and nothing happens. Scroll
+  // ourselves once the sections are in the DOM, and again if the hash
+  // changes while on the page.
+  useEffect(() => {
+    const scrollToHash = () => {
+      const hash = window.location.hash.slice(1)
+      if (!hash) return
+      const target = document.getElementById(hash)
+      if (target) requestAnimationFrame(() => target.scrollIntoView({ block: 'start' }))
+    }
+    scrollToHash()
+    window.addEventListener('hashchange', scrollToHash)
+    return () => window.removeEventListener('hashchange', scrollToHash)
+  }, [id])
 
   usePageMeta({
     title: `${page.title} — MinCirklen`,
