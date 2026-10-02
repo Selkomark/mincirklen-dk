@@ -179,3 +179,80 @@
   gap: var(--space-2);
   min-width: 0;
 }
+
+/* History view: a wide dialog split into the list of prior reports and
+   the selected one's detail. Both columns scroll independently inside a
+   fixed-height body so the dialog itself never grows past the viewport. */
+.reports-history-modal {
+  max-width: 1040px;
+}
+
+.reports-history__columns {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  gap: var(--space-4);
+  height: 60vh;
+  min-height: 360px;
+}
+
+@media (max-width: 760px) {
+  .reports-history__columns {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+}
+
+.reports-history__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  overflow-y: auto;
+  padding-right: var(--space-1);
+}
+
+.reports-history__entry {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--easing-standard),
+    background-color var(--duration-fast) var(--easing-standard);
+}
+
+.reports-history__entry:hover {
+  border-color: var(--border-strong);
+}
+
+.reports-history__entry--selected {
+  border-color: var(--accent-safe);
+  background: var(--accent-safe-surface);
+}
+
+.reports-history__entry-circle {
+  font-weight: var(--font-weight-medium);
+}
+
+.reports-history__loose {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.reports-history__detail {
+  overflow-y: auto;
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}

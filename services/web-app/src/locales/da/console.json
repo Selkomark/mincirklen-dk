@@ -303,7 +303,14 @@
       "by": "af {{who}}",
       "notThisMember": "et andet medlem",
       "viewReport": "Vis rapport",
-      "loadFailed": "Kunne ikke indlæse historik."
+      "loadFailed": "Kunne ikke indlæse historik.",
+      "open": "Vis historik",
+      "about": "Vedrører",
+      "listLabel": "Tidligere rapporter",
+      "selectPrompt": "Vælg en rapport til venstre for at se den her.",
+      "openConversation": "Åbn samtalen",
+      "notesFromReport": "Notater fra denne rapport",
+      "looseNotes": "Notater tilføjet under Brugere"
     }
   }
 }

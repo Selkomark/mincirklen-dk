@@ -303,7 +303,14 @@
       "by": "by {{who}}",
       "notThisMember": "another member",
       "viewReport": "View report",
-      "loadFailed": "Failed to load history."
+      "loadFailed": "Failed to load history.",
+      "open": "View history",
+      "about": "About",
+      "listLabel": "Prior reports",
+      "selectPrompt": "Select a report on the left to see it here.",
+      "openConversation": "Open conversation",
+      "notesFromReport": "Notes from this report",
+      "looseNotes": "Notes added under Users"
     }
   }
 }

@@ -422,6 +422,7 @@ function DecisionModal({
   const [banReason, setBanReason] = useState<BanReason | null>(null)
   const [pending, setPending] = useState<Decision | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [historyOpen, setHistoryOpen] = useState(false)
 
   const noteReady = note.trim().length > 0
   const needsTargets = MEMBER_TARGETED.has(action)
@@ -489,7 +490,14 @@ function DecisionModal({
 
           {needsTargets && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-              <div className="reports-review__label">{t('reports.targetsLabel')}</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+                <div className="reports-review__label">{t('reports.targetsLabel')}</div>
+                {/* Prior reports and notes about exactly the members ticked
+                    here — the pattern a decision should rest on. */}
+                <Button variant="ghost" isDisabled={targets.size === 0} onPress={() => setHistoryOpen(true)}>
+                  {t('reports.history.open')}
+                </Button>
+              </div>
               <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
                 {report.aboutUserIds.map((id) => (
                   <Checkbox
@@ -565,6 +573,7 @@ function DecisionModal({
           </Button>
         </div>
       </div>
+      {historyOpen && <HistoryModal report={report} targetUserIds={[...targets]} roster={roster} canBan={canBan} onClose={() => setHistoryOpen(false)} />}
     </Modal>
   )
 }
@@ -572,14 +581,14 @@ function DecisionModal({
 // ---- History ----
 //
 // What's already on file about the members this report is about — every
-// moderator note on them and every other report naming them. This is
-// where a decision note earns its keep: the next reviewer sees the
-// pattern before deciding, instead of judging each report in isolation.
-function SubjectHistoryPanel({ reportId, roster, canBan }: { reportId: string; roster: RosterEntry[]; canBan: boolean }) {
-  const { t, i18n } = useTranslation('console')
+// moderator note on them and every other report naming them, open or
+// decided. This is where a decision note earns its keep: the next
+// reviewer sees the pattern before deciding, instead of judging each
+// report in isolation.
+function useSubjectHistory(reportId: string) {
+  const { t } = useTranslation('console')
   const [history, setHistory] = useState<SubjectHistory | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [openReportId, setOpenReportId] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -595,18 +604,26 @@ function SubjectHistoryPanel({ reportId, roster, canBan }: { reportId: string; r
     }
   }, [reportId, t])
 
-  if (error) return <Alert variant="urgent">{error}</Alert>
-  if (!history) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-        <Skeleton width="50%" height={14} />
-        <Skeleton width="70%" height={14} />
-      </div>
-    )
-  }
+  return { history, error }
+}
 
-  const hasAnything = history.subjects.some((s) => s.notes.length > 0 || s.priorReports.length > 0)
-  if (!hasAnything) {
+type PriorReport = SubjectHistory['subjects'][number]['priorReports'][number]
+type SubjectNote = SubjectHistory['subjects'][number]['notes'][number]
+
+// One line under the report details: how much is on file, and the button
+// that opens the full two-column view. Nothing on file reads as a plain
+// sentence with no button.
+function HistorySummary({ report, roster, canBan }: { report: SessionReport; roster: RosterEntry[]; canBan: boolean }) {
+  const { t } = useTranslation('console')
+  const { history, error } = useSubjectHistory(report.id)
+  const [open, setOpen] = useState(false)
+
+  if (error) return <Alert variant="urgent">{error}</Alert>
+  if (!history) return <Skeleton width="60%" height={14} />
+
+  const reportIds = new Set(history.subjects.flatMap((s) => s.priorReports.map((r) => r.id)))
+  const noteCount = history.subjects.reduce((n, s) => n + s.notes.length, 0)
+  if (reportIds.size === 0 && noteCount === 0) {
     return (
       <Text variant="muted" style={{ margin: 0 }}>
         {t('reports.history.none')}
@@ -615,63 +632,199 @@ function SubjectHistoryPanel({ reportId, roster, canBan }: { reportId: string; r
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-      {history.subjects
-        .filter((s) => s.notes.length > 0 || s.priorReports.length > 0)
-        .map((subject) => (
-          <div key={subject.userId} className="reports-history__subject">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-              <MemberChip userId={subject.userId} roster={roster} />
-              <Text variant="muted" as="span" style={{ margin: 0 }}>
-                {t('reports.history.summary', { notes: subject.notes.length, reports: subject.priorReports.length })}
-              </Text>
-            </div>
-            {subject.priorReports.map((prior) => (
-              <div key={prior.id} className="reports-history__item">
-                <div className="reports-history__meta">
-                  <span>{new Date(prior.createdAt).toLocaleString(i18n.language)}</span>
-                  <span>·</span>
-                  <span>{prior.sessionName ?? t('reports.unnamedSession')}</span>
-                  <StatusBadge status={prior.status} />
-                  {prior.action && prior.action !== 'none' && (
-                    <Badge variant={prior.appliedToThisMember ? (prior.action === 'ban' ? 'urgent' : 'info') : 'neutral'}>
-                      {t(`reports.actions.${prior.action}.label`)}
-                      {!prior.appliedToThisMember ? ` · ${t('reports.history.notThisMember')}` : ''}
-                    </Badge>
-                  )}
-                  {prior.reviewedByLabel && <span>{t('reports.history.by', { who: prior.reviewedByLabel })}</span>}
-                </div>
-                <div className="reports-history__row">
-                  <span className="reports-excerpt" style={{ flex: 1 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+      <Text variant="muted" as="span" style={{ margin: 0 }}>
+        {t('reports.history.summary', { notes: noteCount, reports: reportIds.size })}
+      </Text>
+      <Button variant="secondary" onPress={() => setOpen(true)}>
+        {t('reports.history.open')}
+      </Button>
+      {open && <HistoryModal report={report} targetUserIds={report.aboutUserIds} roster={roster} canBan={canBan} onClose={() => setOpen(false)} />}
+    </div>
+  )
+}
+
+// The two-column history view. Left: every other report naming any of
+// `targetUserIds` (the members ticked in the decision dialog, or all of
+// the report's subjects from the review dialog), newest first, open and
+// decided alike. Right: the selected report in full — who, what, and
+// whatever was decided — plus any moderator notes that came out of it.
+// Members in a prior report are labelled by THAT circle's roster, fetched
+// on selection, since "Member 3" means something different in every
+// circle.
+function HistoryModal({
+  report,
+  targetUserIds,
+  roster,
+  canBan,
+  onClose,
+}: {
+  report: SessionReport
+  targetUserIds: string[]
+  roster: RosterEntry[]
+  canBan: boolean
+  onClose: () => void
+}) {
+  const { t, i18n } = useTranslation('console')
+  const { history, error } = useSubjectHistory(report.id)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selected, setSelected] = useState<SessionReport | null>(null)
+  const [selectedRoster, setSelectedRoster] = useState<RosterEntry[]>([])
+  const [selectedError, setSelectedError] = useState<string | null>(null)
+  const [openFull, setOpenFull] = useState(false)
+
+  const targets = new Set(targetUserIds)
+  const subjects = history?.subjects.filter((s) => targets.has(s.userId)) ?? []
+  const priorById = new Map<string, PriorReport>()
+  for (const subject of subjects) for (const prior of subject.priorReports) priorById.set(prior.id, prior)
+  const priors = [...priorById.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  const notesByReport = new Map<string, SubjectNote[]>()
+  for (const subject of subjects) {
+    for (const note of subject.notes) {
+      if (!note.reportId) continue
+      notesByReport.set(note.reportId, [...(notesByReport.get(note.reportId) ?? []), note])
+    }
+  }
+  // Notes written by hand under Users carry no report — surfaced as
+  // their own entries so they aren't lost.
+  const looseNotes = subjects.flatMap((s) => s.notes.filter((n) => !n.reportId).map((n) => ({ ...n, userId: s.userId })))
+
+  // Open on the newest prior report so the right pane is never empty.
+  useEffect(() => {
+    if (selectedId === null && priors.length > 0) setSelectedId(priors[0]!.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only seed once the list first arrives
+  }, [priors.length])
+
+  useEffect(() => {
+    if (!selectedId) return
+    let cancelled = false
+    setSelected(null)
+    setSelectedError(null)
+    Promise.all([
+      getTrpc<SessionReport>('sessionReports.get', { reportId: selectedId }),
+      getTrpc<TranscriptPage>('sessionReports.transcript', { reportId: selectedId, direction: 'around', limit: 1 }),
+    ])
+      .then(([r, page]) => {
+        if (cancelled) return
+        setSelected(r)
+        setSelectedRoster(page.roster)
+      })
+      .catch(() => {
+        if (!cancelled) setSelectedError(t('reports.loadFailed'))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [selectedId, t])
+
+  return (
+    <Modal isOpen onOpenChange={(open) => !open && onClose()} title={t('reports.history.title')} className="reports-history-modal">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+          <Text variant="muted" as="span" style={{ margin: 0 }}>
+            {t('reports.history.about')}
+          </Text>
+          {targetUserIds.map((id) => (
+            <MemberChip key={id} userId={id} roster={roster} />
+          ))}
+        </div>
+        {error && <Alert variant="urgent">{error}</Alert>}
+        {!history && !error && <Skeleton width="100%" height={200} radius="var(--radius-md)" />}
+        {history && (
+          <div className="reports-history__columns">
+            <div className="reports-history__list" role="listbox" aria-label={t('reports.history.listLabel')}>
+              {priors.length === 0 && looseNotes.length === 0 && (
+                <Text variant="muted" style={{ margin: 0, padding: 'var(--space-3)' }}>
+                  {t('reports.history.none')}
+                </Text>
+              )}
+              {priors.map((prior) => (
+                <button
+                  key={prior.id}
+                  type="button"
+                  role="option"
+                  aria-selected={prior.id === selectedId}
+                  className={['reports-history__entry', prior.id === selectedId && 'reports-history__entry--selected'].filter(Boolean).join(' ')}
+                  onClick={() => setSelectedId(prior.id)}
+                >
+                  <span className="reports-history__meta">
+                    <span>{new Date(prior.createdAt).toLocaleDateString(i18n.language)}</span>
+                    <StatusBadge status={prior.status} />
+                    {prior.action && prior.action !== 'none' && (
+                      <Badge variant={prior.appliedToThisMember ? (prior.action === 'ban' ? 'urgent' : 'info') : 'neutral'}>
+                        {t(`reports.actions.${prior.action}.label`)}
+                      </Badge>
+                    )}
+                  </span>
+                  <span className="reports-history__entry-circle">{prior.sessionName ?? t('reports.unnamedSession')}</span>
+                  <span className="reports-excerpt" style={{ maxWidth: 'none' }}>
                     {prior.body}
                   </span>
-                  <Button variant="ghost" onPress={() => setOpenReportId(prior.id)}>
-                    {t('reports.view')}
-                  </Button>
+                </button>
+              ))}
+              {looseNotes.length > 0 && (
+                <div className="reports-history__loose">
+                  <div className="reports-review__label">{t('reports.history.looseNotes')}</div>
+                  {looseNotes.map((note) => (
+                    <div key={note.id} className="reports-history__item">
+                      <div className="reports-history__meta">
+                        <span>{new Date(note.createdAt).toLocaleDateString(i18n.language)}</span>
+                        <MemberChip userId={note.userId} roster={roster} />
+                        {note.createdByLabel && <span>{t('reports.history.by', { who: note.createdByLabel })}</span>}
+                      </div>
+                      <span style={{ whiteSpace: 'pre-wrap' }}>{note.body}</span>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            ))}
-            {subject.notes.map((note) => (
-              <div key={note.id} className="reports-history__item">
-                <div className="reports-history__meta">
-                  <span>{new Date(note.createdAt).toLocaleString(i18n.language)}</span>
-                  <Badge>{t('reports.history.note')}</Badge>
-                  {note.createdByLabel && <span>{t('reports.history.by', { who: note.createdByLabel })}</span>}
+              )}
+            </div>
+
+            <div className="reports-history__detail">
+              {selectedId === null && priors.length > 0 && (
+                <Text variant="muted" style={{ margin: 0 }}>
+                  {t('reports.history.selectPrompt')}
+                </Text>
+              )}
+              {selectedError && <Alert variant="urgent">{selectedError}</Alert>}
+              {selectedId && !selected && !selectedError && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                  <Skeleton width="40%" height={14} />
+                  <Skeleton width="90%" height={60} radius="var(--radius-md)" />
                 </div>
-                <div className="reports-history__row">
-                  <span style={{ flex: 1, whiteSpace: 'pre-wrap' }}>{note.body}</span>
-                  {note.reportId && (
-                    <Button variant="ghost" onPress={() => setOpenReportId(note.reportId)}>
-                      {t('reports.history.viewReport')}
+              )}
+              {selected && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+                    <div style={{ fontWeight: 'var(--font-weight-bold)' as unknown as number, color: 'var(--text-primary)' }}>
+                      {selected.sessionName ?? t('reports.unnamedSession')}
+                    </div>
+                    <Button variant="ghost" onPress={() => setOpenFull(true)}>
+                      {t('reports.history.openConversation')}
                     </Button>
+                  </div>
+                  <ReportSummary report={selected} roster={selectedRoster} />
+                  {(notesByReport.get(selected.id) ?? []).length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                      <div className="reports-review__label">{t('reports.history.notesFromReport')}</div>
+                      {(notesByReport.get(selected.id) ?? []).map((note) => (
+                        <div key={note.id} className="reports-history__item">
+                          <div className="reports-history__meta">
+                            <span>{new Date(note.createdAt).toLocaleString(i18n.language)}</span>
+                            {note.createdByLabel && <span>{t('reports.history.by', { who: note.createdByLabel })}</span>}
+                          </div>
+                          <span style={{ whiteSpace: 'pre-wrap' }}>{note.body}</span>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
-              </div>
-            ))}
+              )}
+            </div>
           </div>
-        ))}
-      {openReportId && <ReportByIdModal reportId={openReportId} canBan={canBan} onClose={() => setOpenReportId(null)} />}
-    </div>
+        )}
+      </div>
+      {openFull && selectedId && <ReportByIdModal reportId={selectedId} canBan={canBan} onClose={() => setOpenFull(false)} />}
+    </Modal>
   )
 }
 
@@ -708,6 +861,76 @@ export function ReportByIdModal({ reportId, canBan, onClose }: { reportId: strin
   return <ReviewReportModal report={report} canBan={canBan} onClose={onClose} onDecided={onClose} />
 }
 
+// The report itself — status, when filed, who filed it, who it's about,
+// how many messages it names, the text, and (once decided) the decision
+// with its action and note. Shared by the review dialog and the history
+// view's right-hand pane.
+function ReportSummary({ report, roster }: { report: SessionReport; roster: RosterEntry[] }) {
+  const { t, i18n } = useTranslation('console')
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+          <StatusBadge status={report.status} />
+          <Text variant="muted" as="span" style={{ margin: 0 }}>
+            {t('reports.filedAt', { when: new Date(report.createdAt).toLocaleString(i18n.language) })}
+          </Text>
+        </div>
+        <div className="reports-review__facts">
+          <span className="reports-review__label">{t('reports.reporter')}</span>
+          <span>
+            {report.reporterUserId ? (
+              <MemberChip userId={report.reporterUserId} roster={roster} />
+            ) : (
+              <Text variant="muted" as="span" style={{ margin: 0 }}>
+                {t('reports.reporterGone')}
+              </Text>
+            )}
+          </span>
+          <span className="reports-review__label">{t('reports.about')}</span>
+          <span style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+            {report.aboutUserIds.map((id) => (
+              <MemberChip key={id} userId={id} roster={roster} />
+            ))}
+          </span>
+          {report.messageIds.length > 0 && (
+            <>
+              <span className="reports-review__label">{t('reports.messages')}</span>
+              <span>{t('reports.messagesReported', { count: report.messageIds.length })}</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      <blockquote className="reports-review__quote">
+        <div className="reports-review__label">{t('reports.reportBody')}</div>
+        {report.body}
+      </blockquote>
+
+      {report.status !== 'open' && (
+        <Alert variant={report.status === 'reviewed' ? 'safe' : 'info'}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <strong>
+              {report.reviewedByLabel
+                ? t('reports.decidedBy', { when: report.reviewedAt ? new Date(report.reviewedAt).toLocaleString(i18n.language) : '—', who: report.reviewedByLabel })
+                : t('reports.decided', { when: report.reviewedAt ? new Date(report.reviewedAt).toLocaleString(i18n.language) : '—' })}
+            </strong>
+            {report.action && report.action !== 'none' && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+                <Badge variant={report.action === 'ban' ? 'urgent' : 'info'}>{t(`reports.actions.${report.action}.label`)}</Badge>
+                {report.actionTargetUserIds.map((id) => (
+                  <MemberChip key={id} userId={id} roster={roster} />
+                ))}
+              </span>
+            )}
+            <span style={{ whiteSpace: 'pre-wrap' }}>{report.decisionNote ?? t('reports.noNote')}</span>
+          </div>
+        </Alert>
+      )}
+    </div>
+  )
+}
+
 // ---- Review dialog ----
 export function ReviewReportModal({
   report,
@@ -720,7 +943,7 @@ export function ReviewReportModal({
   onClose: () => void
   onDecided: () => void
 }) {
-  const { t, i18n } = useTranslation('console')
+  const { t } = useTranslation('console')
   const [deciding, setDeciding] = useState(false)
   // Filled in by the transcript's first page; until then the chips show
   // the anonymous fallback label.
@@ -732,37 +955,8 @@ export function ReviewReportModal({
     <Modal isOpen onOpenChange={(open) => !open && onClose()} title={title} className="reports-review-modal">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-              <StatusBadge status={report.status} />
-              <Text variant="muted" as="span" style={{ margin: 0 }}>
-                {t('reports.filedAt', { when: new Date(report.createdAt).toLocaleString(i18n.language) })}
-              </Text>
-            </div>
-            <div className="reports-review__facts">
-              <span className="reports-review__label">{t('reports.reporter')}</span>
-              <span>
-                {report.reporterUserId ? (
-                  <MemberChip userId={report.reporterUserId} roster={roster} />
-                ) : (
-                  <Text variant="muted" as="span" style={{ margin: 0 }}>
-                    {t('reports.reporterGone')}
-                  </Text>
-                )}
-              </span>
-              <span className="reports-review__label">{t('reports.about')}</span>
-              <span style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-                {report.aboutUserIds.map((id) => (
-                  <MemberChip key={id} userId={id} roster={roster} />
-                ))}
-              </span>
-              {report.messageIds.length > 0 && (
-                <>
-                  <span className="reports-review__label">{t('reports.messages')}</span>
-                  <span>{t('reports.messagesReported', { count: report.messageIds.length })}</span>
-                </>
-              )}
-            </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <ReportSummary report={report} roster={roster} />
           </div>
           {report.status === 'open' && (
             <Button variant="safe" onPress={() => setDeciding(true)}>
@@ -771,37 +965,11 @@ export function ReviewReportModal({
           )}
         </div>
 
-        <blockquote className="reports-review__quote">
-          <div className="reports-review__label">{t('reports.reportBody')}</div>
-          {report.body}
-        </blockquote>
-
-        {report.status !== 'open' && (
-          <Alert variant={report.status === 'reviewed' ? 'safe' : 'info'}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <strong>
-                {report.reviewedByLabel
-                  ? t('reports.decidedBy', { when: report.reviewedAt ? new Date(report.reviewedAt).toLocaleString(i18n.language) : '—', who: report.reviewedByLabel })
-                  : t('reports.decided', { when: report.reviewedAt ? new Date(report.reviewedAt).toLocaleString(i18n.language) : '—' })}
-              </strong>
-              {report.action && report.action !== 'none' && (
-                <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-                  <Badge variant={report.action === 'ban' ? 'urgent' : 'info'}>{t(`reports.actions.${report.action}.label`)}</Badge>
-                  {report.actionTargetUserIds.map((id) => (
-                    <MemberChip key={id} userId={id} roster={roster} />
-                  ))}
-                </span>
-              )}
-              <span style={{ whiteSpace: 'pre-wrap' }}>{report.decisionNote ?? t('reports.noNote')}</span>
-            </div>
-          </Alert>
-        )}
-
         <div>
           <div className="reports-review__label" style={{ marginBottom: 'var(--space-2)' }}>
             {t('reports.history.title')}
           </div>
-          <SubjectHistoryPanel reportId={report.id} roster={roster} canBan={canBan} />
+          <HistorySummary report={report} roster={roster} canBan={canBan} />
         </div>
 
         <div>
