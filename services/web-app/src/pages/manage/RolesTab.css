@@ -40,6 +40,15 @@
   background: var(--accent-safe-surface);
 }
 
+/* A filter, not a form field: shorter and smaller than the DS's 44px
+   input so it reads as secondary to the Role name / Description fields
+   above. */
+.roles-permission-search .ds-textfield__input {
+  height: 36px;
+  padding: 0 var(--space-3);
+  font-size: var(--font-size-sm);
+}
+
 /* The permission search's own label is redundant under the visible
    "Permissions" section label — keep it for assistive tech only. */
 .roles-permission-search .ds-textfield__label {

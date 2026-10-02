@@ -226,6 +226,8 @@ function EditRoleModal({
   onClose: () => void
   onSaved: () => Promise<void>
 }) {
+  const [name, setName] = useState(role.name)
+  const [description, setDescription] = useState(role.description ?? '')
   const [policyId, setPolicyId] = useState(role.sessionPolicyId ?? PLATFORM_DEFAULT_ID)
   const [selectedIds, setSelectedIds] = useState<Set<string> | null>(null)
   const [saving, setSaving] = useState(false)
@@ -239,13 +241,29 @@ function EditRoleModal({
     })()
   }, [role.id, role.isSystem])
 
+  const trimmedName = name.trim()
+  const trimmedDescription = description.trim()
+  const detailsChanged = trimmedName !== role.name || trimmedDescription !== (role.description ?? '')
+
+  // Mirrors the schema's name minimum (2 chars) so the button isn't
+  // enabled for input the server will reject.
+  const nameValid = trimmedName.length >= 2
+
   const save = async () => {
+    if (!nameValid) return
     setSaving(true)
     setError(null)
     try {
       // The session policy is editable on every role, including system
       // ones — an admin role is exactly the kind of role idle policies
-      // exist to rate-limit. Permissions stay locked for system roles.
+      // exist to rate-limit. Name, description and permissions stay
+      // locked for system roles (rbacService.ts rejects them).
+      if (!role.isSystem && detailsChanged) {
+        // createRoleInputSchema/updateRoleInputSchema take description as
+        // optional, not nullable — omit it (undefined drops out of the
+        // JSON) to clear; the router stores null.
+        await postTrpc('rbac.roles.update', { roleId: role.id, name: trimmedName, description: trimmedDescription || undefined })
+      }
       if (policyId !== (role.sessionPolicyId ?? PLATFORM_DEFAULT_ID)) {
         await postTrpc('rbac.roles.setSessionPolicy', { roleId: role.id, sessionPolicyId: policyId || null })
       }
@@ -264,12 +282,25 @@ function EditRoleModal({
   return (
     <Modal isOpen onOpenChange={(open) => !open && onClose()} title={role.name} className="roles-edit-modal">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-        {role.description && (
-          <Text variant="muted" style={{ margin: 0 }}>
-            {role.description}
-          </Text>
-        )}
         {error && <Alert variant="urgent">{error}</Alert>}
+
+        {role.isSystem ? (
+          role.description && (
+            <Text variant="muted" style={{ margin: 0 }}>
+              {role.description}
+            </Text>
+          )
+        ) : (
+          <>
+            <TextField label="Role name" value={name} onChange={(e) => setName(e.target.value)} />
+            <TextField
+              label="Description"
+              placeholder="What this role is for"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </>
+        )}
 
         <SessionPolicySelect value={policyId} onChange={setPolicyId} sessionPolicies={sessionPolicies} isDisabled={saving} />
 
@@ -296,7 +327,7 @@ function EditRoleModal({
           <Button variant="ghost" onPress={onClose} isDisabled={saving}>
             Cancel
           </Button>
-          <Button variant="safe" isPending={saving} onPress={() => void save()}>
+          <Button variant="safe" isPending={saving} isDisabled={!nameValid} onPress={() => void save()}>
             Save
           </Button>
         </ModalActions>
@@ -307,15 +338,18 @@ function EditRoleModal({
 
 function CreateRoleModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => Promise<void> }) {
   const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const nameValid = name.trim().length >= 2
+
   const create = async () => {
-    if (!name.trim()) return
+    if (!nameValid) return
     setCreating(true)
     setError(null)
     try {
-      await postTrpc('rbac.roles.create', { name: name.trim() })
+      await postTrpc('rbac.roles.create', { name: name.trim(), description: description.trim() || undefined })
       await onCreated()
       onClose()
     } catch {
@@ -336,11 +370,17 @@ function CreateRoleModal({ onClose, onCreated }: { onClose: () => void; onCreate
       >
         {error && <Alert variant="urgent">{error}</Alert>}
         <TextField label="Role name" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+        <TextField
+          label="Description"
+          placeholder="What this role is for (optional)"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
         <ModalActions>
           <Button variant="ghost" onPress={onClose} isDisabled={creating}>
             Cancel
           </Button>
-          <Button type="submit" variant="safe" isPending={creating} isDisabled={!name.trim()}>
+          <Button type="submit" variant="safe" isPending={creating} isDisabled={!nameValid}>
             Create
           </Button>
         </ModalActions>
