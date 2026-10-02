@@ -14,6 +14,13 @@ export type PublicPageId =
   | 'facilitators'
   | 'contact'
 
+// Where a person whose account was closed writes to ask for the record
+// behind the decision (the privacy policy's "If your account was closed"
+// section; docs/gdpr-runbook.md). Same placeholder address the
+// transparency page's access requests use — replace both together when
+// a real mailbox exists.
+const CLOSED_ACCOUNT_REQUEST_EMAIL = 'mahan@selkomark.com'
+
 export interface PublicPageData {
   id: PublicPageId
   title: string
@@ -231,7 +238,10 @@ export const PUBLIC_PAGES: Record<PublicPageId, PublicPageData> = {
         heading: 'If your account was closed',
         body:
           "When we close an account for violating our Terms and Conditions, we keep a record of that decision: the category of violation, a short written summary of why, and the evidence it rested on. You have the right to see that record. Email us from the address the account used, with the subject \"Closed account — request for record\", and we will send you a copy within 30 days. We can't reopen an account this way, but you'll be able to see exactly what the decision was based on.",
-        link: { href: `mailto:${EMAIL}?subject=${encodeURIComponent('Closed account — request for record')}`, label: EMAIL },
+        link: {
+          href: `mailto:${CLOSED_ACCOUNT_REQUEST_EMAIL}?subject=${encodeURIComponent('Closed account — request for record')}`,
+          label: CLOSED_ACCOUNT_REQUEST_EMAIL,
+        },
       },
       {
         heading: 'Changes to this policy',
