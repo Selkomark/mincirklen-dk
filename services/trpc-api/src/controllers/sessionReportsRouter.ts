@@ -4,7 +4,7 @@ import {
   sessionReportTranscriptInputSchema,
 } from '@mincirklen/shared'
 import { TRPCError } from '@trpc/server'
-import { findEarliestMessageAt, listTranscriptWindow } from '../repositories/messageRepository'
+import { listTranscriptWindow } from '../repositories/messageRepository'
 import { getRoster } from '../repositories/sessionRepository'
 import {
   applySessionReportDecision,
@@ -72,13 +72,13 @@ export const sessionReportsRouter = router({
       const anchor = await findSessionReportAnchor(ctx.appEnv.db, input.reportId)
       if (!anchor) throw toTRPCError(new SessionReportNotFoundError('session report not found'))
 
-      // A report that names messages opens on the earliest of them — the
-      // thing the member actually pointed at — otherwise on the moment it
-      // was filed.
-      const anchorAt = (await findEarliestMessageAt(ctx.appEnv.db, anchor.messageIds)) ?? anchor.createdAtExact
+      // Always windowed on the moment the report was filed — that's the
+      // fixed point a reviewer lands on; any messages the report names are
+      // marked in the transcript and reached by scrolling, wherever they
+      // are relative to it.
       const window =
         input.direction === 'around' || !input.cursor
-          ? await listTranscriptWindow(ctx.appEnv.db, { sessionId: anchor.sessionId, direction: 'around', at: anchorAt, limit: input.limit })
+          ? await listTranscriptWindow(ctx.appEnv.db, { sessionId: anchor.sessionId, direction: 'around', at: anchor.createdAtExact, limit: input.limit })
           : await listTranscriptWindow(ctx.appEnv.db, { sessionId: anchor.sessionId, direction: input.direction, cursor: input.cursor, limit: input.limit })
 
       const rosterEntries = await getRoster(ctx.appEnv.db, anchor.sessionId)

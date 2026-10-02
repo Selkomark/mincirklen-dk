@@ -43,7 +43,7 @@ interface TranscriptPage {
   reportedAt: string
   aboutUserIds: string[]
   // The messages the member pointed at, if any — ringed and tagged in
-  // the transcript, and what the view opens centred on.
+  // the transcript wherever they fall.
   messageIds: string[]
 }
 
@@ -223,7 +223,6 @@ function Transcript({ reportId, onRoster }: { reportId: string; onRoster: (roste
   const topSentinelRef = useRef<HTMLDivElement>(null)
   const bottomSentinelRef = useRef<HTMLDivElement>(null)
   const dividerRef = useRef<HTMLDivElement>(null)
-  const firstReportedRef = useRef<HTMLDivElement>(null)
   const { snapshotBeforeShift } = useScrollShiftCompensation(containerRef, topShiftVersion)
   const centredRef = useRef(false)
 
@@ -233,13 +232,12 @@ function Transcript({ reportId, onRoster }: { reportId: string; onRoster: (roste
     if (page) onRoster(page.roster)
   }, [page, onRoster])
 
-  // Open centred on the first reported message when the report names
-  // any, otherwise on the "report filed" marker — once, when the first
-  // page lands. The reviewer starts at what prompted the report and
-  // reads outward.
+  // Open centred on the "report filed" marker, once, when the first page
+  // lands — the fixed point every review starts from. Messages the report
+  // names are ringed wherever they fall and reached by scrolling.
   useLayoutEffect(() => {
     if (!page || centredRef.current) return
-    const target = firstReportedRef.current ?? dividerRef.current
+    const target = dividerRef.current
     const container = containerRef.current
     if (target && container) {
       container.scrollTop = target.offsetTop - container.clientHeight / 2 + target.clientHeight / 2
@@ -296,7 +294,6 @@ function Transcript({ reportId, onRoster }: { reportId: string; onRoster: (roste
   const reportedAtMs = new Date(page.reportedAt).getTime()
   const reportedMembers = new Set(page.aboutUserIds)
   const reportedMessages = new Set(page.messageIds)
-  const firstReportedId = page.messages.find((m) => reportedMessages.has(m.id))?.id ?? null
   // The marker goes before the first message sent after the report — or
   // at the very end if nothing was said afterwards.
   const dividerIndex = page.messages.findIndex((m) => new Date(m.createdAt).getTime() > reportedAtMs)
@@ -308,7 +305,7 @@ function Transcript({ reportId, onRoster }: { reportId: string; onRoster: (roste
     if (m.type === 'system') return <JoinEventRow key={m.id} message={m} member={member} timeZone={TIME_ZONE} t={st} />
     const isReportedMessage = reportedMessages.has(m.id)
     return (
-      <div key={m.id} ref={m.id === firstReportedId ? firstReportedRef : undefined}>
+      <div key={m.id}>
         {m.moderationStatus !== 'pass' && <div className="reports-transcript__withheld">{t('reports.withheld')}</div>}
         <MessageRow
           message={m}

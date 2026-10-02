@@ -790,7 +790,7 @@ describe('reports that name messages', () => {
     expect(empty.status).toBe(400)
   })
 
-  test('the moderator transcript opens on the earliest named message and returns the ids', async () => {
+  test('the moderator transcript still opens on the filing moment, and returns the named ids', async () => {
     const admin = await findRoleByName(db, 'ADMIN')
     if (!admin) throw new Error('seeded ADMIN role not found')
     const session = await createSession(db)
@@ -813,17 +813,19 @@ describe('reports that name messages', () => {
     const report = list.result.data.reports.find((r) => r.sessionId === session.id)!
     expect(report.messageIds).toEqual([named.id])
 
-    // With a window of one each side, the named message is the last of the
-    // "before" side (<= anchor) and the report's own filing moment is later.
+    // The window is around the filing moment (after every message here),
+    // so with one each side only the newest message appears, on the
+    // "before" side — the named message is further up, reached by paging.
     const res = await app.request(
       `/trpc/sessionReports.transcript?input=${encodeURIComponent(JSON.stringify({ reportId: report.id, direction: 'around', limit: 1 }))}`,
       { headers: { cookie: moderator.cookie } },
     )
     expect(res.status).toBe(200)
-    const transcript = (await res.json()) as { result: { data: { messages: { id: string; body: string }[]; messageIds: string[]; olderCursor: string | null } } }
-    expect(transcript.result.data.messages.map((m) => m.body)).toEqual(['the one reported', 'later'])
+    const transcript = (await res.json()) as { result: { data: { messages: { id: string; body: string }[]; messageIds: string[]; olderCursor: string | null; newerCursor: string | null } } }
+    expect(transcript.result.data.messages.map((m) => m.body)).toEqual(['later'])
     expect(transcript.result.data.messageIds).toEqual([named.id])
     expect(transcript.result.data.olderCursor).not.toBeNull()
+    expect(transcript.result.data.newerCursor).toBeNull()
     expect(early.id).toBeDefined()
   })
 })

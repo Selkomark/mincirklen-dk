@@ -403,16 +403,3 @@ export async function findMessageAuthors(db: Kysely<Database>, sessionId: string
     .execute()
   return new Map(rows.map((row) => [row.id, row.user_id]))
 }
-
-// The transcript anchor for a report that names messages: the earliest
-// of them, as exact timestamptz text (same precision rationale as the
-// cursors above). Null when none of the ids exist any more.
-export async function findEarliestMessageAt(db: Kysely<Database>, messageIds: string[]): Promise<string | null> {
-  if (messageIds.length === 0) return null
-  const row = await db
-    .selectFrom('messages')
-    .select(sql<string>`min(created_at)::text`.as('earliest'))
-    .where('id', 'in', messageIds)
-    .executeTakeFirst()
-  return row?.earliest ?? null
-}
