@@ -43,5 +43,8 @@ export type ListPendingReviewInput = z.infer<typeof listPendingReviewInputSchema
 export const submitReviewDecisionInputSchema = z.object({
   moderationEventId: z.string().uuid(),
   outcome: humanReviewOutcomeSchema,
+  // The reasoning behind the outcome. Required: an outcome without a
+  // why is of little use as training signal.
+  note: z.string().trim().min(1).max(2000),
 })
 export type SubmitReviewDecisionInput = z.infer<typeof submitReviewDecisionInputSchema>

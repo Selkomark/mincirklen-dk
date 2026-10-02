@@ -75,7 +75,10 @@
     "decisionPlaceholder": "Välj vad klassificeraren fick rätt eller fel",
     "confirm": "Registrera beslut",
     "decided": "Beslutat {{when}}",
-    "decidedBy": "Beslutat {{when}} av {{who}}"
+    "decidedBy": "Beslutat {{when}} av {{who}}",
+    "noteLabel": "Motivering",
+    "noteHint": "Varför detta utfall. Sparas med händelsen och används senare för att träna klassificeraren.",
+    "notePlaceholder": "T.ex. frustration riktad mot ingen i cirkeln, inte trakasserier"
   },
   "users": {
     "loadFailed": "Kunde inte ladda användare.",

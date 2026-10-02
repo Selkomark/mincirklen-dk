@@ -75,7 +75,10 @@
     "decisionPlaceholder": "Choose what the classifier got right or wrong",
     "confirm": "Record decision",
     "decided": "Decided {{when}}",
-    "decidedBy": "Decided {{when}} by {{who}}"
+    "decidedBy": "Decided {{when}} by {{who}}",
+    "noteLabel": "Reasoning",
+    "noteHint": "Why this outcome. Stored with the event and used later to train the classifier.",
+    "notePlaceholder": "E.g. frustration aimed at nobody in the circle, not harassment"
   },
   "users": {
     "loadFailed": "Failed to load users.",

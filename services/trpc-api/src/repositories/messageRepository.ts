@@ -254,6 +254,7 @@ export async function applyHumanReviewOutcome(
     moderationEventId: string
     outcome: 'true_positive' | 'false_positive' | 'true_negative' | 'false_negative'
     reviewedBy: string
+    note: string
   },
 ): Promise<void> {
   await db.transaction().execute(async (trx) => {
@@ -262,6 +263,7 @@ export async function applyHumanReviewOutcome(
       .set({
         human_reviewed: true,
         human_review_outcome: params.outcome,
+        human_review_note: params.note,
         reviewed_at: sql`now()`,
         reviewed_by: params.reviewedBy,
       })

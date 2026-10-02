@@ -9,6 +9,7 @@ import { Select, SelectItem } from '../../components/Select'
 import { Table } from '../../components/Table'
 import { Tab, TabList, TabPanel, Tabs } from '../../components/Tabs'
 import { Text } from '../../components/Text'
+import { Textarea } from '../../components/Textarea'
 import { getTrpc, postTrpc } from './manageShared'
 import './ReportsTab.css'
 
@@ -20,6 +21,7 @@ interface ReviewEvent {
   createdAt: string
   message: { body: string; createdAt: string } | null
   humanReviewOutcome: Outcome | null
+  humanReviewNote: string | null
   reviewedAt: string | null
   reviewedByLabel: string | null
 }
@@ -43,16 +45,19 @@ function ClassificationBadge({ classification }: { classification: ReviewEvent['
 function ReviewModal({ event, canDecide, onClose, onDecided }: { event: ReviewEvent; canDecide: boolean; onClose: () => void; onDecided: () => void }) {
   const { t, i18n } = useTranslation('console')
   const [outcome, setOutcome] = useState<Outcome | null>(null)
+  const [note, setNote] = useState('')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const decided = event.humanReviewOutcome !== null
 
+  const canSubmit = outcome !== null && note.trim().length > 0
+
   const submit = async () => {
-    if (!outcome) return
+    if (!canSubmit) return
     setPending(true)
     setError(null)
     try {
-      await postTrpc('moderation.submitReviewDecision', { moderationEventId: event.id, outcome })
+      await postTrpc('moderation.submitReviewDecision', { moderationEventId: event.id, outcome, note: note.trim() })
       onDecided()
     } catch {
       setError(t('review.submitFailed'))
@@ -84,6 +89,12 @@ function ReviewModal({ event, canDecide, onClose, onDecided }: { event: ReviewEv
                   : t('review.decided', { when: event.reviewedAt ? new Date(event.reviewedAt).toLocaleString(i18n.language) : '—' })}
               </strong>
               <span>{t(`review.outcome.${event.humanReviewOutcome!}`)}</span>
+              {event.humanReviewNote && (
+                <span style={{ whiteSpace: 'pre-wrap' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>{t('review.noteLabel')}: </span>
+                  {event.humanReviewNote}
+                </span>
+              )}
             </div>
           </Alert>
         ) : canDecide ? (
@@ -95,11 +106,23 @@ function ReviewModal({ event, canDecide, onClose, onDecided }: { event: ReviewEv
                 </SelectItem>
               ))}
             </Select>
+            {/* The why behind the outcome. Required, and kept with the
+                event: these pairs (message, outcome, reason) are the
+                training material for the classifier later. */}
+            <Textarea
+              label={t('review.noteLabel')}
+              hint={t('review.noteHint')}
+              placeholder={t('review.notePlaceholder')}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={4}
+              maxLength={2000}
+            />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
               <Button variant="ghost" onPress={onClose} isDisabled={pending}>
                 {t('common.cancel')}
               </Button>
-              <Button variant="safe" isPending={pending} isDisabled={outcome === null} onPress={() => void submit()}>
+              <Button variant="safe" isPending={pending} isDisabled={!canSubmit} onPress={() => void submit()}>
                 {t('review.confirm')}
               </Button>
             </div>

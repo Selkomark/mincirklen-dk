@@ -1145,7 +1145,7 @@ describe('moderation_events.read vs .review', () => {
     const decide = await app.request('/trpc/moderation.submitReviewDecision', {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({ moderationEventId: crypto.randomUUID(), outcome: 'true_positive' }),
+      body: JSON.stringify({ moderationEventId: crypto.randomUUID(), outcome: 'true_positive', note: 'Reviewed in test.' }),
     })
     expect(decide.status).toBe(403)
   })
@@ -1275,7 +1275,7 @@ describe('review queue: pending vs decided', () => {
       .executeTakeFirstOrThrow()
 
     const listAll = async (status: 'pending' | 'decided') => {
-      const out: { id: string; humanReviewOutcome: string | null; reviewedByLabel: string | null }[] = []
+      const out: { id: string; humanReviewOutcome: string | null; humanReviewNote: string | null; reviewedByLabel: string | null }[] = []
       let cursor: string | undefined
       do {
         const input = encodeURIComponent(JSON.stringify({ status, limit: 50, ...(cursor ? { cursor } : {}) }))
@@ -1291,16 +1291,26 @@ describe('review queue: pending vs decided', () => {
     expect((await listAll('pending')).some((e) => e.id === event.id)).toBe(true)
     expect((await listAll('decided')).some((e) => e.id === event.id)).toBe(false)
 
+    // The reasoning is required — an outcome without a why is useless as
+    // training signal, so the API refuses it rather than storing a blank.
+    const noNote = await app.request('/trpc/moderation.submitReviewDecision', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ moderationEventId: event.id, outcome: 'false_positive', note: '   ' }),
+    })
+    expect(noNote.status).toBe(400)
+
     const decide = await app.request('/trpc/moderation.submitReviewDecision', {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({ moderationEventId: event.id, outcome: 'false_positive' }),
+      body: JSON.stringify({ moderationEventId: event.id, outcome: 'false_positive', note: 'Reviewed in test.' }),
     })
     expect(decide.status).toBe(200)
 
     expect((await listAll('pending')).some((e) => e.id === event.id)).toBe(false)
     const decided = (await listAll('decided')).find((e) => e.id === event.id)
     expect(decided?.humanReviewOutcome).toBe('false_positive')
+    expect(decided?.humanReviewNote).toBe('Reviewed in test.')
     // Bare test users have no email on file, so the label is null here.
     expect(decided).toHaveProperty('reviewedByLabel')
   })

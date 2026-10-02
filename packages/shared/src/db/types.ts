@@ -143,6 +143,9 @@ export interface ModerationEventsTable {
   classification: 'pass' | 'flag' | 'crisis'
   human_reviewed: Generated<boolean>
   human_review_outcome: 'true_positive' | 'false_positive' | 'true_negative' | 'false_negative' | null
+  // Why the reviewer ruled as they did — kept for training, see
+  // migrations/0015_review_reasoning.ts.
+  human_review_note: string | null
   reviewed_at: NullableTimestamp
   reviewed_by: string | null
   created_at: Timestamp

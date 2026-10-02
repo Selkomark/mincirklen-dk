@@ -10,6 +10,7 @@ export interface PendingReviewEvent {
   message: { body: string; createdAt: Date } | null
   // Null while pending; filled once a human has ruled.
   humanReviewOutcome: 'true_positive' | 'false_positive' | 'true_negative' | 'false_negative' | null
+  humanReviewNote: string | null
   reviewedAt: Date | null
   reviewedBy: string | null
 }
@@ -47,6 +48,7 @@ export async function listPendingReview(
       'messages.body as message_body',
       'messages.created_at as message_created_at',
       'moderation_events.human_review_outcome as human_review_outcome',
+      'moderation_events.human_review_note as human_review_note',
       'moderation_events.reviewed_at as reviewed_at',
       'moderation_events.reviewed_by as reviewed_by',
     ])
@@ -83,6 +85,7 @@ export async function listPendingReview(
         ? { body: row.message_body, createdAt: row.message_created_at }
         : null,
       humanReviewOutcome: row.human_review_outcome,
+      humanReviewNote: row.human_review_note,
       reviewedAt: row.reviewed_at,
       reviewedBy: row.reviewed_by,
     })),

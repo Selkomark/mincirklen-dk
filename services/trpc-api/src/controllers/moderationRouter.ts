@@ -38,6 +38,7 @@ export const moderationRouter = router({
         await applyHumanReviewOutcome(ctx.appEnv.db, {
           moderationEventId: input.moderationEventId,
           outcome: input.outcome,
+          note: input.note,
           reviewedBy: ctx.userId,
         })
         return { ok: true }

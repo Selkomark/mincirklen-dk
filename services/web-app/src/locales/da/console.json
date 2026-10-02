@@ -75,7 +75,10 @@
     "decisionPlaceholder": "Vælg, hvad klassificeringen fik rigtigt eller forkert",
     "confirm": "Registrér afgørelse",
     "decided": "Afgjort {{when}}",
-    "decidedBy": "Afgjort {{when}} af {{who}}"
+    "decidedBy": "Afgjort {{when}} af {{who}}",
+    "noteLabel": "Begrundelse",
+    "noteHint": "Hvorfor dette udfald. Gemmes med hændelsen og bruges senere til at træne klassificeringen.",
+    "notePlaceholder": "F.eks. frustration rettet mod ingen i cirklen, ikke chikane"
   },
   "users": {
     "loadFailed": "Kunne ikke indlæse brugere.",

@@ -187,18 +187,19 @@ describe('applyHumanReviewOutcome', () => {
       .where('message_id', '=', message.id)
       .executeTakeFirstOrThrow()
 
-    await applyHumanReviewOutcome(db, { moderationEventId: event.id, outcome: 'false_positive', reviewedBy: author })
+    await applyHumanReviewOutcome(db, { moderationEventId: event.id, outcome: 'false_positive', reviewedBy: author, note: 'Figure of speech, no target.' })
 
     const page = await listMessages(db, { sessionId, limit: 10, requestingUserId: author })
     expect(page.messages[0]?.moderationStatus).toBe('reviewed_pass')
 
     const reviewedEvent = await db
       .selectFrom('moderation_events')
-      .select(['human_reviewed', 'human_review_outcome', 'reviewed_by'])
+      .select(['human_reviewed', 'human_review_outcome', 'human_review_note', 'reviewed_by'])
       .where('id', '=', event.id)
       .executeTakeFirstOrThrow()
     expect(reviewedEvent.human_reviewed).toBe(true)
     expect(reviewedEvent.human_review_outcome).toBe('false_positive')
+    expect(reviewedEvent.human_review_note).toBe('Figure of speech, no target.')
     expect(reviewedEvent.reviewed_by).toBe(author)
   })
 
@@ -213,7 +214,7 @@ describe('applyHumanReviewOutcome', () => {
       .where('message_id', '=', message.id)
       .executeTakeFirstOrThrow()
 
-    await applyHumanReviewOutcome(db, { moderationEventId: event.id, outcome: 'true_positive', reviewedBy: author })
+    await applyHumanReviewOutcome(db, { moderationEventId: event.id, outcome: 'true_positive', reviewedBy: author, note: 'Direct insult.' })
 
     const page = await listMessages(db, { sessionId, limit: 10, requestingUserId: author })
     expect(page.messages[0]?.moderationStatus).toBe('flag')
