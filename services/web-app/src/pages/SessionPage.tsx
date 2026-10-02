@@ -1568,7 +1568,7 @@ function SessionCenterPanel({
                   onReportFalsePositive={handleReportFalsePositive}
                   isReported={reportedMessageIds.has(m.id)}
                   highlight={selectedMessageIds.has(m.id)}
-                  className="dash-message-row"
+                  className={['dash-message-row', selectedMessageIds.has(m.id) && 'dash-message-row--selected'].filter(Boolean).join(' ')}
                   leading={
                     // Once anything is selected the timeline switches into
                     // a pick-list: every reportable message gets a checkbox

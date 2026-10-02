@@ -339,6 +339,21 @@
   }
 }
 
+/* A message picked for a report: a faint signal-tinted wash across the
+   whole row, on top of the bubble's own ring, so the selection reads at
+   a glance when scrolling. Negative margin + matching padding keep the
+   wash flush with the timeline edge instead of inset to the row box. */
+.dash-message-row {
+  margin: 0 calc(-1 * var(--space-3));
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  transition: background-color var(--duration-fast) var(--easing-standard);
+}
+
+.dash-message-row--selected {
+  background: var(--signal-urgent-surface);
+}
+
 /* Selection-mode checkbox (or an equal-width spacer on own messages) in
    front of the avatar — a fixed column so every bubble shifts right by
    the same amount when the pick-list appears. */
