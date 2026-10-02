@@ -174,10 +174,12 @@ function PermissionEditor({
   allPermissions,
   selectedIds,
   onChange,
+  readOnly = false,
 }: {
   allPermissions: Permission[]
   selectedIds: Set<string>
   onChange: (next: Set<string>) => void
+  readOnly?: boolean
 }) {
   const { t, i18n } = useTranslation('console')
   const [query, setQuery] = useState('')
@@ -222,6 +224,7 @@ function PermissionEditor({
                   >
                     <Checkbox
                       isSelected={selectedIds.has(permission.id)}
+                      isDisabled={readOnly}
                       onChange={(isSelected) => {
                         const next = new Set(selectedIds)
                         if (isSelected) next.add(permission.id)
@@ -270,12 +273,16 @@ function EditRoleModal({
   role,
   allPermissions,
   sessionPolicies,
+  readOnly,
   onClose,
   onSaved,
 }: {
   role: Role
   allPermissions: Permission[]
   sessionPolicies: SessionPolicy[]
+  // No roles.update: every field shows but nothing can be changed, and
+  // the only button is Close.
+  readOnly: boolean
   onClose: () => void
   onSaved: () => Promise<void>
 }) {
@@ -350,13 +357,15 @@ function EditRoleModal({
               label={t('roles.nameLabel')}
               value={name}
               onChange={(e) => setName(normalizeRoleName(e.target.value))}
-              hint={t('roles.nameHint')}
+              hint={readOnly ? undefined : t('roles.nameHint')}
+              disabled={readOnly}
             />
             <TextField
               label={t('roles.descriptionLabel')}
-              placeholder={t('roles.descriptionPlaceholder')}
+              placeholder={readOnly ? undefined : t('roles.descriptionPlaceholder')}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              disabled={readOnly}
             />
           </div>
         )}
@@ -364,7 +373,7 @@ function EditRoleModal({
         {/* Same two-column row with one cell filled, so the select takes
             exactly the width of the name field above it. */}
         <div className="roles-field-row">
-          <SessionPolicySelect value={policyId} onChange={setPolicyId} sessionPolicies={sessionPolicies} isDisabled={saving} />
+          <SessionPolicySelect value={policyId} onChange={setPolicyId} sessionPolicies={sessionPolicies} isDisabled={saving || readOnly} />
         </div>
 
         <div>
@@ -376,7 +385,7 @@ function EditRoleModal({
               <Alert variant="info">{t('roles.systemLocked')}</Alert>
             </>
           ) : selectedIds ? (
-            <PermissionEditor allPermissions={allPermissions} selectedIds={selectedIds} onChange={setSelectedIds} />
+            <PermissionEditor allPermissions={allPermissions} selectedIds={selectedIds} onChange={setSelectedIds} readOnly={readOnly} />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
               <Skeleton width="40%" height={14} />
@@ -388,11 +397,13 @@ function EditRoleModal({
 
         <ModalActions>
           <Button variant="ghost" onPress={onClose} isDisabled={saving}>
-            {t('common.cancel')}
+            {readOnly ? t('common.close') : t('common.cancel')}
           </Button>
-          <Button variant="safe" isPending={saving} isDisabled={!nameValid} onPress={() => void save()}>
-            {t('common.save')}
-          </Button>
+          {!readOnly && (
+            <Button variant="safe" isPending={saving} isDisabled={!nameValid} onPress={() => void save()}>
+              {t('common.save')}
+            </Button>
+          )}
         </ModalActions>
       </div>
     </Modal>
@@ -544,12 +555,16 @@ function RolesPanel({
   rolePermissionIds,
   allPermissions,
   sessionPolicies,
+  canCreateRole,
+  canUpdateRole,
   reload,
 }: {
   roles: Role[]
   rolePermissionIds: Record<string, string[]>
   allPermissions: Permission[]
   sessionPolicies: SessionPolicy[]
+  canCreateRole: boolean
+  canUpdateRole: boolean
   reload: () => Promise<void>
 }) {
   const { t, i18n } = useTranslation('console')
@@ -587,9 +602,11 @@ function RolesPanel({
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
-        <Button variant="safe" onPress={() => setCreating(true)}>
-          {t('roles.newRole')}
-        </Button>
+        {canCreateRole && (
+          <Button variant="safe" onPress={() => setCreating(true)}>
+            {t('roles.newRole')}
+          </Button>
+        )}
       </div>
 
       <Table striped>
@@ -641,7 +658,7 @@ function RolesPanel({
                 </td>
                 <td style={{ textAlign: 'right' }}>
                   <Button variant="ghost" onPress={() => setEditing(role)}>
-                    {t('common.edit')}
+                    {canUpdateRole ? t('common.edit') : t('common.view')}
                   </Button>
                 </td>
               </tr>
@@ -657,6 +674,7 @@ function RolesPanel({
           role={editing}
           allPermissions={allPermissions}
           sessionPolicies={sessionPolicies}
+          readOnly={!canUpdateRole}
           onClose={() => setEditing(null)}
           onSaved={reload}
         />
@@ -668,10 +686,12 @@ function RolesPanel({
 function SessionPoliciesPanel({
   roles,
   sessionPolicies,
+  canCreatePolicy,
   reload,
 }: {
   roles: Role[]
   sessionPolicies: SessionPolicy[]
+  canCreatePolicy: boolean
   reload: () => Promise<void>
 }) {
   const { t } = useTranslation('console')
@@ -682,9 +702,11 @@ function SessionPoliciesPanel({
       <PanelToolbar
         description={t('roles.policies.intro')}
         action={
-          <Button variant="safe" onPress={() => setCreating(true)}>
-            {t('roles.policies.newPolicy')}
-          </Button>
+          canCreatePolicy ? (
+            <Button variant="safe" onPress={() => setCreating(true)}>
+              {t('roles.policies.newPolicy')}
+            </Button>
+          ) : null
         }
       />
 
@@ -738,7 +760,15 @@ function SessionPoliciesPanel({
   )
 }
 
-export function RolesTab() {
+export function RolesTab({
+  canCreateRole,
+  canUpdateRole,
+  canCreatePolicy,
+}: {
+  canCreateRole: boolean
+  canUpdateRole: boolean
+  canCreatePolicy: boolean
+}) {
   const { t } = useTranslation('console')
   const [roles, setRoles] = useState<Role[] | null>(null)
   const [permissions, setPermissions] = useState<Permission[] | null>(null)
@@ -792,6 +822,8 @@ export function RolesTab() {
               rolePermissionIds={rolePermissionIds}
               allPermissions={permissions}
               sessionPolicies={sessionPolicies}
+              canCreateRole={canCreateRole}
+              canUpdateRole={canUpdateRole}
               reload={reload}
             />
           ) : (
@@ -799,7 +831,11 @@ export function RolesTab() {
           )}
         </TabPanel>
         <TabPanel id="policies">
-          {loaded ? <SessionPoliciesPanel roles={roles} sessionPolicies={sessionPolicies} reload={reload} /> : <TableSkeleton columns={3} />}
+          {loaded ? (
+            <SessionPoliciesPanel roles={roles} sessionPolicies={sessionPolicies} canCreatePolicy={canCreatePolicy} reload={reload} />
+          ) : (
+            <TableSkeleton columns={3} />
+          )}
         </TabPanel>
       </Tabs>
     </div>

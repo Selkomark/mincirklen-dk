@@ -165,11 +165,13 @@ function NotesModal({ userId, canAddNote, onClose }: { userId: string; canAddNot
 function EditRolesRow({
   user,
   allRoles,
+  canEditRoles,
   canAddNote,
   onSaved,
 }: {
   user: UserWithRoles
   allRoles: Role[]
+  canEditRoles: boolean
   canAddNote: boolean
   onSaved: () => void
 }) {
@@ -218,9 +220,11 @@ function EditRolesRow({
             <Button variant="ghost" onPress={() => setNotesOpen(true)}>
               {t('users.notes.open')}
             </Button>
-            <Button variant="ghost" onPress={() => setEditing(true)}>
-              {t('users.editRoles')}
-            </Button>
+            {canEditRoles && (
+              <Button variant="ghost" onPress={() => setEditing(true)}>
+                {t('users.editRoles')}
+              </Button>
+            )}
           </div>
           {notesOpen && <NotesModal userId={user.id} canAddNote={canAddNote} onClose={() => setNotesOpen(false)} />}
         </td>
@@ -268,7 +272,7 @@ function EditRolesRow({
   )
 }
 
-export function UsersTab({ canAddNote }: { canAddNote: boolean }) {
+export function UsersTab({ canEditRoles, canAddNote }: { canEditRoles: boolean; canAddNote: boolean }) {
   const { t } = useTranslation('console')
   const [users, setUsers] = useState<UserWithRoles[] | null>(null)
   const [roles, setRoles] = useState<Role[] | null>(null)
@@ -317,7 +321,7 @@ export function UsersTab({ canAddNote }: { canAddNote: boolean }) {
           </thead>
           <tbody>
             {users.map((user) => (
-              <EditRolesRow key={user.id} user={user} allRoles={roles} canAddNote={canAddNote} onSaved={() => void load()} />
+              <EditRolesRow key={user.id} user={user} allRoles={roles} canEditRoles={canEditRoles} canAddNote={canAddNote} onSaved={() => void load()} />
             ))}
           </tbody>
         </Table>

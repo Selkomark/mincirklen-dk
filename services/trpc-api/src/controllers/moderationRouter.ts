@@ -14,7 +14,9 @@ function toTRPCError(err: unknown): TRPCError {
 }
 
 export const moderationRouter = router({
-  listPendingReview: hasPermission('moderation_events.review')
+  // Seeing the queue and deciding in it are separate grants (migration
+  // 0010) — a read-only role gets the first without the second.
+  listPendingReview: hasPermission('moderation_events.read')
     .input(listPendingReviewInputSchema)
     .query(({ ctx, input }) => listPendingReview(ctx.appEnv.db, input)),
 

@@ -49,7 +49,10 @@ interface SeededRole {
   policy: string
 }
 
-const READ_EVERYTHING = ['admin.access', 'roles.read', 'session_policies.read', 'users.read', 'gates.read', 'moderation_events.review']
+// Every read-side permission that exists at this point; later migrations
+// that add read permissions (0003 session_reports.read, 0010
+// moderation_events.read) grant them to AUDITOR themselves.
+const READ_EVERYTHING = ['admin.access', 'roles.read', 'session_policies.read', 'users.read', 'gates.read']
 
 const SEEDED_ROLES: SeededRole[] = [
   {

@@ -20,7 +20,7 @@ type Outcome = 'true_positive' | 'false_positive' | 'true_negative' | 'false_neg
 
 const OUTCOMES: Outcome[] = ['true_positive', 'false_positive', 'true_negative', 'false_negative']
 
-export function ReviewQueueTab() {
+export function ReviewQueueTab({ canDecide }: { canDecide: boolean }) {
   const { t, i18n } = useTranslation('console')
   const [events, setEvents] = useState<PendingReviewEvent[] | null>(null)
   const [cursor, setCursor] = useState<string | null>(null)
@@ -106,6 +106,8 @@ export function ReviewQueueTab() {
                     )}
                   </td>
                   <td>
+                    {!canDecide && <span style={{ color: 'var(--text-secondary)' }}>{t('review.readOnly')}</span>}
+                    {canDecide && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
                       {OUTCOMES.map((outcome) => (
                         <Button
@@ -119,6 +121,7 @@ export function ReviewQueueTab() {
                         </Button>
                       ))}
                     </div>
+                    )}
                   </td>
                 </tr>
               ))}

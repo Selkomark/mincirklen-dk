@@ -20,7 +20,9 @@
     "save": "Spara",
     "create": "Skapa",
     "edit": "Redigera",
-    "all": "Alla"
+    "all": "Alla",
+    "close": "Stäng",
+    "view": "Visa"
   },
   "duration": {
     "minute_one": "{{count}} minut",
@@ -52,7 +54,8 @@
       "false_positive": "Falskt positiv",
       "true_negative": "Korrekt godkänd",
       "false_negative": "Missad (borde ha flaggats)"
-    }
+    },
+    "readOnly": "Endast visning"
   },
   "users": {
     "loadFailed": "Kunde inte ladda användare.",

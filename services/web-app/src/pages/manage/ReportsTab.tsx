@@ -937,6 +937,8 @@ function HistoryModal({
 // "view report" link or a history entry. Fetches the row first so the
 // dialog itself can stay a pure function of a loaded report.
 export function ReportByIdModal({ reportId, canBan, onClose }: { reportId: string; canBan: boolean; onClose: () => void }) {
+  // Opened from a note or history entry — always a look back, so no
+  // decision controls regardless of the viewer's permissions.
   const { t } = useTranslation('console')
   const [report, setReport] = useState<SessionReport | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -963,7 +965,7 @@ export function ReportByIdModal({ reportId, canBan, onClose }: { reportId: strin
     )
   }
   if (!report) return null
-  return <ReviewReportModal report={report} canBan={canBan} onClose={onClose} onDecided={onClose} />
+  return <ReviewReportModal report={report} canReview={false} canBan={canBan} onClose={onClose} onDecided={onClose} />
 }
 
 // The report itself — status, when filed, who filed it, who it's about,
@@ -1043,11 +1045,13 @@ function ReportSummary({ report, roster }: { report: SessionReport; roster: Rost
 // ---- Review dialog ----
 export function ReviewReportModal({
   report,
+  canReview,
   canBan,
   onClose,
   onDecided,
 }: {
   report: SessionReport
+  canReview: boolean
   canBan: boolean
   onClose: () => void
   onDecided: () => void
@@ -1067,7 +1071,7 @@ export function ReviewReportModal({
           <div style={{ flex: 1, minWidth: 0 }}>
             <ReportSummary report={report} roster={roster} />
           </div>
-          {report.status === 'open' && (
+          {report.status === 'open' && canReview && (
             <Button variant="safe" onPress={() => setDeciding(true)}>
               {t('reports.makeDecision')}
             </Button>
@@ -1106,7 +1110,7 @@ export function ReviewReportModal({
 }
 
 // ---- List ----
-function ReportsPanel({ status, canBan }: { status: ReportStatus; canBan: boolean }) {
+function ReportsPanel({ status, canReview, canBan }: { status: ReportStatus; canReview: boolean; canBan: boolean }) {
   const { t, i18n } = useTranslation('console')
   const [reports, setReports] = useState<SessionReport[] | null>(null)
   const [cursor, setCursor] = useState<string | null>(null)
@@ -1184,8 +1188,8 @@ function ReportsPanel({ status, canBan }: { status: ReportStatus; canBan: boolea
                   </CopyText>
                 </td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  <Button variant={status === 'open' ? 'safe' : 'ghost'} onPress={() => setReviewing(report)}>
-                    {status === 'open' ? t('reports.review') : t('reports.view')}
+                  <Button variant={status === 'open' && canReview ? 'safe' : 'ghost'} onPress={() => setReviewing(report)}>
+                    {status === 'open' && canReview ? t('reports.review') : t('reports.view')}
                   </Button>
                 </td>
               </tr>
@@ -1204,6 +1208,7 @@ function ReportsPanel({ status, canBan }: { status: ReportStatus; canBan: boolea
         <ReviewReportModal
           key={reviewing.id}
           report={reviewing}
+          canReview={canReview}
           canBan={canBan}
           onClose={() => setReviewing(null)}
           onDecided={() => {
@@ -1216,7 +1221,7 @@ function ReportsPanel({ status, canBan }: { status: ReportStatus; canBan: boolea
   )
 }
 
-export function ReportsTab({ canBan }: { canBan: boolean }) {
+export function ReportsTab({ canReview, canBan }: { canReview: boolean; canBan: boolean }) {
   const { t } = useTranslation('console')
 
   return (
@@ -1234,7 +1239,7 @@ export function ReportsTab({ canBan }: { canBan: boolean }) {
         </TabList>
         {STATUSES.map((status) => (
           <TabPanel key={status} id={status}>
-            <ReportsPanel status={status} canBan={canBan} />
+            <ReportsPanel status={status} canReview={canReview} canBan={canBan} />
           </TabPanel>
         ))}
       </Tabs>

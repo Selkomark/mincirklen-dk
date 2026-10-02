@@ -1123,6 +1123,32 @@ describe('users.read_pii', () => {
   })
 })
 
+describe('moderation_events.read vs .review', () => {
+  test('an auditor can see the review queue but cannot decide in it', async () => {
+    const { cookie, userId } = await mintBareUserCookie()
+    await linkIdentity(db, userId, 'google', `test-subject-${userId}`)
+    const profileRes = await app.request('/trpc/auth.completeProfile', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ firstName: 'Audit', lastName: 'Test', gender: 'other', country: 'GB', mobileNumber: '+44 20 7946 0958', stayAnonymous: true }),
+    })
+    expect(profileRes.status).toBe(200)
+    const auditor = await findRoleByName(db, 'AUDITOR')
+    if (!auditor) throw new Error('seeded AUDITOR role not found')
+    await assignRoleToUser(db, userId, auditor.id)
+
+    const list = await app.request(`/trpc/moderation.listPendingReview?input=${encodeURIComponent(JSON.stringify({ limit: 5 }))}`, { headers: { cookie } })
+    expect(list.status).toBe(200)
+
+    const decide = await app.request('/trpc/moderation.submitReviewDecision', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ moderationEventId: crypto.randomUUID(), outcome: 'true_positive' }),
+    })
+    expect(decide.status).toBe(403)
+  })
+})
+
 describe('/health', () => {
   test('reports each dependency check', async () => {
     const res = await app.request('/health')

@@ -20,7 +20,9 @@
     "save": "Gem",
     "create": "Opret",
     "edit": "Rediger",
-    "all": "Alle"
+    "all": "Alle",
+    "close": "Luk",
+    "view": "Vis"
   },
   "duration": {
     "minute_one": "{{count}} minut",
@@ -52,7 +54,8 @@
       "false_positive": "Falsk positiv",
       "true_negative": "Korrekt godkendt",
       "false_negative": "Overset (burde være markeret)"
-    }
+    },
+    "readOnly": "Kun visning"
   },
   "users": {
     "loadFailed": "Kunne ikke indlæse brugere.",

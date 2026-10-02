@@ -20,7 +20,9 @@
     "save": "Save",
     "create": "Create",
     "edit": "Edit",
-    "all": "All"
+    "all": "All",
+    "close": "Close",
+    "view": "View"
   },
   "duration": {
     "minute_one": "{{count}} minute",
@@ -52,7 +54,8 @@
       "false_positive": "False positive",
       "true_negative": "Correctly passed",
       "false_negative": "Missed (should have flagged)"
-    }
+    },
+    "readOnly": "View only"
   },
   "users": {
     "loadFailed": "Failed to load users.",

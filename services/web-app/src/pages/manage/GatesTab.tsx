@@ -139,7 +139,7 @@ function RevokeAccessButton({ email, signupId, onRevoked }: { email: string; sig
   )
 }
 
-function SignupsPanel({ gateKey, onChanged }: { gateKey: string; onChanged: () => void }) {
+function SignupsPanel({ gateKey, canManage, onChanged }: { gateKey: string; canManage: boolean; onChanged: () => void }) {
   const { t, i18n } = useTranslation('console')
   const [signups, setSignups] = useState<GateSignup[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -232,7 +232,7 @@ function SignupsPanel({ gateKey, onChanged }: { gateKey: string; onChanged: () =
                 </td>
                 <td>{new Date(signup.createdAt).toLocaleString(i18n.language)}</td>
                 <td>
-                  {signup.status === 'granted' ? (
+                  {!canManage ? null : signup.status === 'granted' ? (
                     <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
                       <CopyInviteLinkButton signupId={signup.id} />
                       <RevokeAccessButton signupId={signup.id} email={signup.email} onRevoked={() => void handleRevoked()} />
@@ -252,7 +252,7 @@ function SignupsPanel({ gateKey, onChanged }: { gateKey: string; onChanged: () =
   )
 }
 
-function GateRow({ gate, onUpdated }: { gate: GateStat; onUpdated: () => void }) {
+function GateRow({ gate, canManage, onUpdated }: { gate: GateStat; canManage: boolean; onUpdated: () => void }) {
   const { t } = useTranslation('console')
   const [expanded, setExpanded] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -315,7 +315,7 @@ function GateRow({ gate, onUpdated }: { gate: GateStat; onUpdated: () => void })
         <td>{gate.revokedCount}</td>
         <td>
           <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
-            <Switch isSelected={gate.mode === 'open'} isDisabled={saving} onChange={(isSelected) => void setMode(isSelected ? 'open' : 'invite_only')}>
+            <Switch isSelected={gate.mode === 'open'} isDisabled={saving || !canManage} onChange={(isSelected) => void setMode(isSelected ? 'open' : 'invite_only')}>
               {gate.mode === 'open' ? t('gates.openToEveryone') : t('gates.inviteOnly')}
             </Switch>
             <Button variant="ghost" onPress={() => setExpanded((e) => !e)}>
@@ -329,6 +329,7 @@ function GateRow({ gate, onUpdated }: { gate: GateStat; onUpdated: () => void })
           <td colSpan={6}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', padding: 'var(--space-3) 0' }}>
               {error && <Alert variant="urgent">{error}</Alert>}
+              {canManage && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
                   <Switch isSelected={scheduleEnabled} isDisabled={saving} onChange={toggleSchedule}>
@@ -360,7 +361,8 @@ function GateRow({ gate, onUpdated }: { gate: GateStat; onUpdated: () => void })
                   </Button>
                 </div>
               </div>
-              <SignupsPanel gateKey={gate.key} onChanged={onUpdated} />
+              )}
+              <SignupsPanel gateKey={gate.key} canManage={canManage} onChanged={onUpdated} />
             </div>
           </td>
         </tr>
@@ -369,7 +371,7 @@ function GateRow({ gate, onUpdated }: { gate: GateStat; onUpdated: () => void })
   )
 }
 
-export function GatesTab() {
+export function GatesTab({ canManage }: { canManage: boolean }) {
   const { t } = useTranslation('console')
   const [gates, setGates] = useState<GateStat[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -407,7 +409,7 @@ export function GatesTab() {
           </thead>
           <tbody>
             {gates.map((gate) => (
-              <GateRow key={gate.key} gate={gate} onUpdated={() => void load()} />
+              <GateRow key={gate.key} gate={gate} canManage={canManage} onUpdated={() => void load()} />
             ))}
           </tbody>
         </Table>

@@ -43,7 +43,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     labelKey: 'nav.moderation',
     items: [
-      { section: 'review', labelKey: 'nav.review', permission: 'moderation_events.review' },
+      { section: 'review', labelKey: 'nav.review', permission: 'moderation_events.read' },
       { section: 'reports', labelKey: 'nav.reports', permission: 'session_reports.read' },
     ],
   },
@@ -205,11 +205,20 @@ function Sidebar({
 // controls to show (the ban option, the add-note form); every action is
 // re-gated server-side by hasPermission() regardless.
 function SectionContent({ section, access }: { section: ManageSection; access: Access }) {
-  if (section === 'review') return <ReviewQueueTab />
-  if (section === 'reports') return <ReportsTab canBan={hasAccess(access, 'users.ban')} />
-  if (section === 'roles') return <RolesTab />
-  if (section === 'gates') return <GatesTab />
-  return <UsersTab canAddNote={hasAccess(access, 'users.update')} />
+  const can = (slug: string) => hasAccess(access, slug)
+  if (section === 'review') return <ReviewQueueTab canDecide={can('moderation_events.review')} />
+  if (section === 'reports') return <ReportsTab canReview={can('session_reports.review')} canBan={can('users.ban')} />
+  if (section === 'roles') {
+    return (
+      <RolesTab
+        canCreateRole={can('roles.create')}
+        canUpdateRole={can('roles.update')}
+        canCreatePolicy={can('session_policies.create')}
+      />
+    )
+  }
+  if (section === 'gates') return <GatesTab canManage={can('gates.manage')} />
+  return <UsersTab canEditRoles={can('users.update')} canAddNote={can('users.update')} />
 }
 
 // Reachable at /manage(/review|/roles|/users) by any regular, verified
