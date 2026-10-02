@@ -240,7 +240,11 @@ function Transcript({ reportId, onRoster }: { reportId: string; onRoster: (roste
     const target = dividerRef.current
     const container = containerRef.current
     if (target && container) {
-      container.scrollTop = target.offsetTop - container.clientHeight / 2 + target.clientHeight / 2
+      // Measured against the container's own box, not offsetTop — that
+      // is relative to the nearest positioned ancestor (the modal), which
+      // put the marker a few rows below the fold.
+      const targetTop = target.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop
+      container.scrollTop = targetTop - container.clientHeight / 2 + target.clientHeight / 2
     }
     centredRef.current = true
   }, [page])
