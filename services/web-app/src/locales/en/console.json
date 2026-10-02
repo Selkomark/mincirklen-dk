@@ -22,7 +22,10 @@
     "edit": "Edit",
     "all": "All",
     "close": "Close",
-    "view": "View"
+    "view": "View",
+    "page": "Page {{n}}",
+    "previous": "Previous",
+    "next": "Next"
   },
   "duration": {
     "minute_one": "{{count}} minute",
@@ -37,13 +40,13 @@
   "review": {
     "loadFailed": "Failed to load the review queue.",
     "submitFailed": "Failed to submit the decision — try again.",
-    "empty": "Nothing awaiting review.",
     "messageRemoved": "(message removed)",
     "columns": {
       "flagged": "Flagged",
       "classification": "Classification",
       "message": "Message",
-      "decision": "Decision"
+      "decision": "Decision",
+      "outcome": "Outcome"
     },
     "classification": {
       "flag": "Flag",
@@ -55,7 +58,24 @@
       "true_negative": "Correctly passed",
       "false_negative": "Missed (should have flagged)"
     },
-    "readOnly": "View only"
+    "readOnly": "View only",
+    "tabsLabel": "Review queue by status",
+    "tabs": {
+      "pending": "Awaiting review",
+      "decided": "Decided"
+    },
+    "emptyByStatus": {
+      "pending": "Nothing awaiting review.",
+      "decided": "No decided events yet."
+    },
+    "review": "Review",
+    "modalTitle": "Review flagged message",
+    "flaggedAt": "Flagged {{when}}",
+    "decisionLabel": "Decision",
+    "decisionPlaceholder": "Choose what the classifier got right or wrong",
+    "confirm": "Record decision",
+    "decided": "Decided {{when}}",
+    "decidedBy": "Decided {{when}} by {{who}}"
   },
   "users": {
     "loadFailed": "Failed to load users.",

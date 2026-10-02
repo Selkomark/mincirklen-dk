@@ -22,7 +22,10 @@
     "edit": "Redigera",
     "all": "Alla",
     "close": "Stäng",
-    "view": "Visa"
+    "view": "Visa",
+    "page": "Sida {{n}}",
+    "previous": "Föregående",
+    "next": "Nästa"
   },
   "duration": {
     "minute_one": "{{count}} minut",
@@ -37,13 +40,13 @@
   "review": {
     "loadFailed": "Kunde inte ladda granskningskön.",
     "submitFailed": "Kunde inte skicka beslutet — försök igen.",
-    "empty": "Inget väntar på granskning.",
     "messageRemoved": "(meddelande borttaget)",
     "columns": {
       "flagged": "Flaggad",
       "classification": "Klassificering",
       "message": "Meddelande",
-      "decision": "Beslut"
+      "decision": "Beslut",
+      "outcome": "Utfall"
     },
     "classification": {
       "flag": "Flagga",
@@ -55,7 +58,24 @@
       "true_negative": "Korrekt godkänd",
       "false_negative": "Missad (borde ha flaggats)"
     },
-    "readOnly": "Endast visning"
+    "readOnly": "Endast visning",
+    "tabsLabel": "Granskningskö efter status",
+    "tabs": {
+      "pending": "Väntar på granskning",
+      "decided": "Beslutade"
+    },
+    "emptyByStatus": {
+      "pending": "Inget väntar på granskning.",
+      "decided": "Inga beslutade händelser ännu."
+    },
+    "review": "Granska",
+    "modalTitle": "Granska flaggat meddelande",
+    "flaggedAt": "Flaggat {{when}}",
+    "decisionLabel": "Beslut",
+    "decisionPlaceholder": "Välj vad klassificeraren fick rätt eller fel",
+    "confirm": "Registrera beslut",
+    "decided": "Beslutat {{when}}",
+    "decidedBy": "Beslutat {{when}} av {{who}}"
   },
   "users": {
     "loadFailed": "Kunde inte ladda användare.",

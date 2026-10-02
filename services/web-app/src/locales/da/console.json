@@ -22,7 +22,10 @@
     "edit": "Rediger",
     "all": "Alle",
     "close": "Luk",
-    "view": "Vis"
+    "view": "Vis",
+    "page": "Side {{n}}",
+    "previous": "Forrige",
+    "next": "Næste"
   },
   "duration": {
     "minute_one": "{{count}} minut",
@@ -37,13 +40,13 @@
   "review": {
     "loadFailed": "Kunne ikke indlæse gennemgangskøen.",
     "submitFailed": "Kunne ikke indsende afgørelsen — prøv igen.",
-    "empty": "Intet afventer gennemgang.",
     "messageRemoved": "(besked fjernet)",
     "columns": {
       "flagged": "Markeret",
       "classification": "Klassificering",
       "message": "Besked",
-      "decision": "Afgørelse"
+      "decision": "Afgørelse",
+      "outcome": "Udfald"
     },
     "classification": {
       "flag": "Markering",
@@ -55,7 +58,24 @@
       "true_negative": "Korrekt godkendt",
       "false_negative": "Overset (burde være markeret)"
     },
-    "readOnly": "Kun visning"
+    "readOnly": "Kun visning",
+    "tabsLabel": "Gennemgangskø efter status",
+    "tabs": {
+      "pending": "Afventer gennemgang",
+      "decided": "Afgjort"
+    },
+    "emptyByStatus": {
+      "pending": "Intet afventer gennemgang.",
+      "decided": "Ingen afgjorte hændelser endnu."
+    },
+    "review": "Gennemgå",
+    "modalTitle": "Gennemgå markeret besked",
+    "flaggedAt": "Markeret {{when}}",
+    "decisionLabel": "Afgørelse",
+    "decisionPlaceholder": "Vælg, hvad klassificeringen fik rigtigt eller forkert",
+    "confirm": "Registrér afgørelse",
+    "decided": "Afgjort {{when}}",
+    "decidedBy": "Afgjort {{when}} af {{who}}"
   },
   "users": {
     "loadFailed": "Kunne ikke indlæse brugere.",

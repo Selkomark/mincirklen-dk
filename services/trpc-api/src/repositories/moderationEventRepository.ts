@@ -8,6 +8,10 @@ export interface PendingReviewEvent {
   classification: 'flag' | 'crisis'
   createdAt: Date
   message: { body: string; createdAt: Date } | null
+  // Null while pending; filled once a human has ruled.
+  humanReviewOutcome: 'true_positive' | 'false_positive' | 'true_negative' | 'false_negative' | null
+  reviewedAt: Date | null
+  reviewedBy: string | null
 }
 
 export interface ListPendingReviewResult {
@@ -24,8 +28,12 @@ export interface ListPendingReviewResult {
 // decrypted identity (CHARTER.md §4).
 export async function listPendingReview(
   db: Kysely<Database>,
-  params: { cursor?: string; limit: number },
+  params: { status?: 'pending' | 'decided'; cursor?: string; limit: number },
 ): Promise<ListPendingReviewResult> {
+  // Pending is a backlog: oldest first, so it's worked in order. Decided
+  // is a record: newest first, so the latest rulings are on top. The
+  // cursor comparison flips with the direction.
+  const decided = params.status === 'decided'
   let query = db
     .selectFrom('moderation_events')
     .leftJoin('messages', 'messages.id', 'moderation_events.message_id')
@@ -38,20 +46,25 @@ export async function listPendingReview(
       sql<string>`moderation_events.created_at::text`.as('created_at_cursor'),
       'messages.body as message_body',
       'messages.created_at as message_created_at',
+      'moderation_events.human_review_outcome as human_review_outcome',
+      'moderation_events.reviewed_at as reviewed_at',
+      'moderation_events.reviewed_by as reviewed_by',
     ])
     .where('moderation_events.classification', 'in', ['flag', 'crisis'])
-    .where('moderation_events.human_reviewed', '=', false)
+    .where('moderation_events.human_reviewed', '=', decided)
 
   if (params.cursor) {
     const [cursorCreatedAt, cursorId] = params.cursor.split('|')
     query = query.where(
-      sql<boolean>`(moderation_events.created_at > ${cursorCreatedAt}::timestamptz) or (moderation_events.created_at = ${cursorCreatedAt}::timestamptz and moderation_events.id > ${cursorId})`,
+      decided
+        ? sql<boolean>`(moderation_events.created_at < ${cursorCreatedAt}::timestamptz) or (moderation_events.created_at = ${cursorCreatedAt}::timestamptz and moderation_events.id < ${cursorId})`
+        : sql<boolean>`(moderation_events.created_at > ${cursorCreatedAt}::timestamptz) or (moderation_events.created_at = ${cursorCreatedAt}::timestamptz and moderation_events.id > ${cursorId})`,
     )
   }
 
   const rows = await query
-    .orderBy('moderation_events.created_at', 'asc')
-    .orderBy('moderation_events.id', 'asc')
+    .orderBy('moderation_events.created_at', decided ? 'desc' : 'asc')
+    .orderBy('moderation_events.id', decided ? 'desc' : 'asc')
     .limit(params.limit + 1)
     .execute()
 
@@ -69,6 +82,9 @@ export async function listPendingReview(
       message: row.message_body !== null && row.message_created_at !== null
         ? { body: row.message_body, createdAt: row.message_created_at }
         : null,
+      humanReviewOutcome: row.human_review_outcome,
+      reviewedAt: row.reviewed_at,
+      reviewedBy: row.reviewed_by,
     })),
     nextCursor: hasMore && last ? `${last.created_at_cursor}|${last.id}` : null,
   }

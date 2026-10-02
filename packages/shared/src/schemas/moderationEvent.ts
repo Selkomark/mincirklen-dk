@@ -28,7 +28,13 @@ export const moderationEventSchema = z.object({
 
 export type ModerationEvent = z.infer<typeof moderationEventSchema>
 
+// 'pending': the backlog, oldest first. 'decided': what's already been
+// ruled on, newest first, with the outcome and who decided.
+export const reviewListStatusSchema = z.enum(['pending', 'decided'])
+export type ReviewListStatus = z.infer<typeof reviewListStatusSchema>
+
 export const listPendingReviewInputSchema = z.object({
+  status: reviewListStatusSchema.default('pending'),
   cursor: z.string().optional(),
   limit: z.number().int().min(1).max(50).default(20),
 })

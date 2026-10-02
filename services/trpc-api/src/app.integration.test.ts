@@ -1252,6 +1252,60 @@ describe('rbac.users.unban', () => {
   })
 })
 
+describe('review queue: pending vs decided', () => {
+  test('a decided event leaves the pending list and shows under decided with its outcome and reviewer', async () => {
+    const { cookie, userId } = await mintBareUserCookie()
+    await linkIdentity(db, userId, 'google', `test-subject-${userId}`)
+    const profileRes = await app.request('/trpc/auth.completeProfile', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ firstName: 'Mod', lastName: 'Test', gender: 'other', country: 'GB', mobileNumber: '+44 20 7946 0958', stayAnonymous: true }),
+    })
+    expect(profileRes.status).toBe(200)
+    const role = await findRoleByName(db, 'MODERATOR')
+    if (!role) throw new Error('seeded MODERATOR role not found')
+    await assignRoleToUser(db, userId, role.id)
+
+    const session = await createSession(db)
+    const member = await insertUser(db)
+    const event = await db
+      .insertInto('moderation_events')
+      .values({ session_id: session.id, user_id: member.id, classification: 'flag' })
+      .returning('id')
+      .executeTakeFirstOrThrow()
+
+    const listAll = async (status: 'pending' | 'decided') => {
+      const out: { id: string; humanReviewOutcome: string | null; reviewedByLabel: string | null }[] = []
+      let cursor: string | undefined
+      do {
+        const input = encodeURIComponent(JSON.stringify({ status, limit: 50, ...(cursor ? { cursor } : {}) }))
+        const res = await app.request(`/trpc/moderation.listPendingReview?input=${input}`, { headers: { cookie } })
+        expect(res.status).toBe(200)
+        const page = (await res.json()) as { result: { data: { events: typeof out; nextCursor: string | null } } }
+        out.push(...page.result.data.events)
+        cursor = page.result.data.nextCursor ?? undefined
+      } while (cursor)
+      return out
+    }
+
+    expect((await listAll('pending')).some((e) => e.id === event.id)).toBe(true)
+    expect((await listAll('decided')).some((e) => e.id === event.id)).toBe(false)
+
+    const decide = await app.request('/trpc/moderation.submitReviewDecision', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ moderationEventId: event.id, outcome: 'false_positive' }),
+    })
+    expect(decide.status).toBe(200)
+
+    expect((await listAll('pending')).some((e) => e.id === event.id)).toBe(false)
+    const decided = (await listAll('decided')).find((e) => e.id === event.id)
+    expect(decided?.humanReviewOutcome).toBe('false_positive')
+    // Bare test users have no email on file, so the label is null here.
+    expect(decided).toHaveProperty('reviewedByLabel')
+  })
+})
+
 describe('/health', () => {
   test('reports each dependency check', async () => {
     const res = await app.request('/health')
