@@ -29,14 +29,29 @@ function loginErrorKey(): string | null {
   return LOGIN_ERROR_KEYS[code] ?? LOGIN_ERROR_KEYS.login_failed ?? null
 }
 
-// A closed account isn't an error to retry — the sign-in button would
-// just bounce them back here. So instead of the alert the other codes
-// get, the card becomes a plain statement: a large mark, what happened,
-// and where to ask for the record behind it (docs/gdpr-runbook.md).
+// A closed account gets a statement, not an error alert: a large mark,
+// that the account was closed for breaking the terms (never the specific
+// reason — that's between us and the person, by email), and where to ask
+// for the record behind it (docs/gdpr-runbook.md). The sign-in card stays
+// fully usable underneath: a shared machine — a library, a school — may
+// well have someone else signing in next.
 function BannedNotice({ locale }: { locale: ReturnType<typeof useLocale> }) {
   const { t } = useTranslation('auth')
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 'var(--space-3)', padding: 'var(--space-2) 0' }}>
+    <div
+      role="status"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        textAlign: 'center',
+        gap: 'var(--space-3)',
+        padding: 'var(--space-5) var(--space-4)',
+        background: 'var(--surface-raised)',
+        border: '0.5px solid var(--signal-urgent)',
+        borderRadius: 'var(--radius-lg)',
+      }}
+    >
       <div
         aria-hidden="true"
         style={{
@@ -57,7 +72,7 @@ function BannedNotice({ locale }: { locale: ReturnType<typeof useLocale> }) {
       </div>
       <div style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-primary)' }}>{t('banned.title')}</div>
       <p style={{ margin: 0, fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', lineHeight: 'var(--line-height-base)' }}>{t('banned.body')}</p>
-      <a href={publicPagePath('privacy-policy', locale)} className="ds-inline-link" style={{ fontSize: 'var(--font-size-sm)' }}>
+      <a href={`${publicPagePath('privacy-policy', locale)}#closed-accounts`} className="ds-inline-link" style={{ fontSize: 'var(--font-size-sm)' }}>
         {t('banned.recordLink')}
       </a>
     </div>
@@ -131,6 +146,8 @@ export function LoginPage({ nextPath }: LoginPageProps = {}) {
             </div>
           </div>
 
+          {isBanned && <BannedNotice locale={locale} />}
+
           <div
             style={{
               background: 'var(--surface-raised)',
@@ -142,29 +159,22 @@ export function LoginPage({ nextPath }: LoginPageProps = {}) {
               gap: 12,
             }}
           >
-            {isBanned ? (
-              <BannedNotice locale={locale} />
-            ) : (
-              <>
-                {errorKey && <Alert variant="urgent">{t(errorKey)}</Alert>}
+            {errorKey && !isBanned && <Alert variant="urgent">{t(errorKey)}</Alert>}
 
-                <Button
-                  variant="secondary"
-                  onPress={() => {
-                    window.location.href = effectiveNext
-                      ? `/api/auth/google/start?next=${encodeURIComponent(effectiveNext)}`
-                      : '/api/auth/google/start'
-                  }}
-                  style={{ width: '100%' }}
-                >
-                  <GoogleIcon />
-                  {t('login.continueWithGoogle')}
-                </Button>
-              </>
-            )}
+            <Button
+              variant="secondary"
+              onPress={() => {
+                window.location.href = effectiveNext
+                  ? `/api/auth/google/start?next=${encodeURIComponent(effectiveNext)}`
+                  : '/api/auth/google/start'
+              }}
+              style={{ width: '100%' }}
+            >
+              <GoogleIcon />
+              {t('login.continueWithGoogle')}
+            </Button>
 
-            {!isBanned &&
-              SHOW_OTHER_PROVIDERS &&
+            {SHOW_OTHER_PROVIDERS &&
               OTHER_PROVIDERS.map((provider) => (
                 <Button
                   key={provider.id}
@@ -177,11 +187,9 @@ export function LoginPage({ nextPath }: LoginPageProps = {}) {
                 </Button>
               ))}
 
-            {!isBanned && (
-              <Alert variant="safe" style={{ marginTop: 8 }}>
-                {t('login.privacyNote')}
-              </Alert>
-            )}
+            <Alert variant="safe" style={{ marginTop: 8 }}>
+              {t('login.privacyNote')}
+            </Alert>
           </div>
 
           <div style={{ textAlign: 'center', fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>

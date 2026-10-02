@@ -69,7 +69,7 @@ export function PublicPageView({ id }: { id: PublicPageId }) {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
           {page.sections.map((s) => (
-            <div key={s.heading}>
+            <div key={s.heading} id={s.id} style={s.id ? { scrollMarginTop: 96 } : undefined}>
               <h2 style={{ margin: 0, marginBottom: 'var(--space-2)', fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-bold)' as unknown as number, color: 'var(--text-primary)' }}>
                 {s.heading}
               </h2>

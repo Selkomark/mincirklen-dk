@@ -18,7 +18,9 @@ export interface PublicPageData {
   id: PublicPageId
   title: string
   intro: string
-  sections: { heading: string; body: string; link?: { href: string; label: string } }[]
+  // `id` makes a section linkable (…/privacy-policy#closed-accounts);
+  // PublicPageView renders it on the heading with scroll margin.
+  sections: { id?: string; heading: string; body: string; link?: { href: string; label: string } }[]
   urgent?: boolean
 }
 
@@ -223,6 +225,13 @@ export const PUBLIC_PAGES: Record<PublicPageId, PublicPageData> = {
       {
         heading: 'Your rights under GDPR',
         body: "You can request access to, correction of, or deletion of your data at any time, restrict or object to how it's processed, ask for it in a portable format, and withdraw consent whenever you like — none of this affects the lawfulness of processing before you withdraw it. You can download a copy of your data or permanently delete your account directly from Settings → Privacy and data; deletion is immediate. In cases of a confirmed serious policy violation, we retain a limited record of the violation — a category and a brief written summary, not your messages or profile — independently of and beyond your account's deletion, specifically to prevent the same person rejoining after deleting their account. This is permitted under GDPR Article 17(3)(e) and Article 6(1)(f). We do not sell or share your data with advertisers. For anything not available directly in Settings, use Contact. You can also lodge a complaint with the Danish Data Protection Agency (Datatilsynet, datatilsynet.dk) if you believe your rights haven't been respected.",
+      },
+      {
+        id: 'closed-accounts',
+        heading: 'If your account was closed',
+        body:
+          "When we close an account for violating our Terms and Conditions, we keep a record of that decision: the category of violation, a short written summary of why, and the evidence it rested on. You have the right to see that record. Email us from the address the account used, with the subject \"Closed account — request for record\", and we will send you a copy within 30 days. We can't reopen an account this way, but you'll be able to see exactly what the decision was based on.",
+        link: { href: `mailto:${EMAIL}?subject=${encodeURIComponent('Closed account — request for record')}`, label: EMAIL },
       },
       {
         heading: 'Changes to this policy',
