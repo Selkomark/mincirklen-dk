@@ -3,7 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { Alert } from '../../components/Alert'
 import { Badge } from '../../components/Badge'
 import { Button } from '../../components/Button'
+import { Checkbox } from '../../components/Checkbox'
 import { Modal } from '../../components/Modal'
+import { Radio, RadioGroup } from '../../components/RadioGroup'
+import { Select, SelectItem } from '../../components/Select'
 import { Skeleton } from '../../components/Skeleton'
 import { Table } from '../../components/Table'
 import { Tab, TabList, TabPanel, Tabs } from '../../components/Tabs'
@@ -17,6 +20,11 @@ import './ReportsTab.css'
 
 type ReportStatus = 'open' | 'reviewed' | 'dismissed'
 type Decision = Exclude<ReportStatus, 'open'>
+type ReportAction = 'none' | 'note' | 'warn' | 'remove_from_session' | 'hide_messages' | 'ban'
+type BanReason = 'predatory_contact' | 'harassment' | 'crisis_abuse' | 'illegal_content' | 'other'
+
+const MEMBER_TARGETED: ReadonlySet<ReportAction> = new Set(['note', 'warn', 'remove_from_session', 'ban'])
+const BAN_REASONS: BanReason[] = ['predatory_contact', 'harassment', 'crisis_abuse', 'illegal_content', 'other']
 
 interface SessionReport {
   id: string
@@ -33,6 +41,8 @@ interface SessionReport {
   reviewedAt: string | null
   reviewedBy: string | null
   decisionNote: string | null
+  action: ReportAction | null
+  actionTargetUserIds: string[]
 }
 
 interface TranscriptPage {
@@ -318,7 +328,9 @@ function Transcript({ reportId, onRoster }: { reportId: string; onRoster: (roste
     const isReportedMessage = reportedMessages.has(m.id)
     return (
       <div key={m.id}>
-        {m.moderationStatus !== 'pass' && <div className="reports-transcript__withheld">{t('reports.withheld')}</div>}
+        {m.moderationStatus !== 'pass' && (
+          <div className="reports-transcript__withheld">{m.moderationStatus === 'removed' ? t('reports.removed') : t('reports.withheld')}</div>
+        )}
         <MessageRow
           message={m}
           member={member}
@@ -361,24 +373,64 @@ function Transcript({ reportId, onRoster }: { reportId: string; onRoster: (roste
 
 // ---- Decision ----
 //
-// The note comes first, deliberately: the decision buttons stay disabled
-// until the reviewer has written why. The reasoning is the record
+// The note comes first, deliberately: nothing below it is enabled until
+// the reviewer has written why. The reasoning is the record
 // (sessionReportService.ts refuses a decision without it), and asking
-// for it before offering the buttons makes that the natural order rather
-// than an afterthought.
-function DecisionModal({ reportId, onClose, onDecided }: { reportId: string; onClose: () => void; onDecided: () => void }) {
+// for it before offering outcomes makes that the natural order rather
+// than an afterthought. Then one action — none, a note on the member, a
+// warning, removal from this circle, hiding the named messages, or a ban
+// (only offered to holders of users.ban; the server checks too) — and
+// finally the decision itself. Dismissing is only possible with no
+// action, since dismissing means there was nothing to act on.
+function DecisionModal({
+  report,
+  roster,
+  canBan,
+  onClose,
+  onDecided,
+}: {
+  report: SessionReport
+  roster: RosterEntry[]
+  canBan: boolean
+  onClose: () => void
+  onDecided: () => void
+}) {
   const { t } = useTranslation('console')
   const [note, setNote] = useState('')
+  const [action, setAction] = useState<ReportAction>('none')
+  const [targets, setTargets] = useState<Set<string>>(() => new Set(report.aboutUserIds))
+  const [memberMessage, setMemberMessage] = useState('')
+  const [banReason, setBanReason] = useState<BanReason | null>(null)
   const [pending, setPending] = useState<Decision | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const ready = note.trim().length > 0
+
+  const noteReady = note.trim().length > 0
+  const needsTargets = MEMBER_TARGETED.has(action)
+  const actionReady =
+    action === 'none' ||
+    (action === 'hide_messages' && report.messageIds.length > 0) ||
+    (needsTargets &&
+      targets.size > 0 &&
+      (action !== 'warn' || memberMessage.trim().length > 0) &&
+      (action !== 'ban' || banReason !== null))
+  const ready = noteReady && actionReady
+
+  const actions: ReportAction[] = ['none', 'note', 'warn', 'remove_from_session', 'hide_messages', ...(canBan ? (['ban'] as const) : [])]
 
   const decide = async (status: Decision) => {
     if (!ready) return
     setPending(status)
     setError(null)
     try {
-      await postTrpc('sessionReports.review', { reportId, status, note: note.trim() })
+      await postTrpc('sessionReports.review', {
+        reportId: report.id,
+        status,
+        note: note.trim(),
+        action,
+        targetUserIds: needsTargets ? [...targets] : [],
+        memberMessage: action === 'warn' ? memberMessage.trim() : undefined,
+        banReasonCategory: action === 'ban' ? banReason : undefined,
+      })
       onDecided()
     } catch {
       setError(t('reports.decideFailed'))
@@ -387,7 +439,7 @@ function DecisionModal({ reportId, onClose, onDecided }: { reportId: string; onC
   }
 
   return (
-    <Modal isOpen onOpenChange={(open) => !open && onClose()} title={t('reports.decisionTitle')}>
+    <Modal isOpen onOpenChange={(open) => !open && onClose()} title={t('reports.decisionTitle')} className="reports-decision-modal">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
         <Text variant="muted" style={{ margin: 0 }}>
           {t('reports.decisionIntro')}
@@ -398,21 +450,95 @@ function DecisionModal({ reportId, onClose, onDecided }: { reportId: string; onC
           placeholder={t('reports.notePlaceholder')}
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          rows={5}
+          rows={4}
           autoFocus
         />
+
+        <fieldset className="reports-decision__step" disabled={!noteReady}>
+          <RadioGroup label={t('reports.actionLabel')} value={action} onChange={(value) => setAction(value as ReportAction)} isDisabled={!noteReady}>
+            {actions.map((value) => (
+              <Radio key={value} value={value} isDisabled={value === 'hide_messages' && report.messageIds.length === 0}>
+                <span className="reports-decision__option">
+                  <span>{t(`reports.actions.${value}.label`)}</span>
+                  <span className="reports-decision__hint">
+                    {value === 'hide_messages' && report.messageIds.length === 0 ? t('reports.actions.hide_messages.unavailable') : t(`reports.actions.${value}.hint`)}
+                  </span>
+                </span>
+              </Radio>
+            ))}
+          </RadioGroup>
+
+          {needsTargets && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+              <div className="reports-review__label">{t('reports.targetsLabel')}</div>
+              <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+                {report.aboutUserIds.map((id) => (
+                  <Checkbox
+                    key={id}
+                    isSelected={targets.has(id)}
+                    onChange={(isSelected) =>
+                      setTargets((prev) => {
+                        const next = new Set(prev)
+                        if (isSelected) next.add(id)
+                        else next.delete(id)
+                        return next
+                      })
+                    }
+                  >
+                    <MemberChip userId={id} roster={roster} />
+                  </Checkbox>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {action === 'warn' && (
+            <Textarea
+              label={t('reports.memberMessageLabel')}
+              hint={t('reports.memberMessageHint')}
+              placeholder={t('reports.memberMessagePlaceholder')}
+              value={memberMessage}
+              onChange={(e) => setMemberMessage(e.target.value)}
+              rows={4}
+            />
+          )}
+
+          {action === 'ban' && (
+            <>
+              <Select
+                label={t('reports.banReasonLabel')}
+                placeholder={t('reports.banReasonPlaceholder')}
+                selectedKey={banReason}
+                onSelectionChange={(key) => setBanReason(key as BanReason)}
+              >
+                {BAN_REASONS.map((reason) => (
+                  <SelectItem key={reason} id={reason}>
+                    {t(`reports.banReasons.${reason}`)}
+                  </SelectItem>
+                ))}
+              </Select>
+              <Alert variant="urgent">{t('reports.banWarning')}</Alert>
+            </>
+          )}
+        </fieldset>
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-          <Button variant="safe" isDisabled={!ready || pending !== null} isPending={pending === 'reviewed'} onPress={() => void decide('reviewed')}>
-            {t('reports.decisionReviewed')}
+          <Button variant={action === 'ban' ? 'urgent' : 'safe'} isDisabled={!ready || pending !== null} isPending={pending === 'reviewed'} onPress={() => void decide('reviewed')}>
+            {action === 'none' ? t('reports.decisionReviewed') : t('reports.decisionReviewedWithAction', { action: t(`reports.actions.${action}.label`) })}
           </Button>
           <Button
             variant="secondary"
-            isDisabled={!ready || pending !== null}
+            isDisabled={!noteReady || action !== 'none' || pending !== null}
             isPending={pending === 'dismissed'}
             onPress={() => void decide('dismissed')}
           >
             {t('reports.decisionDismissed')}
           </Button>
+          {action !== 'none' && (
+            <Text variant="muted" style={{ margin: 0, fontSize: 'var(--font-size-xs)' }}>
+              {t('reports.dismissUnavailable')}
+            </Text>
+          )}
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <Button variant="ghost" onPress={onClose} isDisabled={pending !== null}>
@@ -425,7 +551,17 @@ function DecisionModal({ reportId, onClose, onDecided }: { reportId: string; onC
 }
 
 // ---- Review dialog ----
-function ReviewReportModal({ report, onClose, onDecided }: { report: SessionReport; onClose: () => void; onDecided: () => void }) {
+function ReviewReportModal({
+  report,
+  canBan,
+  onClose,
+  onDecided,
+}: {
+  report: SessionReport
+  canBan: boolean
+  onClose: () => void
+  onDecided: () => void
+}) {
   const { t, i18n } = useTranslation('console')
   const [deciding, setDeciding] = useState(false)
   // Filled in by the transcript's first page; until then the chips show
@@ -488,6 +624,14 @@ function ReviewReportModal({ report, onClose, onDecided }: { report: SessionRepo
               <strong>
                 {t('reports.decided', { when: report.reviewedAt ? new Date(report.reviewedAt).toLocaleString(i18n.language) : '—' })}
               </strong>
+              {report.action && report.action !== 'none' && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+                  <Badge variant={report.action === 'ban' ? 'urgent' : 'info'}>{t(`reports.actions.${report.action}.label`)}</Badge>
+                  {report.actionTargetUserIds.map((id) => (
+                    <MemberChip key={id} userId={id} roster={roster} />
+                  ))}
+                </span>
+              )}
               <span style={{ whiteSpace: 'pre-wrap' }}>{report.decisionNote ?? t('reports.noNote')}</span>
             </div>
           </Alert>
@@ -503,7 +647,9 @@ function ReviewReportModal({ report, onClose, onDecided }: { report: SessionRepo
 
       {deciding && (
         <DecisionModal
-          reportId={report.id}
+          report={report}
+          roster={roster}
+          canBan={canBan}
           onClose={() => setDeciding(false)}
           onDecided={() => {
             setDeciding(false)
@@ -516,7 +662,7 @@ function ReviewReportModal({ report, onClose, onDecided }: { report: SessionRepo
 }
 
 // ---- List ----
-function ReportsPanel({ status }: { status: ReportStatus }) {
+function ReportsPanel({ status, canBan }: { status: ReportStatus; canBan: boolean }) {
   const { t, i18n } = useTranslation('console')
   const [reports, setReports] = useState<SessionReport[] | null>(null)
   const [cursor, setCursor] = useState<string | null>(null)
@@ -597,6 +743,7 @@ function ReportsPanel({ status }: { status: ReportStatus }) {
         <ReviewReportModal
           key={reviewing.id}
           report={reviewing}
+          canBan={canBan}
           onClose={() => setReviewing(null)}
           onDecided={() => {
             setReviewing(null)
@@ -608,7 +755,7 @@ function ReportsPanel({ status }: { status: ReportStatus }) {
   )
 }
 
-export function ReportsTab() {
+export function ReportsTab({ canBan }: { canBan: boolean }) {
   const { t } = useTranslation('console')
 
   return (
@@ -626,7 +773,7 @@ export function ReportsTab() {
         </TabList>
         {STATUSES.map((status) => (
           <TabPanel key={status} id={status}>
-            <ReportsPanel status={status} />
+            <ReportsPanel status={status} canBan={canBan} />
           </TabPanel>
         ))}
       </Tabs>

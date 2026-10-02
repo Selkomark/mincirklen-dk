@@ -63,6 +63,17 @@
       "email": "E-mail",
       "roles": "Roller",
       "status": "Status"
+    },
+    "notes": {
+      "open": "Notater",
+      "title": "Moderatornotater",
+      "intro": "Intern historik om dette medlem. Kun personer med adgang til Brugere kan se den; medlemmet ser den aldrig.",
+      "empty": "Ingen notater endnu.",
+      "fromReport": "fra en sessionsrapport",
+      "addLabel": "Tilføj et notat",
+      "add": "Tilføj notat",
+      "loadFailed": "Kunne ikke indlæse notater.",
+      "addFailed": "Kunne ikke tilføje notatet."
     }
   },
   "gates": {
@@ -235,6 +246,51 @@
     "reportedMessage": "Rapporteret besked",
     "messages": "Beskeder",
     "messagesReported_one": "{{count}} besked rapporteret",
-    "messagesReported_other": "{{count}} beskeder rapporteret"
+    "messagesReported_other": "{{count}} beskeder rapporteret",
+    "removed": "Fjernet af en moderator efter en rapport",
+    "actionLabel": "Hvad skal der gøres",
+    "targetsLabel": "Gælder for",
+    "actions": {
+      "none": {
+        "label": "Ingen yderligere handling",
+        "hint": "Registrér kun afgørelsen."
+      },
+      "note": {
+        "label": "Notat om medlemmet",
+        "hint": "Din begrundelse gemmes i deres moderator-historik, som kun kan ses under Brugere."
+      },
+      "warn": {
+        "label": "Advar medlemmet",
+        "hint": "Sender dem en besked fra moderationsteamet."
+      },
+      "remove_from_session": {
+        "label": "Fjern fra denne cirkel",
+        "hint": "De kan ikke længere læse eller skrive i denne cirkel. Deres konto røres ikke."
+      },
+      "hide_messages": {
+        "label": "Skjul de rapporterede beskeder",
+        "hint": "Andre medlemmer ser dem ikke længere; afsenderen ser dem markeret som fjernet.",
+        "unavailable": "Denne rapport nævner ingen beskeder."
+      },
+      "ban": {
+        "label": "Udeluk medlemmet",
+        "hint": "Deres login afvises fremover, og deres nuværende session afsluttes. De rapporterede beskeder gemmes som dokumentation."
+      }
+    },
+    "memberMessageLabel": "Besked til medlemmet",
+    "memberMessageHint": "De vil læse dette. Din begrundelse ovenfor forbliver intern.",
+    "memberMessagePlaceholder": "Hvad de bør vide, og hvad vi forventer fremover…",
+    "banReasonLabel": "Årsagskategori",
+    "banReasonPlaceholder": "Vælg en kategori",
+    "banReasons": {
+      "predatory_contact": "Grooming eller udnyttende kontakt",
+      "harassment": "Chikane",
+      "crisis_abuse": "Misbrug af krisestøtte",
+      "illegal_content": "Ulovligt indhold",
+      "other": "Andet"
+    },
+    "banWarning": "En udelukkelse er permanent og gælder alle login-identiteter knyttet til dette medlem.",
+    "decisionReviewedWithAction": "Gennemgået — {{action}}",
+    "dismissUnavailable": "At afvise betyder, at der ikke var noget at handle på; vælg \"Ingen yderligere handling\" for at afvise."
   }
 }

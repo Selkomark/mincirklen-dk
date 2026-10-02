@@ -1,5 +1,6 @@
 import type { Database } from '@mincirklen/shared'
-import type { Kysely } from 'kysely'
+import { sql, type Kysely } from 'kysely'
+import { type KmsConfig, decryptField } from '../adapters/kmsAdapter'
 
 export async function insertUser(db: Kysely<Database>): Promise<{ id: string }> {
   const row = await db.insertInto('users').defaultValues().returningAll().executeTakeFirstOrThrow()
@@ -57,4 +58,20 @@ export async function isUserBanned(db: Kysely<Database>, userId: string): Promis
 // construction — they're never foreign-keyed to this row.
 export async function deleteUser(db: Kysely<Database>, userId: string): Promise<void> {
   await db.deleteFrom('users').where('id', '=', userId).execute()
+}
+
+// Flips the live-block flag context.ts's resolveSession checks on every
+// request — the banned person's current session dies on their next call,
+// independent of the account_bans row that refuses future logins.
+export async function setBannedAt(db: Kysely<Database>, userId: string): Promise<void> {
+  await db.updateTable('users').set({ banned_at: sql`now()` }).where('id', '=', userId).where('banned_at', 'is', null).execute()
+}
+
+// Decrypted, unmasked — only for sending the member something
+// (emailAdapter.ts). Never return this to a browser; rbacRepository.ts's
+// masked variant is what the admin UI gets.
+export async function findEmailForUser(db: Kysely<Database>, kms: KmsConfig, userId: string): Promise<string | null> {
+  const row = await db.selectFrom('users').select('email_ciphertext').where('id', '=', userId).executeTakeFirst()
+  if (!row?.email_ciphertext) return null
+  return decryptField(kms, row.email_ciphertext)
 }

@@ -7,7 +7,10 @@ import { z } from 'zod'
 // services/trpc-api/src/repositories/messageRepository.ts's listMessages
 // for the visibility rule this drives (a non-'pass' row is only ever
 // returned to its own author).
-export const messageModerationStatusSchema = z.enum(['pass', 'flag', 'crisis', 'reviewed_pass'])
+// 'removed' is a moderator's after-the-fact decision on a session report
+// (sessionReportService.ts's hide_messages action): withheld from every
+// other member like flag/crisis, shown to its author as removed.
+export const messageModerationStatusSchema = z.enum(['pass', 'flag', 'crisis', 'reviewed_pass', 'removed'])
 
 export type MessageModerationStatus = z.infer<typeof messageModerationStatusSchema>
 

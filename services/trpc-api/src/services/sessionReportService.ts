@@ -1,3 +1,4 @@
+import type { BanReasonCategory, SessionReportAction } from '@mincirklen/shared'
 import { NotAMemberError } from './messageService'
 
 // "Report this session" (SessionPage.tsx's ReportSessionModal). Unlike
@@ -80,6 +81,15 @@ export async function submitSessionReport(deps: SubmitSessionReportDeps, params:
 // files a new report and that gets its own decision. Every decision
 // carries the reviewer's own words on why — the note is the audit trail,
 // so an empty one is refused here, not just discouraged in the UI.
+//
+// A reviewed report can also carry one action. Member-targeted actions
+// (note, warn, remove_from_session, ban) apply to targetUserIds, which
+// must be subjects of the report; hide_messages applies to the messages
+// the report names. Actions run first and the decision is recorded last,
+// so a failure mid-way leaves the report open to retry rather than
+// recorded as done with half its effects missing. Banning additionally
+// needs the users.ban permission — resolving reports and banning
+// accounts are deliberately separate powers.
 
 export type SessionReportStatus = 'open' | 'reviewed' | 'dismissed'
 export type SessionReportDecision = Exclude<SessionReportStatus, 'open'>
@@ -102,15 +112,41 @@ export class SessionReportNoteRequiredError extends Error {
   }
 }
 
-export interface ReviewSessionReportDeps {
-  findReport(): Promise<{ status: SessionReportStatus } | null>
-  applyDecision(status: SessionReportDecision, note: string): Promise<void>
+export class SessionReportInvalidActionError extends Error {
+  constructor(message: string) {
+    super(message)
+  }
 }
 
-export async function reviewSessionReport(
-  deps: ReviewSessionReportDeps,
-  params: { status: SessionReportDecision; note: string },
-): Promise<void> {
+export class SessionReportForbiddenActionError extends Error {
+  constructor(message: string) {
+    super(message)
+  }
+}
+
+const MEMBER_TARGETED_ACTIONS: ReadonlySet<SessionReportAction> = new Set(['note', 'warn', 'remove_from_session', 'ban'])
+
+export interface ReviewSessionReportDeps {
+  findReport(): Promise<{ status: SessionReportStatus; sessionId: string; aboutUserIds: string[]; messageIds: string[] } | null>
+  applyDecision(params: { status: SessionReportDecision; note: string; action: SessionReportAction; targetUserIds: string[] }): Promise<void>
+  addMemberNote(userId: string, note: string): Promise<void>
+  sendWarning(userId: string, message: string): Promise<void>
+  removeFromSession(userId: string): Promise<void>
+  hideMessages(messageIds: string[]): Promise<void>
+  banUser(userId: string, reasonCategory: BanReasonCategory, decisionSummary: string): Promise<void>
+}
+
+export interface ReviewSessionReportParams {
+  status: SessionReportDecision
+  note: string
+  action: SessionReportAction
+  targetUserIds: string[]
+  memberMessage?: string
+  banReasonCategory?: BanReasonCategory
+  canBan: boolean
+}
+
+export async function reviewSessionReport(deps: ReviewSessionReportDeps, params: ReviewSessionReportParams): Promise<void> {
   const note = params.note.trim()
   if (!note) {
     throw new SessionReportNoteRequiredError('a decision needs a note explaining it')
@@ -122,5 +158,58 @@ export async function reviewSessionReport(
   if (report.status !== 'open') {
     throw new SessionReportAlreadyResolvedError(`session report is already ${report.status}`)
   }
-  await deps.applyDecision(params.status, note)
+
+  const { action } = params
+  if (action !== 'none' && params.status === 'dismissed') {
+    throw new SessionReportInvalidActionError('a dismissed report cannot carry an action')
+  }
+
+  const targets = [...new Set(params.targetUserIds)]
+  if (MEMBER_TARGETED_ACTIONS.has(action)) {
+    if (targets.length === 0) {
+      throw new SessionReportInvalidActionError(`${action} needs at least one member to apply to`)
+    }
+    const subjects = new Set(report.aboutUserIds)
+    if (targets.some((id) => !subjects.has(id))) {
+      throw new SessionReportInvalidActionError('an action can only apply to members the report is about')
+    }
+  }
+
+  const memberMessage = params.memberMessage?.trim() ?? ''
+  if (action === 'warn' && !memberMessage) {
+    throw new SessionReportInvalidActionError('a warning needs the text the member will receive')
+  }
+  if (action === 'hide_messages' && report.messageIds.length === 0) {
+    throw new SessionReportInvalidActionError('this report names no messages to hide')
+  }
+  if (action === 'ban') {
+    if (!params.canBan) {
+      throw new SessionReportForbiddenActionError('banning needs the users.ban permission')
+    }
+    if (!params.banReasonCategory) {
+      throw new SessionReportInvalidActionError('a ban needs a reason category')
+    }
+  }
+
+  switch (action) {
+    case 'note':
+      for (const userId of targets) await deps.addMemberNote(userId, note)
+      break
+    case 'warn':
+      for (const userId of targets) await deps.sendWarning(userId, memberMessage)
+      break
+    case 'remove_from_session':
+      for (const userId of targets) await deps.removeFromSession(userId)
+      break
+    case 'hide_messages':
+      await deps.hideMessages(report.messageIds)
+      break
+    case 'ban':
+      for (const userId of targets) await deps.banUser(userId, params.banReasonCategory!, note)
+      break
+    case 'none':
+      break
+  }
+
+  await deps.applyDecision({ status: params.status, note, action, targetUserIds: MEMBER_TARGETED_ACTIONS.has(action) ? targets : [] })
 }

@@ -4,7 +4,11 @@ import { Button } from '../../components/Button'
 import { Badge } from '../../components/Badge'
 import { Checkbox } from '../../components/Checkbox'
 import { Alert } from '../../components/Alert'
+import { Modal } from '../../components/Modal'
+import { Skeleton } from '../../components/Skeleton'
 import { Table } from '../../components/Table'
+import { Text } from '../../components/Text'
+import { Textarea } from '../../components/Textarea'
 import { getTrpc, postTrpc } from './manageShared'
 
 interface UserWithRoles {
@@ -25,9 +29,117 @@ interface Role {
   name: string
 }
 
-function EditRolesRow({ user, allRoles, onSaved }: { user: UserWithRoles; allRoles: Role[]; onSaved: () => void }) {
+interface MemberNote {
+  id: string
+  reportId: string | null
+  body: string
+  createdBy: string | null
+  createdAt: string
+}
+
+// Moderator-only history on a member — written by hand here or by a
+// session report's "note" action. Never shown to the member.
+function NotesModal({ userId, canAddNote, onClose }: { userId: string; canAddNote: boolean; onClose: () => void }) {
+  const { t, i18n } = useTranslation('console')
+  const [notes, setNotes] = useState<MemberNote[] | null>(null)
+  const [draft, setDraft] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    try {
+      setNotes(await getTrpc<MemberNote[]>('rbac.users.listNotes', { userId }))
+    } catch {
+      setError(t('users.notes.loadFailed'))
+    }
+  }, [userId, t])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const add = async () => {
+    if (!draft.trim()) return
+    setSaving(true)
+    setError(null)
+    try {
+      await postTrpc('rbac.users.addNote', { userId, body: draft.trim() })
+      setDraft('')
+      await load()
+    } catch {
+      setError(t('users.notes.addFailed'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal isOpen onOpenChange={(open) => !open && onClose()} title={t('users.notes.title')}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <Text variant="muted" style={{ margin: 0 }}>
+          {t('users.notes.intro')}
+        </Text>
+        {error && <Alert variant="urgent">{error}</Alert>}
+        {notes === null ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+            <Skeleton width="70%" height={14} />
+            <Skeleton width="50%" height={14} />
+          </div>
+        ) : notes.length === 0 ? (
+          <Text variant="muted" style={{ margin: 0 }}>
+            {t('users.notes.empty')}
+          </Text>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', maxHeight: '40vh', overflowY: 'auto' }}>
+            {notes.map((note) => (
+              <div key={note.id} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>
+                  {new Date(note.createdAt).toLocaleString(i18n.language)}
+                  {note.reportId ? ` · ${t('users.notes.fromReport')}` : ''}
+                </span>
+                <span style={{ fontSize: 'var(--font-size-sm)', whiteSpace: 'pre-wrap' }}>{note.body}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {canAddNote && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void add()
+            }}
+            style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}
+          >
+            <Textarea label={t('users.notes.addLabel')} value={draft} onChange={(e) => setDraft(e.target.value)} rows={3} />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
+              <Button variant="ghost" onPress={onClose}>
+                {t('common.cancel')}
+              </Button>
+              <Button type="submit" variant="safe" isPending={saving} isDisabled={!draft.trim()}>
+                {t('users.notes.add')}
+              </Button>
+            </div>
+          </form>
+        )}
+      </div>
+    </Modal>
+  )
+}
+
+function EditRolesRow({
+  user,
+  allRoles,
+  canAddNote,
+  onSaved,
+}: {
+  user: UserWithRoles
+  allRoles: Role[]
+  canAddNote: boolean
+  onSaved: () => void
+}) {
   const { t } = useTranslation('console')
   const [editing, setEditing] = useState(false)
+  const [notesOpen, setNotesOpen] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(user.roles.map((r) => r.id)))
   const [saving, setSaving] = useState(false)
 
@@ -62,9 +174,15 @@ function EditRolesRow({ user, allRoles, onSaved }: { user: UserWithRoles; allRol
         </td>
         <td>{user.bannedAt ? <Badge variant="urgent">{t('users.banned')}</Badge> : null}</td>
         <td>
-          <Button variant="ghost" onPress={() => setEditing(true)}>
-            {t('users.editRoles')}
-          </Button>
+          <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'flex-end' }}>
+            <Button variant="ghost" onPress={() => setNotesOpen(true)}>
+              {t('users.notes.open')}
+            </Button>
+            <Button variant="ghost" onPress={() => setEditing(true)}>
+              {t('users.editRoles')}
+            </Button>
+          </div>
+          {notesOpen && <NotesModal userId={user.id} canAddNote={canAddNote} onClose={() => setNotesOpen(false)} />}
         </td>
       </tr>
     )
@@ -106,7 +224,7 @@ function EditRolesRow({ user, allRoles, onSaved }: { user: UserWithRoles; allRol
   )
 }
 
-export function UsersTab() {
+export function UsersTab({ canAddNote }: { canAddNote: boolean }) {
   const { t } = useTranslation('console')
   const [users, setUsers] = useState<UserWithRoles[] | null>(null)
   const [roles, setRoles] = useState<Role[] | null>(null)
@@ -155,7 +273,7 @@ export function UsersTab() {
           </thead>
           <tbody>
             {users.map((user) => (
-              <EditRolesRow key={user.id} user={user} allRoles={roles} onSaved={() => void load()} />
+              <EditRolesRow key={user.id} user={user} allRoles={roles} canAddNote={canAddNote} onSaved={() => void load()} />
             ))}
           </tbody>
         </Table>

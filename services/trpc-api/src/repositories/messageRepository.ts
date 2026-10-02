@@ -403,3 +403,36 @@ export async function findMessageAuthors(db: Kysely<Database>, sessionId: string
     .execute()
   return new Map(rows.map((row) => [row.id, row.user_id]))
 }
+
+// A moderator's hide_messages action (sessionReportService.ts). 'removed'
+// rides the same WHERE-clause privacy rule as flag/crisis in listMessages
+// above: withheld from every other member, still returned to the author
+// (who sees it marked as removed — SessionPage.tsx). Live clients that
+// already hold the message keep it until their next fetch.
+export async function removeMessages(
+  db: Kysely<Database>,
+  params: { sessionId: string; messageIds: string[]; removedBy: string },
+): Promise<void> {
+  if (params.messageIds.length === 0) return
+  await db
+    .updateTable('messages')
+    .set({ moderation_status: 'removed', removed_at: sql`now()`, removed_by: params.removedBy })
+    .where('session_id', '=', params.sessionId)
+    .where('id', 'in', params.messageIds)
+    .execute()
+}
+
+// The reported messages as they stand, for a ban's evidence snapshots
+// (banService.ts) — captured at decision time, since the rows themselves
+// cascade away if the account is later deleted.
+export async function findMessagesByIds(db: Kysely<Database>, sessionId: string, messageIds: string[]): Promise<MessageRow[]> {
+  if (messageIds.length === 0) return []
+  const rows = await db
+    .selectFrom('messages')
+    .select(['id', 'session_id', 'user_id', 'body', 'type', 'moderation_status', 'false_positive_reported_at', 'created_at'])
+    .where('session_id', '=', sessionId)
+    .where('id', 'in', messageIds)
+    .orderBy('created_at', 'asc')
+    .execute()
+  return rows.map(toMessageRow)
+}

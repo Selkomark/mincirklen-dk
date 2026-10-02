@@ -201,3 +201,17 @@ categories (e.g. messages) into multiple time-chunked files inside a zip
 archive rather than one flat file — is real but meaningfully more
 complexity, and only worth it once there's an actual reason (media
 support) to expect exports that large.
+
+## Email delivery: replace the logging adapter with a real provider
+
+Added 2026-10-02. `services/trpc-api/src/adapters/emailAdapter.ts` is a
+stand-in: `sendEmail()` writes the would-be message to the server log and
+delivers nothing. It exists so the moderation "warn member" action
+(sessionReportService.ts) has a seam to call today.
+
+To do: wire a real transport behind the same `sendEmail(message)` shape —
+provider choice, credentials via env, bounce/complaint handling, a
+templated member-facing body in all supported languages, and an
+integration test against the provider's sandbox. A reference for how to
+proceed exists outside this repo; pick it up when this is scheduled. Keep
+the adapter's interface stable so the service layer doesn't change.

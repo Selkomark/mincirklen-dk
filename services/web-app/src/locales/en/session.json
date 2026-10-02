@@ -162,7 +162,8 @@
     "falsePositiveReported": "We'll take another look",
     "falsePositiveReportedNotice": "Thanks — we're looking into it.",
     "reportMessage": "Report this message",
-    "unreportMessage": "Remove from report"
+    "unreportMessage": "Remove from report",
+    "removedByModerator": "Removed by a moderator"
   },
   "rightPanel": {
     "essentialPages": "Essential pages",

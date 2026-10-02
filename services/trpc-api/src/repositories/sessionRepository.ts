@@ -871,3 +871,21 @@ export async function listActiveSessionIdsForUser(db: Kysely<Database>, userId: 
     .execute()
   return rows.map((r) => r.session_id)
 }
+
+// A moderator's remove_from_session action (sessionReportService.ts).
+// Sets left_at, which @mincirklen/shared's isSessionMember treats as "not
+// a member" — no more reading, posting or room subscription. turn_order
+// is kept so the member's "Member N" label stays stable in transcripts.
+// Known gap: websocket-service's live turn roster (Redis) still lists
+// them until the room next re-syncs; the turn countdown's auto-skip
+// covers a turn landing on them meanwhile. A LeaveRoster RPC would close
+// that — see TODO.md.
+export async function leaveSession(db: Kysely<Database>, sessionId: string, userId: string): Promise<void> {
+  await db
+    .updateTable('session_users')
+    .set({ left_at: sql`now()` })
+    .where('session_id', '=', sessionId)
+    .where('user_id', '=', userId)
+    .where('left_at', 'is', null)
+    .execute()
+}

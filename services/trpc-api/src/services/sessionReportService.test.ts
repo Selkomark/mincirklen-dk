@@ -5,51 +5,128 @@ import {
   submitSessionReport,
   type SubmitSessionReportDeps,
   SessionReportAlreadyResolvedError,
+  SessionReportForbiddenActionError,
+  SessionReportInvalidActionError,
   SessionReportNoteRequiredError,
   SessionReportNotFoundError,
   type ReviewSessionReportDeps,
 } from './sessionReportService'
 
+const OPEN_REPORT = { status: 'open' as const, sessionId: 's1', aboutUserIds: ['alice', 'bob'], messageIds: ['m1'] }
+
 function deps(overrides: Partial<ReviewSessionReportDeps> = {}): ReviewSessionReportDeps & { applied: string[] } {
   const applied: string[] = []
   return {
     applied,
-    findReport: async () => ({ status: 'open' as const }),
-    applyDecision: async (status, note) => {
-      applied.push(`${status}:${note}`)
+    findReport: async () => OPEN_REPORT,
+    applyDecision: async (params) => {
+      applied.push(`decision:${params.status}:${params.action}:${params.targetUserIds.join('+')}:${params.note}`)
+    },
+    addMemberNote: async (userId, note) => {
+      applied.push(`note:${userId}:${note}`)
+    },
+    sendWarning: async (userId, message) => {
+      applied.push(`warn:${userId}:${message}`)
+    },
+    removeFromSession: async (userId) => {
+      applied.push(`remove:${userId}`)
+    },
+    hideMessages: async (messageIds) => {
+      applied.push(`hide:${messageIds.join('+')}`)
+    },
+    banUser: async (userId, reasonCategory) => {
+      applied.push(`ban:${userId}:${reasonCategory}`)
     },
     ...overrides,
   }
 }
 
+const base = { status: 'reviewed' as const, note: 'Looked into it.', action: 'none' as const, targetUserIds: [] as string[], canBan: true }
+
 describe('reviewSessionReport', () => {
-  test('marks an open report reviewed', async () => {
+  test('marks an open report reviewed with no action', async () => {
     const d = deps()
-    await reviewSessionReport(d, { status: 'reviewed', note: 'Spoke to both members.' })
-    expect(d.applied).toEqual(['reviewed:Spoke to both members.'])
+    await reviewSessionReport(d, base)
+    expect(d.applied).toEqual(['decision:reviewed:none::Looked into it.'])
   })
 
   test('marks an open report dismissed', async () => {
     const d = deps()
-    await reviewSessionReport(d, { status: 'dismissed', note: 'Nothing in the transcript supports it.' })
-    expect(d.applied).toEqual(['dismissed:Nothing in the transcript supports it.'])
+    await reviewSessionReport(d, { ...base, status: 'dismissed', note: 'Nothing in the transcript supports it.' })
+    expect(d.applied).toEqual(['decision:dismissed:none::Nothing in the transcript supports it.'])
   })
 
   test('rejects an unknown report without touching storage', async () => {
     const d = deps({ findReport: async () => null })
-    await expect(reviewSessionReport(d, { status: 'reviewed', note: 'x' })).rejects.toBeInstanceOf(SessionReportNotFoundError)
+    await expect(reviewSessionReport(d, base)).rejects.toBeInstanceOf(SessionReportNotFoundError)
     expect(d.applied).toEqual([])
   })
 
   test('refuses a decision without a note — the reasoning is the record', async () => {
     const d = deps()
-    await expect(reviewSessionReport(d, { status: 'reviewed', note: '   ' })).rejects.toBeInstanceOf(SessionReportNoteRequiredError)
+    await expect(reviewSessionReport(d, { ...base, note: '   ' })).rejects.toBeInstanceOf(SessionReportNoteRequiredError)
     expect(d.applied).toEqual([])
   })
 
   test.each(['reviewed', 'dismissed'] as const)('refuses to re-decide a report already %s', async (existing) => {
-    const d = deps({ findReport: async () => ({ status: existing }) })
-    await expect(reviewSessionReport(d, { status: 'dismissed', note: 'x' })).rejects.toBeInstanceOf(SessionReportAlreadyResolvedError)
+    const d = deps({ findReport: async () => ({ ...OPEN_REPORT, status: existing }) })
+    await expect(reviewSessionReport(d, { ...base, status: 'dismissed' })).rejects.toBeInstanceOf(SessionReportAlreadyResolvedError)
+    expect(d.applied).toEqual([])
+  })
+
+  test('a note on the member goes to each target, then the decision is recorded', async () => {
+    const d = deps()
+    await reviewSessionReport(d, { ...base, action: 'note', targetUserIds: ['alice', 'bob'] })
+    expect(d.applied).toEqual(['note:alice:Looked into it.', 'note:bob:Looked into it.', 'decision:reviewed:note:alice+bob:Looked into it.'])
+  })
+
+  test('a warning needs member-facing text and sends it to each target', async () => {
+    const d = deps()
+    await expect(reviewSessionReport(d, { ...base, action: 'warn', targetUserIds: ['alice'] })).rejects.toBeInstanceOf(SessionReportInvalidActionError)
+    await reviewSessionReport(d, { ...base, action: 'warn', targetUserIds: ['alice'], memberMessage: 'Please keep it kind.' })
+    expect(d.applied).toEqual(['warn:alice:Please keep it kind.', 'decision:reviewed:warn:alice:Looked into it.'])
+  })
+
+  test('removing from the circle applies to each target', async () => {
+    const d = deps()
+    await reviewSessionReport(d, { ...base, action: 'remove_from_session', targetUserIds: ['bob'] })
+    expect(d.applied).toEqual(['remove:bob', 'decision:reviewed:remove_from_session:bob:Looked into it.'])
+  })
+
+  test('hiding messages applies to the messages the report names, and needs some', async () => {
+    const d = deps()
+    await reviewSessionReport(d, { ...base, action: 'hide_messages' })
+    expect(d.applied).toEqual(['hide:m1', 'decision:reviewed:hide_messages::Looked into it.'])
+
+    const none = deps({ findReport: async () => ({ ...OPEN_REPORT, messageIds: [] }) })
+    await expect(reviewSessionReport(none, { ...base, action: 'hide_messages' })).rejects.toBeInstanceOf(SessionReportInvalidActionError)
+    expect(none.applied).toEqual([])
+  })
+
+  test('a ban needs the permission and a reason category', async () => {
+    const d = deps()
+    await expect(
+      reviewSessionReport(d, { ...base, action: 'ban', targetUserIds: ['alice'], banReasonCategory: 'harassment', canBan: false }),
+    ).rejects.toBeInstanceOf(SessionReportForbiddenActionError)
+    await expect(reviewSessionReport(d, { ...base, action: 'ban', targetUserIds: ['alice'] })).rejects.toBeInstanceOf(SessionReportInvalidActionError)
+    expect(d.applied).toEqual([])
+
+    await reviewSessionReport(d, { ...base, action: 'ban', targetUserIds: ['alice'], banReasonCategory: 'harassment' })
+    expect(d.applied).toEqual(['ban:alice:harassment', 'decision:reviewed:ban:alice:Looked into it.'])
+  })
+
+  test('member-targeted actions need at least one target, and only subjects of the report', async () => {
+    const d = deps()
+    await expect(reviewSessionReport(d, { ...base, action: 'note', targetUserIds: [] })).rejects.toBeInstanceOf(SessionReportInvalidActionError)
+    await expect(reviewSessionReport(d, { ...base, action: 'note', targetUserIds: ['mallory'] })).rejects.toBeInstanceOf(SessionReportInvalidActionError)
+    expect(d.applied).toEqual([])
+  })
+
+  test('a dismissed report cannot carry an action', async () => {
+    const d = deps()
+    await expect(reviewSessionReport(d, { ...base, status: 'dismissed', action: 'note', targetUserIds: ['alice'] })).rejects.toBeInstanceOf(
+      SessionReportInvalidActionError,
+    )
     expect(d.applied).toEqual([])
   })
 })

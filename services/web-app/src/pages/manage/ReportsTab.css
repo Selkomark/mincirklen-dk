@@ -108,3 +108,36 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Decision dialog: a little wider than the DS default so the action
+   list's hints read on one line; the action step is a fieldset so the
+   whole block greys out together until the note is written. */
+.reports-decision-modal {
+  max-width: 560px;
+}
+
+.reports-decision__step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  transition: opacity var(--duration-fast) var(--easing-standard);
+}
+
+.reports-decision__step:disabled {
+  opacity: 0.5;
+}
+
+.reports-decision__option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reports-decision__hint {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}

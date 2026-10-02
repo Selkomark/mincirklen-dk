@@ -26,5 +26,9 @@ describe('isSessionMember', () => {
 
     expect(await isSessionMember(db, session.id, member.id)).toBe(true)
     expect(await isSessionMember(db, session.id, outsider.id)).toBe(false)
+
+    // Removed by a moderator (left_at set) — no longer a member.
+    await db.updateTable('session_users').set({ left_at: new Date() }).where('session_id', '=', session.id).where('user_id', '=', member.id).execute()
+    expect(await isSessionMember(db, session.id, member.id)).toBe(false)
   })
 })

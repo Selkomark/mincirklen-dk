@@ -390,7 +390,9 @@ export interface ChatMessage {
   // 'pass' (the classifier's own original verdict), never conflate the two
   // in the UI. See SessionPage.tsx's MessageRow for where this drives
   // rendering.
-  moderationStatus: 'pass' | 'flag' | 'crisis' | 'reviewed_pass'
+  // 'removed': a moderator hid it after a report — still delivered to
+  // its author, marked as removed (sessionMessages.tsx's MessageRow).
+  moderationStatus: 'pass' | 'flag' | 'crisis' | 'reviewed_pass' | 'removed'
   falsePositiveReportedAt: string | null
   createdAt: string
 }

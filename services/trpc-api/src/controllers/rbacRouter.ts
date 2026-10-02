@@ -1,4 +1,5 @@
 import {
+  addMemberNoteInputSchema,
   createRoleInputSchema,
   createSessionPolicyInputSchema,
   listUsersInputSchema,
@@ -27,6 +28,7 @@ import {
   updateSessionPolicy,
 } from '../repositories/rbacRepository'
 import { SystemRoleImmutableError, updateRole as updateRoleService, updateRolePermissions } from '../services/rbacService'
+import { insertMemberNote, listMemberNotes } from '../repositories/memberNoteRepository'
 import { hasPermission, router, verifiedProcedure } from './trpc'
 
 function toTRPCError(err: unknown): TRPCError {
@@ -135,6 +137,20 @@ export const rbacRouter = router({
   }),
 
   users: router({
+    // Moderator-only history on a member (migrations/0006) — readable by
+    // anyone who can see users, writable by anyone who can change them.
+    // Also written automatically by a session-report 'note' action.
+    listNotes: hasPermission('users.read')
+      .input(z.object({ userId: z.string().uuid() }))
+      .query(({ ctx, input }) => listMemberNotes(ctx.appEnv.db, input.userId)),
+
+    addNote: hasPermission('users.update')
+      .input(addMemberNoteInputSchema)
+      .mutation(async ({ ctx, input }) => {
+        await insertMemberNote(ctx.appEnv.db, { userId: input.userId, body: input.body, createdBy: ctx.userId })
+        return { ok: true }
+      }),
+
     list: hasPermission('users.read')
       .input(listUsersInputSchema)
       .query(({ ctx, input }) => listUsersWithRoles(ctx.appEnv.db, ctx.appEnv.vault, input)),

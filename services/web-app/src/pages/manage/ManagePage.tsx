@@ -201,12 +201,15 @@ function Sidebar({
   )
 }
 
-function SectionContent({ section }: { section: ManageSection }) {
+// `access` is UX-only here, as everywhere in /manage — it decides which
+// controls to show (the ban option, the add-note form); every action is
+// re-gated server-side by hasPermission() regardless.
+function SectionContent({ section, access }: { section: ManageSection; access: Access }) {
   if (section === 'review') return <ReviewQueueTab />
-  if (section === 'reports') return <ReportsTab />
+  if (section === 'reports') return <ReportsTab canBan={hasAccess(access, 'users.ban')} />
   if (section === 'roles') return <RolesTab />
   if (section === 'gates') return <GatesTab />
-  return <UsersTab />
+  return <UsersTab canAddNote={hasAccess(access, 'users.update')} />
 }
 
 // Reachable at /manage(/review|/roles|/users) by any regular, verified
@@ -268,7 +271,7 @@ export function ManagePage({
             <h1 style={{ margin: 0, fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-primary)' }}>
               {ct(NAV_ITEMS.find((item) => item.section === activeSection)?.labelKey ?? 'nav.review')}
             </h1>
-            <SectionContent section={activeSection} />
+            <SectionContent section={activeSection} access={access} />
           </div>
         ) : (
           <div style={{ color: 'var(--text-secondary)' }}>{ct('noSectionPermissions')}</div>

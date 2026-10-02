@@ -5,7 +5,7 @@ import { createApp } from './app'
 import { insertUser } from './repositories/userRepository'
 import { createSession, joinSession } from './repositories/sessionRepository'
 import { insertSessionReport } from './repositories/sessionReportRepository'
-import { insertMessage } from './repositories/messageRepository'
+import { insertMessage, listMessages as listMessagesRepo } from './repositories/messageRepository'
 import { linkIdentity } from './repositories/userIdentityRepository'
 import { upsertState } from './repositories/featureGateStateRepository'
 import {
@@ -827,6 +827,128 @@ describe('reports that name messages', () => {
     expect(transcript.result.data.olderCursor).not.toBeNull()
     expect(transcript.result.data.newerCursor).toBeNull()
     expect(early.id).toBeDefined()
+  })
+})
+
+describe('session report actions', () => {
+  async function verifiedUser(extraRoleName?: string): Promise<{ cookie: string; userId: string }> {
+    const { cookie, userId } = await mintBareUserCookie()
+    await linkIdentity(db, userId, 'google', `test-subject-${userId}`)
+    const profileRes = await app.request('/trpc/auth.completeProfile', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ firstName: 'Mod', lastName: 'Test', gender: 'other', country: 'GB', mobileNumber: '+44 20 7946 0958', stayAnonymous: true }),
+    })
+    expect(profileRes.status).toBe(200)
+    if (extraRoleName) {
+      const role = await findRoleByName(db, extraRoleName)
+      if (!role) throw new Error(`seeded ${extraRoleName} role not found`)
+      await assignRoleToUser(db, userId, role.id)
+    }
+    return { cookie, userId }
+  }
+
+  async function reportedScenario() {
+    const session = await createSession(db)
+    const reporter = await insertUser(db)
+    const alice = await insertUser(db)
+    await linkIdentity(db, alice.id, 'google', `test-subject-${alice.id}`)
+    await joinSession(db, session.id, reporter.id)
+    await joinSession(db, session.id, alice.id)
+    const message = await insertMessage(db, { sessionId: session.id, userId: alice.id, body: 'reported text' })
+    await insertSessionReport(db, { sessionId: session.id, reporterUserId: reporter.id, aboutUserIds: [alice.id], messageIds: [message.id], body: 'e2e action' })
+    const report = await db.selectFrom('session_reports').select('id').where('session_id', '=', session.id).executeTakeFirstOrThrow()
+    return { session, reporter, alice, message, reportId: report.id }
+  }
+
+  const review = (cookie: string, body: Record<string, unknown>) =>
+    app.request('/trpc/sessionReports.review', { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify(body) })
+
+  test("note: lands in the member's history, readable via rbac.users.listNotes", async () => {
+    const mod = await verifiedUser('MODERATOR')
+    const { alice, reportId } = await reportedScenario()
+    const res = await review(mod.cookie, { reportId, status: 'reviewed', note: 'Pattern worth watching.', action: 'note', targetUserIds: [alice.id] })
+    expect(res.status).toBe(200)
+
+    const admin = await verifiedUser('ADMIN')
+    const notesRes = await app.request(`/trpc/rbac.users.listNotes?input=${encodeURIComponent(JSON.stringify({ userId: alice.id }))}`, { headers: { cookie: admin.cookie } })
+    expect(notesRes.status).toBe(200)
+    const notes = (await notesRes.json()) as { result: { data: { body: string; reportId: string | null; createdBy: string | null }[] } }
+    expect(notes.result.data).toHaveLength(1)
+    expect(notes.result.data[0]).toMatchObject({ body: 'Pattern worth watching.', reportId, createdBy: mod.userId })
+
+    const stored = await db.selectFrom('session_reports').select(['action', 'action_target_user_ids']).where('id', '=', reportId).executeTakeFirstOrThrow()
+    expect(stored.action).toBe('note')
+    expect(stored.action_target_user_ids).toEqual([alice.id])
+  })
+
+  test('remove_from_session: the member stops being a member of that circle', async () => {
+    const mod = await verifiedUser('MODERATOR')
+    const { session, alice, reportId } = await reportedScenario()
+    const res = await review(mod.cookie, { reportId, status: 'reviewed', note: 'Out of this circle.', action: 'remove_from_session', targetUserIds: [alice.id] })
+    expect(res.status).toBe(200)
+    const row = await db.selectFrom('session_users').select('left_at').where('session_id', '=', session.id).where('user_id', '=', alice.id).executeTakeFirstOrThrow()
+    expect(row.left_at).not.toBeNull()
+  })
+
+  test('hide_messages: the named messages become removed, and the author still sees them as such', async () => {
+    const mod = await verifiedUser('MODERATOR')
+    const { session, alice, message, reportId } = await reportedScenario()
+    const res = await review(mod.cookie, { reportId, status: 'reviewed', note: 'Took it down.', action: 'hide_messages' })
+    expect(res.status).toBe(200)
+    const row = await db.selectFrom('messages').select(['moderation_status', 'removed_by']).where('id', '=', message.id).executeTakeFirstOrThrow()
+    expect(row.moderation_status).toBe('removed')
+    expect(row.removed_by).toBe(mod.userId)
+
+    // Another member's read of the circle no longer includes it; the
+    // author's does (the same WHERE rule as flag/crisis).
+    const others = await listMessagesRepo(db, { sessionId: session.id, limit: 50, requestingUserId: mod.userId })
+    expect(others.messages.some((m) => m.id === message.id)).toBe(false)
+    const own = await listMessagesRepo(db, { sessionId: session.id, limit: 50, requestingUserId: alice.id })
+    expect(own.messages.find((m) => m.id === message.id)?.moderationStatus).toBe('removed')
+  })
+
+  test('warn: needs member text, then records the decision (delivery is the logging stand-in)', async () => {
+    const mod = await verifiedUser('MODERATOR')
+    const { alice, reportId } = await reportedScenario()
+    const missing = await review(mod.cookie, { reportId, status: 'reviewed', note: 'Warned.', action: 'warn', targetUserIds: [alice.id] })
+    expect(missing.status).toBe(400)
+    const res = await review(mod.cookie, { reportId, status: 'reviewed', note: 'Warned.', action: 'warn', targetUserIds: [alice.id], memberMessage: 'Please keep it kind.' })
+    expect(res.status).toBe(200)
+    const stored = await db.selectFrom('session_reports').select('action').where('id', '=', reportId).executeTakeFirstOrThrow()
+    expect(stored.action).toBe('warn')
+  })
+
+  test('ban: refused without users.ban; with it, records the identity ban with evidence and blocks the account', async () => {
+    const { alice, message, reportId } = await reportedScenario()
+
+    const mod = await verifiedUser('MODERATOR')
+    const forbidden = await review(mod.cookie, { reportId, status: 'reviewed', note: 'Ban.', action: 'ban', targetUserIds: [alice.id], banReasonCategory: 'harassment' })
+    expect(forbidden.status).toBe(403)
+
+    const lead = await verifiedUser('TRUST-SAFETY-LEAD')
+    const res = await review(lead.cookie, { reportId, status: 'reviewed', note: 'Repeated harassment, see messages.', action: 'ban', targetUserIds: [alice.id], banReasonCategory: 'harassment' })
+    expect(res.status).toBe(200)
+
+    const ban = await db.selectFrom('account_bans').selectAll().where('user_id_at_ban_time', '=', alice.id).executeTakeFirstOrThrow()
+    expect(ban.provider).toBe('google')
+    expect(ban.identity_hash).toBe(`test-subject-${alice.id}`)
+    expect(ban.reason_category).toBe('harassment')
+    expect(ban.banned_by).toBe(lead.userId)
+    const evidence = await db.selectFrom('account_ban_evidence').select(['evidence_type', 'snapshot']).where('ban_id', '=', ban.id).execute()
+    expect(evidence.map((e) => e.evidence_type).sort()).toEqual(['message', 'operator_note'])
+    expect(evidence.find((e) => e.evidence_type === 'message')?.snapshot).toMatchObject({ messageId: message.id, body: 'reported text' })
+
+    const user = await db.selectFrom('users').select('banned_at').where('id', '=', alice.id).executeTakeFirstOrThrow()
+    expect(user.banned_at).not.toBeNull()
+  })
+
+  test('an action on someone the report is not about is rejected', async () => {
+    const mod = await verifiedUser('MODERATOR')
+    const { reportId } = await reportedScenario()
+    const stranger = await insertUser(db)
+    const res = await review(mod.cookie, { reportId, status: 'reviewed', note: 'x', action: 'note', targetUserIds: [stranger.id] })
+    expect(res.status).toBe(400)
   })
 })
 

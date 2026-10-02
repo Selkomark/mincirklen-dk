@@ -38,3 +38,11 @@ export async function hasLinkedIdentityForUser(db: Kysely<Database>, userId: str
 
   return row !== undefined
 }
+
+// Every sign-in identity linked to a user, for banService.ts — a ban is
+// recorded per identity hash so the person is refused however they come
+// back (oauthController.ts checks the hash before any user row exists).
+export async function listIdentitiesForUser(db: Kysely<Database>, userId: string): Promise<{ provider: string; subjectHash: string }[]> {
+  const rows = await db.selectFrom('user_identities').select(['provider', 'provider_subject_hash']).where('user_id', '=', userId).execute()
+  return rows.map((row) => ({ provider: row.provider, subjectHash: row.provider_subject_hash }))
+}

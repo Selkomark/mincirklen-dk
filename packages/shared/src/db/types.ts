@@ -1,4 +1,5 @@
 import type { ColumnType, Generated, JSONColumnType } from 'kysely'
+import type { SessionReportAction } from '../schemas/sessionReport'
 import type { SessionPolicyAttributes } from '../schemas/rbac'
 
 // timestamptz columns: selected as Date, inserted as Date|string|undefined
@@ -125,9 +126,13 @@ export interface MessagesTable {
   // classifier's own original verdict). See migrations/0001_init.ts and
   // messageRepository.ts's listMessages for the visibility rule this
   // column drives.
-  moderation_status: Generated<'pass' | 'flag' | 'crisis' | 'reviewed_pass'>
+  moderation_status: Generated<'pass' | 'flag' | 'crisis' | 'reviewed_pass' | 'removed'>
   false_positive_reported_at: NullableTimestamp
   created_at: Timestamp
+  // Set by a moderator's hide_messages action (migrations/0006) alongside
+  // moderation_status = 'removed'. Null otherwise.
+  removed_at: NullableTimestamp
+  removed_by: string | null
 }
 
 export interface ModerationEventsTable {
@@ -181,6 +186,28 @@ export interface SessionReportsTable {
   // decided before that migration — none in practice, the feature
   // shipped together.
   decision_note: string | null
+  // What the reviewer did about it, beyond recording the decision —
+  // migrations/0006_moderation_actions.ts, sessionReportService.ts.
+  // Null on rows decided before that migration.
+  action: SessionReportAction | null
+  // Which of about_user_ids the action applied to (member-targeted
+  // actions); empty for 'none' / 'hide_messages'. Defaults to [] on
+  // insert (a report is filed without one).
+  action_target_user_ids: JSONColumnType<string[], string[] | undefined>
+}
+
+// Moderator-only history on a member — migrations/0006_moderation_actions.ts.
+// What makes a later, heavier action defensible: a second reviewer can
+// see the pattern. Never shown to the member.
+export interface MemberNotesTable {
+  id: Generated<string>
+  user_id: string
+  // The report this note came out of, if any; survives the report being
+  // deleted (set null).
+  report_id: string | null
+  body: string
+  created_by: string | null
+  created_at: Timestamp
 }
 
 // The abuse-prevention ledger — deliberately NOT foreign-keyed to
@@ -289,6 +316,7 @@ export interface Database {
   moderation_events: ModerationEventsTable
   feedback_ratings: FeedbackRatingsTable
   session_reports: SessionReportsTable
+  member_notes: MemberNotesTable
   user_identities: UserIdentitiesTable
   user_profiles: UserProfilesTable
   topics: TopicsTable

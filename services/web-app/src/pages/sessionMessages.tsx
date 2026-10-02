@@ -184,6 +184,7 @@ export const MessageRow = memo(function MessageRow({
   t: TFunction<'session'>
 }) {
   const isWithheld = isOwn && message.moderationStatus !== 'pass'
+  const isRemoved = message.moderationStatus === 'removed'
   const alreadyReported = isReported || message.falsePositiveReportedAt !== null
 
   return (
@@ -209,7 +210,7 @@ export const MessageRow = memo(function MessageRow({
           </span>
           {isWithheld && (
             <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--signal-urgent)' }}>
-              {t('composer.onlyYouCanSeeThis')}
+              {isRemoved ? t('composer.removedByModerator') : t('composer.onlyYouCanSeeThis')}
             </span>
           )}
           {highlightLabel && (
@@ -243,7 +244,7 @@ export const MessageRow = memo(function MessageRow({
                 report again. */}
             {alreadyReported ? t('composer.falsePositiveReportedNotice') : message.body}
           </div>
-          {isWithheld && !alreadyReported && onReportFalsePositive && (
+          {isWithheld && !isRemoved && !alreadyReported && onReportFalsePositive && (
             <IconButton
               icon={FlagIcon}
               label={t('composer.reportFalsePositive')}

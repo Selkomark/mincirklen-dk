@@ -162,7 +162,8 @@
     "falsePositiveReported": "Vi tar en ny titt",
     "falsePositiveReportedNotice": "Tack — vi tittar på det.",
     "reportMessage": "Rapportera det här meddelandet",
-    "unreportMessage": "Ta bort från rapporten"
+    "unreportMessage": "Ta bort från rapporten",
+    "removedByModerator": "Borttaget av en moderator"
   },
   "rightPanel": {
     "essentialPages": "Viktiga sidor",

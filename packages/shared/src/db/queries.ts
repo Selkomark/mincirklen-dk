@@ -15,6 +15,10 @@ export async function isSessionMember(
     .select('user_id')
     .where('session_id', '=', sessionId)
     .where('user_id', '=', userId)
+    // A member a moderator removed (left_at set — sessionRepository.ts's
+    // leaveSession) is no longer a member for any purpose: no reading,
+    // no posting, no room subscription.
+    .where('left_at', 'is', null)
     .executeTakeFirst()
 
   return row !== undefined

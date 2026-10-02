@@ -162,7 +162,8 @@
     "falsePositiveReported": "Vi kigger på det igen",
     "falsePositiveReportedNotice": "Tak — vi kigger på det.",
     "reportMessage": "Rapportér denne besked",
-    "unreportMessage": "Fjern fra rapporten"
+    "unreportMessage": "Fjern fra rapporten",
+    "removedByModerator": "Fjernet af en moderator"
   },
   "rightPanel": {
     "essentialPages": "Vigtige sider",

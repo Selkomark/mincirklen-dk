@@ -1,4 +1,4 @@
-import type { Database, SessionReportDecision, SessionReportStatus } from '@mincirklen/shared'
+import type { Database, SessionReportAction, SessionReportDecision, SessionReportStatus } from '@mincirklen/shared'
 import { sql, type Kysely } from 'kysely'
 
 // "Report this session" (SessionPage.tsx's ReportSessionModal) — a
@@ -46,6 +46,8 @@ export interface SessionReportRow {
   reviewedAt: Date | null
   reviewedBy: string | null
   decisionNote: string | null
+  action: SessionReportAction | null
+  actionTargetUserIds: string[]
 }
 
 export interface ListSessionReportsResult {
@@ -80,6 +82,8 @@ export async function listSessionReports(
       'session_reports.reviewed_at as reviewed_at',
       'session_reports.reviewed_by as reviewed_by',
       'session_reports.decision_note as decision_note',
+      'session_reports.action as action',
+      'session_reports.action_target_user_ids as action_target_user_ids',
     ])
     .where('session_reports.status', '=', params.status)
 
@@ -114,14 +118,29 @@ export async function listSessionReports(
       reviewedAt: row.reviewed_at,
       reviewedBy: row.reviewed_by,
       decisionNote: row.decision_note,
+      action: row.action,
+      actionTargetUserIds: row.action_target_user_ids,
     })),
     nextCursor: hasMore && last ? `${last.created_at_cursor}|${last.id}` : null,
   }
 }
 
-export async function findSessionReportStatus(db: Kysely<Database>, reportId: string): Promise<{ status: SessionReportStatus } | null> {
-  const row = await db.selectFrom('session_reports').select('status').where('id', '=', reportId).executeTakeFirst()
-  return row ?? null
+export interface SessionReportForReview {
+  status: SessionReportStatus
+  sessionId: string
+  aboutUserIds: string[]
+  messageIds: string[]
+}
+
+// What reviewSessionReport needs to validate an action against: the
+// current status, and which members / messages the report actually names.
+export async function findSessionReportForReview(db: Kysely<Database>, reportId: string): Promise<SessionReportForReview | null> {
+  const row = await db
+    .selectFrom('session_reports')
+    .select(['status', 'session_id', 'about_user_ids', 'message_ids'])
+    .where('id', '=', reportId)
+    .executeTakeFirst()
+  return row ? { status: row.status, sessionId: row.session_id, aboutUserIds: row.about_user_ids, messageIds: row.message_ids } : null
 }
 
 // What the transcript view needs to anchor itself: which circle, and
@@ -155,11 +174,25 @@ export async function findSessionReportAnchor(
 
 export async function applySessionReportDecision(
   db: Kysely<Database>,
-  params: { reportId: string; status: SessionReportDecision; reviewedBy: string; note: string },
+  params: {
+    reportId: string
+    status: SessionReportDecision
+    reviewedBy: string
+    note: string
+    action: SessionReportAction
+    targetUserIds: string[]
+  },
 ): Promise<void> {
   await db
     .updateTable('session_reports')
-    .set({ status: params.status, reviewed_at: sql`now()`, reviewed_by: params.reviewedBy, decision_note: params.note })
+    .set({
+      status: params.status,
+      reviewed_at: sql`now()`,
+      reviewed_by: params.reviewedBy,
+      decision_note: params.note,
+      action: params.action,
+      action_target_user_ids: sql`${JSON.stringify(params.targetUserIds)}::jsonb`,
+    })
     .where('id', '=', params.reportId)
     .execute()
 }

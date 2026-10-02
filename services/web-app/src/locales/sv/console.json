@@ -63,6 +63,17 @@
       "email": "E-post",
       "roles": "Roller",
       "status": "Status"
+    },
+    "notes": {
+      "open": "Anteckningar",
+      "title": "Moderatoranteckningar",
+      "intro": "Intern historik om den här medlemmen. Bara de med åtkomst till Användare ser den; medlemmen ser den aldrig.",
+      "empty": "Inga anteckningar ännu.",
+      "fromReport": "från en sessionsrapport",
+      "addLabel": "Lägg till en anteckning",
+      "add": "Lägg till",
+      "loadFailed": "Kunde inte ladda anteckningar.",
+      "addFailed": "Kunde inte lägga till anteckningen."
     }
   },
   "gates": {
@@ -235,6 +246,51 @@
     "reportedMessage": "Rapporterat meddelande",
     "messages": "Meddelanden",
     "messagesReported_one": "{{count}} meddelande rapporterat",
-    "messagesReported_other": "{{count}} meddelanden rapporterade"
+    "messagesReported_other": "{{count}} meddelanden rapporterade",
+    "removed": "Borttaget av en moderator efter en rapport",
+    "actionLabel": "Vad som ska göras",
+    "targetsLabel": "Gäller",
+    "actions": {
+      "none": {
+        "label": "Ingen ytterligare åtgärd",
+        "hint": "Registrera bara beslutet."
+      },
+      "note": {
+        "label": "Anteckning om medlemmen",
+        "hint": "Din motivering sparas i deras moderatorhistorik, som bara syns under Användare."
+      },
+      "warn": {
+        "label": "Varna medlemmen",
+        "hint": "Skickar dem ett meddelande från modereringsteamet."
+      },
+      "remove_from_session": {
+        "label": "Ta bort från den här cirkeln",
+        "hint": "De kan inte längre läsa eller skriva i den här cirkeln. Deras konto påverkas inte."
+      },
+      "hide_messages": {
+        "label": "Dölj de rapporterade meddelandena",
+        "hint": "Andra medlemmar slutar se dem; avsändaren ser dem markerade som borttagna.",
+        "unavailable": "Den här rapporten nämner inga meddelanden."
+      },
+      "ban": {
+        "label": "Stäng av medlemmen",
+        "hint": "Deras inloggning nekas från och med nu och deras nuvarande session avslutas. De rapporterade meddelandena sparas som bevis."
+      }
+    },
+    "memberMessageLabel": "Meddelande till medlemmen",
+    "memberMessageHint": "De kommer att läsa detta. Din motivering ovan förblir intern.",
+    "memberMessagePlaceholder": "Vad de bör veta och vad vi förväntar oss framöver…",
+    "banReasonLabel": "Orsakskategori",
+    "banReasonPlaceholder": "Välj en kategori",
+    "banReasons": {
+      "predatory_contact": "Grooming eller utnyttjande kontakt",
+      "harassment": "Trakasserier",
+      "crisis_abuse": "Missbruk av krisstöd",
+      "illegal_content": "Olagligt innehåll",
+      "other": "Annat"
+    },
+    "banWarning": "En avstängning är permanent och gäller alla inloggningsidentiteter kopplade till medlemmen.",
+    "decisionReviewedWithAction": "Granskad — {{action}}",
+    "dismissUnavailable": "Att avfärda betyder att det inte fanns något att agera på; välj \"Ingen ytterligare åtgärd\" för att avfärda."
   }
 }

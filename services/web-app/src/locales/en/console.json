@@ -63,6 +63,17 @@
       "email": "Email",
       "roles": "Roles",
       "status": "Status"
+    },
+    "notes": {
+      "open": "Notes",
+      "title": "Moderator notes",
+      "intro": "Internal history on this member. Only people with access to Users can see it; the member never does.",
+      "empty": "No notes yet.",
+      "fromReport": "from a session report",
+      "addLabel": "Add a note",
+      "add": "Add note",
+      "loadFailed": "Failed to load notes.",
+      "addFailed": "Failed to add the note."
     }
   },
   "gates": {
@@ -235,6 +246,51 @@
     "reportedMessage": "Reported message",
     "messages": "Messages",
     "messagesReported_one": "{{count}} message reported",
-    "messagesReported_other": "{{count}} messages reported"
+    "messagesReported_other": "{{count}} messages reported",
+    "removed": "Removed by a moderator after a report",
+    "actionLabel": "What to do about it",
+    "targetsLabel": "Apply to",
+    "actions": {
+      "none": {
+        "label": "No further action",
+        "hint": "Record the decision only."
+      },
+      "note": {
+        "label": "Note on the member",
+        "hint": "Your reasoning is saved to their moderator-only history, visible under Users."
+      },
+      "warn": {
+        "label": "Warn the member",
+        "hint": "Sends them a message from the moderation team."
+      },
+      "remove_from_session": {
+        "label": "Remove from this circle",
+        "hint": "They can no longer read or post in this circle. Their account is untouched."
+      },
+      "hide_messages": {
+        "label": "Hide the reported messages",
+        "hint": "Other members stop seeing them; the author sees them marked as removed.",
+        "unavailable": "This report names no messages."
+      },
+      "ban": {
+        "label": "Ban the member",
+        "hint": "Their sign-in is refused from now on and their current session ends. The reported messages are kept as evidence."
+      }
+    },
+    "memberMessageLabel": "Message to the member",
+    "memberMessageHint": "They will read this. Your reasoning above stays internal.",
+    "memberMessagePlaceholder": "What they should know, and what we expect going forward…",
+    "banReasonLabel": "Reason category",
+    "banReasonPlaceholder": "Choose a category",
+    "banReasons": {
+      "predatory_contact": "Predatory contact",
+      "harassment": "Harassment",
+      "crisis_abuse": "Abuse of crisis support",
+      "illegal_content": "Illegal content",
+      "other": "Other"
+    },
+    "banWarning": "A ban is permanent and applies to every sign-in identity linked to this member.",
+    "decisionReviewedWithAction": "Reviewed — {{action}}",
+    "dismissUnavailable": "Dismissing means there was nothing to act on; choose \"No further action\" to dismiss."
   }
 }
