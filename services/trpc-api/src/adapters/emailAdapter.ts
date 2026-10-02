@@ -19,7 +19,11 @@ export interface EmailSender {
 }
 
 // Masks the local part the same way rbacRepository.ts's maskEmail does,
-// so even the mock never writes a full address to the log.
+// so even the mock never writes a full address to the log. The body IS
+// logged in full — that's the point of the stand-in while there's no
+// delivery: it's the only way to inspect what members would be told.
+// Bodies are moderation wording plus a moderator's own warning text,
+// never a member's data.
 function maskRecipient(email: string): string {
   const atIndex = email.indexOf('@')
   if (atIndex <= 0) return '***'
@@ -30,7 +34,13 @@ export function createLoggingEmailSender(log: (line: string) => void = console.l
   return {
     async sendEmail(message) {
       // TODO(email): replace with real delivery.
-      log(`[EMAIL] (mock — not delivered) to=${maskRecipient(message.to)} subject=${JSON.stringify(message.subject)} chars=${message.text.length}`)
+      log(
+        [
+          `[EMAIL] (mock — not delivered) to=${maskRecipient(message.to)}`,
+          `  subject: ${message.subject}`,
+          ...message.text.split('\n').map((line) => `  | ${line}`),
+        ].join('\n'),
+      )
     },
   }
 }

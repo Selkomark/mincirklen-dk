@@ -2,15 +2,16 @@ import { describe, expect, test } from 'bun:test'
 import { createLoggingEmailSender } from './emailAdapter'
 
 describe('createLoggingEmailSender', () => {
-  test('logs a masked recipient and the subject, never the full address or body', async () => {
+  test('logs a masked recipient, the subject and the full body for inspection — never the full address', async () => {
     const lines: string[] = []
     const sender = createLoggingEmailSender((line) => lines.push(line))
-    await sender.sendEmail({ to: 'someone@example.com', subject: 'A note from the moderators', text: 'Please keep it kind.' })
+    await sender.sendEmail({ to: 'someone@example.com', subject: 'A note from the moderators', text: 'Please keep it kind.\nSecond line.' })
     expect(lines).toHaveLength(1)
     expect(lines[0]).toContain('s***@example.com')
     expect(lines[0]).not.toContain('someone@')
-    expect(lines[0]).toContain('"A note from the moderators"')
-    expect(lines[0]).not.toContain('Please keep it kind.')
+    expect(lines[0]).toContain('subject: A note from the moderators')
+    expect(lines[0]).toContain('  | Please keep it kind.')
+    expect(lines[0]).toContain('  | Second line.')
     expect(lines[0]).toContain('mock')
   })
 
