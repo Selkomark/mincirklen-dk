@@ -722,7 +722,7 @@ type DashboardLoadState =
   | { status: 'needs-agreement'; summary: SessionSummary; agreedKeys: string[] }
   | { status: 'agreeing'; summary: SessionSummary; agreedKeys: string[] }
   | { status: 'ready'; summary: SessionSummary }
-  | { status: 'error'; kind: 'not_found' | 'full' | 'error' }
+  | { status: 'error'; kind: 'not_found' | 'full' | 'removed' | 'error' }
 
 // Paper-plane send icon, in the style Telegram uses on its own send button —
 // icon-only reads across languages without needing a translated label on the
@@ -843,8 +843,9 @@ function SessionCenterPanel({
         }
       } catch (err) {
         if (cancelled) return
-        const kind = err instanceof Error && (err.message === 'not_found' || err.message === 'full') ? err.message : 'error'
-        setLoadState({ status: 'error', kind: kind as 'not_found' | 'full' | 'error' })
+        const kind =
+          err instanceof Error && (err.message === 'not_found' || err.message === 'full' || err.message === 'removed') ? err.message : 'error'
+        setLoadState({ status: 'error', kind: kind as 'not_found' | 'full' | 'removed' | 'error' })
       }
     })()
     return () => {
@@ -1296,6 +1297,8 @@ function SessionCenterPanel({
       content = <CenterPanelMessage code={404} title={t('centerPanelError.notFoundTitle')} message={t('centerPanelError.notFoundMessage')} />
     } else if (loadState.kind === 'full') {
       content = <CenterPanelMessage code={409} title={t('centerPanelError.fullTitle')} message={t('centerPanelError.fullMessage')} />
+    } else if (loadState.kind === 'removed') {
+      content = <CenterPanelMessage code={403} title={t('centerPanelError.removedTitle')} message={t('centerPanelError.removedMessage')} />
     } else {
       content = <CenterPanelMessage code={500} title={t('centerPanelError.genericTitle')} message={t('centerPanelError.genericMessage')} />
     }

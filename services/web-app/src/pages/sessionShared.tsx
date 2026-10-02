@@ -78,6 +78,13 @@ async function postTrpc<T>(path: string, input: unknown): Promise<T> {
     // before the resolver ever runs, distinctly from a well-formed but
     // nonexistent id (404) — but to the user both are just "not a real
     // session", so both read as not_found rather than a scary 500.
+    if (res.status === 403) {
+      // The one FORBIDDEN the circle explains: a moderator removed this
+      // member (sessionRouter.ts's RemovedFromSessionError mapping). Any
+      // other 403 stays a generic failure.
+      const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
+      throw new Error(body?.error?.message === 'removed_from_session' ? 'removed' : 'error')
+    }
     const message = res.status === 404 || res.status === 400 ? 'not_found' : res.status === 409 ? 'full' : 'error'
     throw new Error(message)
   }

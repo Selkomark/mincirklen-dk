@@ -891,6 +891,29 @@ describe('session report actions', () => {
     expect(row.left_at).not.toBeNull()
   })
 
+  test('a removed member who comes back is refused with a fixed FORBIDDEN message, not re-joined', async () => {
+    const mod = await verifiedUser('MODERATOR')
+    const session = await createSession(db)
+    const member = await verifiedUser()
+    const reporter = await insertUser(db)
+    await joinSession(db, session.id, reporter.id)
+    await joinSession(db, session.id, member.userId)
+    await insertSessionReport(db, { sessionId: session.id, reporterUserId: reporter.id, aboutUserIds: [member.userId], messageIds: [], body: 'e2e removal' })
+    const report = await db.selectFrom('session_reports').select('id').where('session_id', '=', session.id).executeTakeFirstOrThrow()
+    expect((await review(mod.cookie, { reportId: report.id, status: 'reviewed', note: 'Removed.', action: 'remove_from_session', targetUserIds: [member.userId] })).status).toBe(200)
+
+    const visit = await app.request('/trpc/session.visit', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: member.cookie },
+      body: JSON.stringify({ sessionId: session.id }),
+    })
+    expect(visit.status).toBe(403)
+    const body = (await visit.json()) as { error: { message: string } }
+    expect(body.error.message).toBe('removed_from_session')
+    const row = await db.selectFrom('session_users').select('left_at').where('session_id', '=', session.id).where('user_id', '=', member.userId).executeTakeFirstOrThrow()
+    expect(row.left_at).not.toBeNull()
+  })
+
   test('hide_messages: the named messages become removed, and the author still sees them as such', async () => {
     const mod = await verifiedUser('MODERATOR')
     const { session, alice, message, reportId } = await reportedScenario()

@@ -183,7 +183,9 @@
     "fullTitle": "This circle is full",
     "fullMessage": "This circle has already reached its capacity.",
     "genericTitle": "Something went wrong",
-    "genericMessage": "We couldn't load this session right now. Please try again."
+    "genericMessage": "We couldn't load this session right now. Please try again.",
+    "removedTitle": "You were removed from this circle",
+    "removedMessage": "A moderator removed you from this circle after a report, so you can no longer read or take part in it. Your account is not affected, and you can still join other circles."
   },
   "errors": {
     "agreementFailed": "Something went wrong recording your agreement. Please try again.",

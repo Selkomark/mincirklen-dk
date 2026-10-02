@@ -183,7 +183,9 @@
     "fullTitle": "Denne cirkel er fuld",
     "fullMessage": "Denne cirkel har allerede nået sin kapacitet.",
     "genericTitle": "Der opstod en fejl",
-    "genericMessage": "Vi kunne ikke indlæse denne session lige nu. Prøv igen."
+    "genericMessage": "Vi kunne ikke indlæse denne session lige nu. Prøv igen.",
+    "removedTitle": "Du er blevet fjernet fra denne cirkel",
+    "removedMessage": "En moderator har fjernet dig fra denne cirkel efter en rapport, så du kan ikke længere læse eller deltage i den. Din konto er ikke berørt, og du kan stadig deltage i andre cirkler."
   },
   "errors": {
     "agreementFailed": "Der opstod en fejl under registrering af din accept. Prøv igen.",

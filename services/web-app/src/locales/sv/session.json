@@ -183,7 +183,9 @@
     "fullTitle": "Den här cirkeln är full",
     "fullMessage": "Den här cirkeln har redan nått sin kapacitet.",
     "genericTitle": "Något gick fel",
-    "genericMessage": "Vi kunde inte läsa in den här sessionen just nu. Försök igen."
+    "genericMessage": "Vi kunde inte läsa in den här sessionen just nu. Försök igen.",
+    "removedTitle": "Du har tagits bort från den här cirkeln",
+    "removedMessage": "En moderator tog bort dig från den här cirkeln efter en rapport, så du kan inte längre läsa eller delta i den. Ditt konto påverkas inte och du kan fortfarande gå med i andra cirklar."
   },
   "errors": {
     "agreementFailed": "Något gick fel när ditt godkännande skulle registreras. Försök igen.",

@@ -37,6 +37,7 @@ import {
   listRecentSessionVisits as listRecentSessionVisitsRepo,
   recordGuidelinesAgreement,
   type RosterEntry,
+  RemovedFromSessionError,
 } from '../repositories/sessionRepository'
 import { escalate } from '../services/crisisEscalationService'
 import { NotAMemberError, sendMessage as sendMessageService, skipTurn as skipTurnService } from '../services/messageService'
@@ -57,6 +58,11 @@ function toTRPCError(err: unknown): TRPCError {
   }
   if (err instanceof SessionNotFoundError) {
     return new TRPCError({ code: 'NOT_FOUND', message: err.message })
+  }
+  if (err instanceof RemovedFromSessionError) {
+    // Fixed message, not err.message: sessionShared.tsx keys on it to
+    // show the "you were removed" panel instead of a generic failure.
+    return new TRPCError({ code: 'FORBIDDEN', message: 'removed_from_session' })
   }
   return new TRPCError({ code: 'INTERNAL_SERVER_ERROR', cause: err })
 }

@@ -18,6 +18,16 @@ export class SessionFullError extends Error {
     super(message)
   }
 }
+
+// A member a moderator removed (left_at set — leaveSession) trying to
+// come back. Distinct from "not a member" so the circle can say what
+// happened rather than spin on 403s; mapped to FORBIDDEN with a fixed
+// message the frontend keys on (sessionRouter.ts's toTRPCError).
+export class RemovedFromSessionError extends Error {
+  constructor(message: string) {
+    super(message)
+  }
+}
 export class NotYourTurnError extends Error {
   constructor(message: string) {
     super(message)
@@ -436,6 +446,19 @@ async function joinSessionInTransaction(trx: Kysely<Database>, sessionId: string
 
   if (!session) {
     throw new SessionNotFoundError(`session ${sessionId} not found`)
+  }
+
+  // Removed by a moderator — the row exists (so getRoster below would
+  // call this a revisit) but left_at is set. Refuse before anything else.
+  const removed = await trx
+    .selectFrom('session_users')
+    .select('user_id')
+    .where('session_id', '=', sessionId)
+    .where('user_id', '=', userId)
+    .where('left_at', 'is not', null)
+    .executeTakeFirst()
+  if (removed) {
+    throw new RemovedFromSessionError(`user ${userId} was removed from session ${sessionId}`)
   }
 
   const roster = await getRoster(trx, sessionId)
