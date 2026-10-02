@@ -3,6 +3,7 @@ import { trpcServer } from '@hono/trpc-server'
 import * as Sentry from '@sentry/bun'
 import { sentry } from '@sentry/hono/bun'
 import { appRouter } from './controllers/appRouter'
+import { createEmailWebhookController } from './controllers/emailWebhookController'
 import { createExportDownloadController } from './controllers/exportDownloadController'
 import { createHealthHandler } from './controllers/healthController'
 import { createOAuthController } from './controllers/oauthController'
@@ -38,6 +39,7 @@ export function createApp(env: AppEnv): Hono {
   app.get('/health', createHealthHandler(env))
   app.route('/', createOAuthController(env))
   app.route('/', createExportDownloadController(env))
+  app.route('/', createEmailWebhookController(env))
 
   app.use(
     '/trpc/*',
