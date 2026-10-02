@@ -358,9 +358,14 @@ function ReportSessionModal({
 
   // Reset per-open, not just on a successful submit — reopening the
   // modal after a cancel (or a failed attempt the user gave up on)
-  // should never show a stale error from a previous attempt.
+  // should never show a stale error or a stuck pending button from a
+  // previous attempt. The modal stays mounted between opens (the shell
+  // owns `isOpen`), so nothing resets on its own.
   function handleOpenChange(open: boolean) {
-    if (open) setSubmitError(null)
+    if (open) {
+      setSubmitError(null)
+      setIsSubmitting(false)
+    }
     onOpenChange(open)
   }
 
@@ -385,6 +390,7 @@ function ReportSessionModal({
       close()
     } catch {
       setSubmitError(t('reportModal.submitError'))
+    } finally {
       setIsSubmitting(false)
     }
   }
