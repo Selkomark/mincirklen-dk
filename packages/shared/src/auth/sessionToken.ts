@@ -7,6 +7,17 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
 // instead of separately re-hardcoding the same number.
 export const DEFAULT_MAX_AGE_SECONDS = 60 * 60 * 24 * 180 // 180 days
 
+// Ceiling for anyone holding a role — i.e. anyone who can reach /manage.
+// Used two ways (both in services/trpc-api/src/services/sessionPolicyService.ts
+// and packages/shared/src/schemas/rbac.ts): it's what a role without an
+// attached session policy falls back to instead of the 180-day member
+// default above, and it's the most any policy is allowed to store. A
+// role-holder's idle session can be shortened below this by a policy,
+// never lengthened past it. Two weeks, not 180 days: an admin cookie
+// that stays valid for half a year is a standing credential, not a
+// session.
+export const ROLE_MAX_IDLE_SECONDS = 60 * 60 * 24 * 14 // 14 days
+
 // Reissue once more than half the resolved duration has elapsed — a
 // standard sliding-session "renew at half-life" heuristic: avoids a fresh
 // HMAC + Set-Cookie on literally every request while keeping idle-reset

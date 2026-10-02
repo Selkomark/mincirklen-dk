@@ -2,6 +2,7 @@ import type { Database } from '@mincirklen/shared'
 import {
   createSessionToken,
   DEFAULT_MAX_AGE_SECONDS,
+  ROLE_MAX_IDLE_SECONDS,
   shouldReissueSessionToken,
   verifySessionTokenSignature,
 } from '@mincirklen/shared'
@@ -205,6 +206,7 @@ export function createContextFactory(env: AppEnv) {
         { findSessionPolicyAttributesForRoles: (roleIds) => findSessionPolicyAttributesForRoles(env.db, roleIds) },
         roles.map((role) => role.id),
         DEFAULT_MAX_AGE_SECONDS,
+        ROLE_MAX_IDLE_SECONDS,
       )
     }
 

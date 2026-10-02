@@ -42,12 +42,15 @@ const SECONDS_PER_UNIT: Record<DurationUnit, number> = {
   days: 60 * 60 * 24,
 }
 
-// Platform default (sessionToken.ts's DEFAULT_MAX_AGE_SECONDS) — a role
-// with no attached policy falls back to this. Used only as the sentinel
-// "no policy" option's id below; the actual 180-day value lives
-// server-side and is never sent from here.
+// Role ceiling (sessionToken.ts's ROLE_MAX_IDLE_SECONDS, 2 weeks) — a
+// role with no attached policy falls back to this, and no policy may
+// store more. The 180-day platform default is for members holding no
+// role at all; it never applies to anyone who can reach /manage. The
+// empty id is the sentinel "no policy" option; the server owns the real
+// value and enforces it regardless of what's sent from here.
 const PLATFORM_DEFAULT_ID = ''
-const PLATFORM_DEFAULT_LABEL = 'Platform default (180 days)'
+const MAX_IDLE_SECONDS = 60 * 60 * 24 * 14
+const PLATFORM_DEFAULT_LABEL = 'Default (2 weeks)'
 
 function formatDuration(maxIdleSeconds: number | undefined): string {
   if (!maxIdleSeconds) return '—'
@@ -63,6 +66,13 @@ function formatDuration(maxIdleSeconds: number | undefined): string {
     }
   }
   return `${maxIdleSeconds} seconds`
+}
+
+// Seeded policies (migrations/0002) are named by their duration, so
+// "13 days (13 days)" would be noise — show the name alone then.
+function policyLabel(policy: SessionPolicy): string {
+  const duration = formatDuration(policy.attributes.maxIdleSeconds)
+  return policy.name === duration ? policy.name : `${policy.name} (${duration})`
 }
 
 function groupByPrefix(permissions: Permission[]): [string, Permission[]][] {
@@ -206,7 +216,7 @@ function SessionPolicySelect({
       <SelectItem id={PLATFORM_DEFAULT_ID}>{PLATFORM_DEFAULT_LABEL}</SelectItem>
       {sessionPolicies.map((policy) => (
         <SelectItem key={policy.id} id={policy.id}>
-          {policy.name} ({formatDuration(policy.attributes.maxIdleSeconds)})
+          {policyLabel(policy)}
         </SelectItem>
       ))}
     </Select>
@@ -291,7 +301,7 @@ function EditRoleModal({
             </Text>
           )
         ) : (
-          <>
+          <div className="roles-field-row">
             <TextField label="Role name" value={name} onChange={(e) => setName(e.target.value)} />
             <TextField
               label="Description"
@@ -299,10 +309,14 @@ function EditRoleModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
-          </>
+          </div>
         )}
 
-        <SessionPolicySelect value={policyId} onChange={setPolicyId} sessionPolicies={sessionPolicies} isDisabled={saving} />
+        {/* Same two-column row with one cell filled, so the select takes
+            exactly the width of the name field above it. */}
+        <div className="roles-field-row">
+          <SessionPolicySelect value={policyId} onChange={setPolicyId} sessionPolicies={sessionPolicies} isDisabled={saving} />
+        </div>
 
         <div>
           {role.isSystem ? (
@@ -397,19 +411,20 @@ function CreateSessionPolicyModal({ onClose, onCreated }: { onClose: () => void;
   const [error, setError] = useState<string | null>(null)
 
   const parsedValue = Number(value)
-  const isValid = name.trim().length > 0 && Number.isFinite(parsedValue) && parsedValue > 0
+  const maxIdleSeconds = Math.round(parsedValue * SECONDS_PER_UNIT[unit])
+  const exceedsCap = Number.isFinite(parsedValue) && maxIdleSeconds > MAX_IDLE_SECONDS
+  const isValid = name.trim().length > 0 && Number.isFinite(parsedValue) && parsedValue > 0 && !exceedsCap
 
   const create = async () => {
     if (!isValid) return
     setCreating(true)
     setError(null)
     try {
-      const maxIdleSeconds = Math.round(parsedValue * SECONDS_PER_UNIT[unit])
       await postTrpc('rbac.sessionPolicies.create', { name: name.trim(), attributes: { maxIdleSeconds } })
       await onCreated()
       onClose()
     } catch {
-      setError('Failed to create session policy — name may already be taken, or the duration is out of range (1 minute to 1 year).')
+      setError('Failed to create session policy — name may already be taken, or the duration is out of range (1 minute to 2 weeks).')
     } finally {
       setCreating(false)
     }
@@ -425,8 +440,8 @@ function CreateSessionPolicyModal({ onClose, onCreated }: { onClose: () => void;
         style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}
       >
         <Text variant="muted" style={{ margin: 0 }}>
-          A named idle-timeout template you can attach to roles. A user holding several roles is bound by whichever attached
-          policy is shortest.
+          A named idle-timeout template you can attach to roles, from 1 minute to 2 weeks. A user holding several roles is
+          bound by whichever attached policy is shortest.
         </Text>
         {error && <Alert variant="urgent">{error}</Alert>}
         <TextField label="Policy name" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
@@ -444,6 +459,7 @@ function CreateSessionPolicyModal({ onClose, onCreated }: { onClose: () => void;
               inputMode="numeric"
               value={value}
               onChange={(e) => setValue(e.target.value.replace(/\D/g, ''))}
+              hint={exceedsCap ? 'Must be 2 weeks or less' : undefined}
             />
           </div>
           <div style={{ flex: 1 }}>
@@ -551,9 +567,7 @@ function RolesPanel({
                 <td>{role.isSystem ? 'All' : role.permissions.length}</td>
                 <td>
                   {policy ? (
-                    <>
-                      {policy.name} <span style={{ color: 'var(--text-secondary)' }}>({formatDuration(policy.attributes.maxIdleSeconds)})</span>
-                    </>
+                    policyLabel(policy)
                   ) : (
                     <span style={{ color: 'var(--text-secondary)' }}>{PLATFORM_DEFAULT_LABEL}</span>
                   )}
@@ -598,7 +612,7 @@ function SessionPoliciesPanel({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
       <PanelToolbar
-        description={`Idle-timeout templates attached to roles. Roles without one use the ${PLATFORM_DEFAULT_LABEL.toLowerCase()}.`}
+        description="Idle-timeout templates attached to roles, 2 weeks at most. A role without one gets the full 2 weeks."
         action={
           <Button variant="safe" onPress={() => setCreating(true)}>
             New policy
@@ -676,7 +690,7 @@ export function RolesTab() {
       )
       setRoles(roleList)
       setPermissions(permissionList)
-      setSessionPolicies(policyList)
+      setSessionPolicies([...policyList].sort((a, b) => (a.attributes.maxIdleSeconds ?? 0) - (b.attributes.maxIdleSeconds ?? 0)))
       setRolePermissionIds(Object.fromEntries(permissionIds))
       setError(null)
     } catch {

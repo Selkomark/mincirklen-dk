@@ -62,3 +62,17 @@
   white-space: nowrap;
   border: 0;
 }
+
+/* Two equal columns for the edit-role form rows; stacks on a narrow
+   viewport, where the 720px modal has already shrunk to 90vw. */
+.roles-field-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+@media (max-width: 560px) {
+  .roles-field-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

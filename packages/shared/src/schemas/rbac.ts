@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { ROLE_MAX_IDLE_SECONDS } from '../auth/sessionToken'
 
 export const roleSchema = z.object({
   id: z.string().uuid(),
@@ -48,18 +49,18 @@ export const updateUserRolesInputSchema = z.object({
 export type UpdateUserRolesInput = z.infer<typeof updateUserRolesInputSchema>
 
 // 60s floor guards against a fat-fingered 0/negative value instantly
-// locking out everyone in a role; 1yr ceiling guards against an absurd
-// value defeating the point of the feature. The platform default
-// (sessionToken.ts's DEFAULT_MAX_AGE_SECONDS, 180 days) is enforced
-// separately as an upper clamp in sessionPolicyService.ts — a policy can
-// only ever shorten a role's effective session, never lengthen it past
-// that default, regardless of what's stored here.
+// locking out everyone in a role; the ceiling is the role-holder
+// maximum (sessionToken.ts's ROLE_MAX_IDLE_SECONDS, 2 weeks) — a policy
+// exists to shorten a role's session below that, so storing anything
+// longer would be meaningless. sessionPolicyService.ts clamps to the
+// same ceiling at resolve time too, so a value that somehow bypassed
+// this schema still can't lengthen a session.
 export const sessionPolicyAttributesSchema = z.object({
   maxIdleSeconds: z
     .number()
     .int()
     .min(60)
-    .max(60 * 60 * 24 * 365)
+    .max(ROLE_MAX_IDLE_SECONDS)
     .optional(),
 })
 export type SessionPolicyAttributes = z.infer<typeof sessionPolicyAttributesSchema>
