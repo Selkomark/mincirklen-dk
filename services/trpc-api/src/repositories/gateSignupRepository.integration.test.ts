@@ -164,7 +164,7 @@ describe('countsByGateKey', () => {
 
     const counts = await countsByGateKey(db)
 
-    expect(counts.get(gateKey)).toEqual({ pending: 1, granted: 1, revoked: 1 })
+    expect(counts.get(gateKey)).toEqual({ pending: 1, granted: 1, revoked: 1, rejected: 0 })
   })
 
   test('a gate with no signups at all is simply absent from the map', async () => {

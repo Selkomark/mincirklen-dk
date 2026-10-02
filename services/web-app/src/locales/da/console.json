@@ -92,12 +92,12 @@
       "status": "Status",
       "pending": "Afventer",
       "granted": "Tildelt",
-      "revoked": "Tilbagekaldt"
+      "revoked": "Tilbagekaldt",
+      "rejected": "Afvist"
     },
     "open": "Åben",
     "inviteOnly": "Kun efter invitation",
     "openToEveryone": "Åben for alle",
-    "hideSignups": "Skjul tilmeldinger",
     "manageSignups": "Administrer tilmeldinger",
     "autoOpen": "Åbn automatisk efter en tidsplan (åbner uanset kontakten ovenfor, når tiden er inde)",
     "autoOpenDate": "Dato for automatisk åbning",
@@ -107,11 +107,8 @@
       "loadFailed": "Kunne ikke indlæse tilmeldinger.",
       "grantFailed": "Kunne ikke tildele adgang.",
       "revokeFailed": "Kunne ikke tilbagekalde adgang.",
-      "copiedFor": "Invitationslink kopieret til udklipsholderen — klar til at sende til {{email}}.",
-      "empty": "Ingen tilmeldinger endnu.",
       "columns": {
         "email": "E-mail",
-        "status": "Status",
         "signedUp": "Tilmeldt"
       },
       "granted": "Tildelt",
@@ -124,7 +121,24 @@
       "revoke": "Tilbagekald",
       "revokeTitle": "Tilbagekald adgang?",
       "revokeBody": "{{email}} vil ikke længere kunne bruge sit invitationslink. Du kan tildele adgang igen senere, hvis du ombestemmer dig.",
-      "revokeConfirm": "Tilbagekald adgang"
+      "revokeConfirm": "Tilbagekald adgang",
+      "rejected": "Afvist",
+      "reject": "Afvis",
+      "rejectFailed": "Kunne ikke afvise tilmeldingen.",
+      "tabsLabel": "Tilmeldinger efter status",
+      "tabs": {
+        "pending": "Afventer godkendelse",
+        "granted": "Tildelt",
+        "revoked": "Tilbagekaldt",
+        "rejected": "Afvist"
+      },
+      "emptyByStatus": {
+        "pending": "Intet afventer godkendelse.",
+        "granted": "Ingen har fået adgang endnu.",
+        "revoked": "Ingen tilbagekaldte tilmeldinger.",
+        "rejected": "Ingen afviste tilmeldinger."
+      },
+      "grantedNotice": "Invitation sendt til {{email}}. Linket ligger også i din udklipsholder, hvis du vil sende det på anden vis."
     }
   },
   "roles": {

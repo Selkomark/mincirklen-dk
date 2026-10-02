@@ -294,6 +294,35 @@ describe('grant -> redeem -> access, end to end', () => {
   // requireGateAccess/getStatus only verified the cookie's own signature
   // — a revoke would update the DB row but the still-valid-looking cookie
   // kept working forever.
+  test('a pending signup can be rejected without email, shows under status=rejected, and a granted one cannot be rejected', async () => {
+    const admin = await createAdminActor()
+    const email = uniqueEmail()
+    await call('gates.submitSignup', { gateKey: 'platform_launch', email })
+    const pending = await query('gates.listSignups', { gateKey: 'platform_launch', status: 'pending', limit: 50 }, admin)
+    const target = ((await pending.json()) as { result: { data: { signups: { id: string; email: string }[] } } }).result.data.signups.find((s) => s.email === email)!
+
+    const rejectRes = await call('gates.rejectSignup', { signupId: target.id }, admin)
+    expect(rejectRes.status).toBe(200)
+
+    const rejected = await query('gates.listSignups', { gateKey: 'platform_launch', status: 'rejected', limit: 50 }, admin)
+    const rejectedBody = (await rejected.json()) as { result: { data: { signups: { id: string; status: string }[] } } }
+    expect(rejectedBody.result.data.signups.find((s) => s.id === target.id)?.status).toBe('rejected')
+
+    // Already decided — a second reject is "nothing to reject".
+    expect((await call('gates.rejectSignup', { signupId: target.id }, admin)).status).toBe(404)
+
+    // A change of mind is still possible: granting a rejected signup works.
+    const grantRes = await call('gates.grantSignup', { signupId: target.id }, admin)
+    expect(grantRes.status).toBe(200)
+    // ...and a granted one can't be rejected (revoke is the tool for that).
+    expect((await call('gates.rejectSignup', { signupId: target.id }, admin)).status).toBe(404)
+
+    const stats = await query('gates.list', {}, admin)
+    const statsBody = (await stats.json()) as { result: { data: { key: string; rejectedCount: number; grantedCount: number }[] } }
+    const launch = statsBody.result.data.find((g) => g.key === 'platform_launch')!
+    expect(typeof launch.rejectedCount).toBe('number')
+  })
+
   test('revoking a grant cuts off a cookie that already redeemed it, both for enforcement and for getStatus', async () => {
     const admin = await createAdminActor()
     const email = uniqueEmail()

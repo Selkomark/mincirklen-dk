@@ -58,7 +58,7 @@ function decodeCursor(cursor: string): { createdAtText: string; id: string } {
 export async function listSignups(
   db: Kysely<Database>,
   gateKey: string,
-  params: { status?: 'pending' | 'granted' | 'revoked'; cursor?: string; limit: number },
+  params: { status?: 'pending' | 'granted' | 'revoked' | 'rejected'; cursor?: string; limit: number },
 ): Promise<{ signups: GateSignup[]; nextCursor: string | null }> {
   let query = db
     .selectFrom('gate_signups')
@@ -121,6 +121,21 @@ export async function markRevoked(db: Kysely<Database>, id: string): Promise<Gat
   return row ? toGateSignup(row) : null
 }
 
+// Declining a pending signup — see migrations/0012. Only from 'pending':
+// a granted one is revoked instead (it has a live link to invalidate),
+// and anything else is already decided.
+export async function markRejected(db: Kysely<Database>, id: string): Promise<GateSignup | null> {
+  const row = await db
+    .updateTable('gate_signups')
+    .set({ status: 'rejected' })
+    .where('id', '=', id)
+    .where('status', '=', 'pending')
+    .returningAll()
+    .executeTakeFirst()
+
+  return row ? toGateSignup(row) : null
+}
+
 export async function findSignupById(db: Kysely<Database>, id: string): Promise<GateSignup | null> {
   const row = await db.selectFrom('gate_signups').selectAll().where('id', '=', id).executeTakeFirst()
   return row ? toGateSignup(row) : null
@@ -131,19 +146,20 @@ export async function findSignupById(db: Kysely<Database>, id: string): Promise<
 // count per (gateKey, status), not N+1 queries per registry entry.
 export async function countsByGateKey(
   db: Kysely<Database>,
-): Promise<Map<string, { pending: number; granted: number; revoked: number }>> {
+): Promise<Map<string, { pending: number; granted: number; revoked: number; rejected: number }>> {
   const rows = await db
     .selectFrom('gate_signups')
     .select(['gate_key', 'status', (eb) => eb.fn.countAll().as('count')])
     .groupBy(['gate_key', 'status'])
     .execute()
 
-  const counts = new Map<string, { pending: number; granted: number; revoked: number }>()
+  const counts = new Map<string, { pending: number; granted: number; revoked: number; rejected: number }>()
   for (const row of rows) {
-    const entry = counts.get(row.gate_key) ?? { pending: 0, granted: 0, revoked: 0 }
+    const entry = counts.get(row.gate_key) ?? { pending: 0, granted: 0, revoked: 0, rejected: 0 }
     const count = Number(row.count)
     if (row.status === 'granted') entry.granted = count
     else if (row.status === 'revoked') entry.revoked = count
+    else if (row.status === 'rejected') entry.rejected = count
     else entry.pending = count
     counts.set(row.gate_key, entry)
   }

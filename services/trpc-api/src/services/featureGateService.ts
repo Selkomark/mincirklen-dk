@@ -64,19 +64,39 @@ export async function updateGateState(
 }
 
 export interface GrantSignupAccessDeps {
-  markGranted: (signupId: string, grantedBy: string | null) => Promise<{ id: string; gateKey: string } | null>
+  markGranted: (signupId: string, grantedBy: string | null) => Promise<{ id: string; gateKey: string; email: string } | null>
   createInviteToken: (gateKey: string, signupId: string) => string
 }
 
 export async function grantSignupAccess(
   deps: GrantSignupAccessDeps,
   params: { signupId: string; grantedBy: string | null },
-): Promise<{ signupId: string; gateKey: string; token: string }> {
+): Promise<{ signupId: string; gateKey: string; email: string; token: string }> {
   const granted = await deps.markGranted(params.signupId, params.grantedBy)
   if (!granted) {
     throw new SignupNotFoundError('Signup not found')
   }
-  return { signupId: granted.id, gateKey: granted.gateKey, token: deps.createInviteToken(granted.gateKey, granted.id) }
+  // `email` so the caller can send the invite link to the person
+  // (gatesRouter.ts) — the grant itself is the record, the email the
+  // delivery.
+  return { signupId: granted.id, gateKey: granted.gateKey, email: granted.email, token: deps.createInviteToken(granted.gateKey, granted.id) }
+}
+
+export interface RejectSignupDeps {
+  markRejected: (signupId: string) => Promise<{ id: string; gateKey: string } | null>
+}
+
+// Declining a pending signup. Nothing is sent to the person — they were
+// told at signup that we'd be in touch when their circle is ready, and
+// a "no" email has no upside for them. Only a 'pending' row can be
+// rejected (markRejected's own WHERE clause); anything else reads as
+// not found, same as revoke.
+export async function rejectSignup(deps: RejectSignupDeps, params: { signupId: string }): Promise<{ gateKey: string }> {
+  const rejected = await deps.markRejected(params.signupId)
+  if (!rejected) {
+    throw new SignupNotFoundError('Signup not found')
+  }
+  return { gateKey: rejected.gateKey }
 }
 
 export interface RevokeSignupAccessDeps {
@@ -132,7 +152,7 @@ export interface GateStatsEntry {
 
 export interface ListGatesWithStatsDeps {
   listStates: () => Promise<{ key: string; mode: GateMode; scheduledOpenAt: Date | null }[]>
-  countsByGateKey: () => Promise<Map<string, { pending: number; granted: number; revoked: number }>>
+  countsByGateKey: () => Promise<Map<string, { pending: number; granted: number; revoked: number; rejected: number }>>
 }
 
 // Iterates GATE_REGISTRY, not the DB — a gate with zero rows anywhere
@@ -148,7 +168,7 @@ export async function listGatesWithStats(deps: ListGatesWithStatsDeps, now: Date
     const override = stateByKey.get(key)
     const mode = override?.mode ?? definition.defaultMode
     const scheduledOpenAt = override?.scheduledOpenAt ?? null
-    const count = counts.get(key) ?? { pending: 0, granted: 0, revoked: 0 }
+    const count = counts.get(key) ?? { pending: 0, granted: 0, revoked: 0, rejected: 0 }
 
     return {
       key,
@@ -160,6 +180,7 @@ export async function listGatesWithStats(deps: ListGatesWithStatsDeps, now: Date
       pendingCount: count.pending,
       grantedCount: count.granted,
       revokedCount: count.revoked,
+      rejectedCount: count.rejected,
     }
   })
 }

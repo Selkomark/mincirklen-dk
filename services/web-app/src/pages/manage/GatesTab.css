@@ -1,0 +1,5 @@
+/* The per-gate management dialog: schedule plus the signups by status.
+   Wide enough for the signups table with its action buttons. */
+.gates-manage-modal {
+  max-width: 880px;
+}

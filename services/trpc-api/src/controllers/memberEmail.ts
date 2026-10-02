@@ -14,6 +14,16 @@ export const emailSender: EmailSender = createLoggingEmailSender()
 // an email didn't go out — the record is the source of truth, the email
 // is a courtesy. A member with no address on file (legacy/failure rows,
 // see rbacRepository.ts) is simply skipped.
+// Same best-effort posture for an address we already hold (a waitlist
+// signup, which has no user yet).
+export async function emailAddress(to: string, content: EmailContent): Promise<void> {
+  try {
+    await emailSender.sendEmail({ to, ...content })
+  } catch (err) {
+    console.error('[EMAIL] failed to send', { subject: content.subject, err })
+  }
+}
+
 export async function emailMember(db: Kysely<Database>, kms: KmsConfig, userId: string, content: EmailContent): Promise<void> {
   try {
     const to = await findEmailForUser(db, kms, userId)

@@ -92,12 +92,12 @@
       "status": "Status",
       "pending": "Pending",
       "granted": "Granted",
-      "revoked": "Revoked"
+      "revoked": "Revoked",
+      "rejected": "Rejected"
     },
     "open": "Open",
     "inviteOnly": "Invite-only",
     "openToEveryone": "Open to everyone",
-    "hideSignups": "Hide signups",
     "manageSignups": "Manage signups",
     "autoOpen": "Auto-open on a schedule (opens regardless of the switch above once due)",
     "autoOpenDate": "Auto-open date",
@@ -107,11 +107,8 @@
       "loadFailed": "Failed to load signups.",
       "grantFailed": "Failed to grant access.",
       "revokeFailed": "Failed to revoke access.",
-      "copiedFor": "Invite link copied to clipboard — ready to send to {{email}}.",
-      "empty": "No signups yet.",
       "columns": {
         "email": "Email",
-        "status": "Status",
         "signedUp": "Signed up"
       },
       "granted": "Granted",
@@ -124,7 +121,24 @@
       "revoke": "Revoke",
       "revokeTitle": "Revoke access?",
       "revokeBody": "{{email}} won't be able to use their invite link anymore. You can grant them access again later if you change your mind.",
-      "revokeConfirm": "Revoke access"
+      "revokeConfirm": "Revoke access",
+      "rejected": "Rejected",
+      "reject": "Reject",
+      "rejectFailed": "Failed to reject the signup.",
+      "tabsLabel": "Signups by status",
+      "tabs": {
+        "pending": "Awaiting approval",
+        "granted": "Granted",
+        "revoked": "Revoked",
+        "rejected": "Rejected"
+      },
+      "emptyByStatus": {
+        "pending": "Nothing awaiting approval.",
+        "granted": "No one has been granted access yet.",
+        "revoked": "No revoked signups.",
+        "rejected": "No rejected signups."
+      },
+      "grantedNotice": "Invite emailed to {{email}}. The link is also on your clipboard in case you want to send it another way."
     }
   },
   "roles": {

@@ -9,15 +9,20 @@ import {
   submitGateSignupInputSchema,
   updateGateStateInputSchema,
   verifyGateInviteToken,
+  rejectGateSignupInputSchema,
+  GATE_REGISTRY,
 } from '@mincirklen/shared'
 import { TRPCError } from '@trpc/server'
-import { countsByGateKey, findSignupById, insertSignup, listSignups, markGranted, markRevoked } from '../repositories/gateSignupRepository'
+import { countsByGateKey, findSignupById, insertSignup, listSignups, markGranted, markRejected, markRevoked } from '../repositories/gateSignupRepository'
 import { findState, listStates, upsertState } from '../repositories/featureGateStateRepository'
 import { maskEmail } from '../repositories/rbacRepository'
+import { gateInviteEmail } from '../services/gateEmails'
+import { emailAddress } from './memberEmail'
 import {
   SignupNotFoundError,
   UnknownGateError,
   grantSignupAccess,
+  rejectSignup,
   isGateEffectivelyOpen,
   listGatesWithStats,
   redeemGateInvite,
@@ -151,14 +156,19 @@ export const gatesRouter = router({
     .input(grantGateSignupInputSchema)
     .mutation(async ({ ctx, input }) => {
       try {
-        const { gateKey, token } = await grantSignupAccess(
+        const { gateKey, email, token } = await grantSignupAccess(
           {
             markGranted: (signupId, grantedBy) => markGranted(ctx.appEnv.db, signupId, grantedBy),
             createInviteToken: (key, signupId) => createGateInviteToken(key, signupId, ctx.appEnv.gateInviteSecret),
           },
           { signupId: input.signupId, grantedBy: ctx.userId },
         )
-        return { inviteUrl: `${ctx.appEnv.publicBaseUrl}/?invite=${token}`, gateKey }
+        const inviteUrl = `${ctx.appEnv.publicBaseUrl}/?invite=${token}`
+        // The link goes to the person by email; the response still carries
+        // it so the admin UI can copy it as a fallback. Best-effort — the
+        // grant is recorded either way.
+        await emailAddress(email, gateInviteEmail(inviteUrl, isKnownGateKey(gateKey) ? GATE_REGISTRY[gateKey].name : gateKey))
+        return { inviteUrl, gateKey }
       } catch (err) {
         throw toTRPCError(err)
       }
@@ -173,6 +183,18 @@ export const gatesRouter = router({
   // until they lose that token some other way (e.g. a cookie clear).
   // This stops a mistaken grant, or a not-yet-redeemed link, cold; it is
   // not a kill switch for an active visitor.
+  // Declines a pending signup. No email — see featureGateService.ts's
+  // rejectSignup.
+  rejectSignup: hasPermission('gates.manage')
+    .input(rejectGateSignupInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await rejectSignup({ markRejected: (signupId) => markRejected(ctx.appEnv.db, signupId) }, { signupId: input.signupId })
+      } catch (err) {
+        throw toTRPCError(err)
+      }
+    }),
+
   revokeSignup: hasPermission('gates.manage')
     .input(revokeGateSignupInputSchema)
     .mutation(async ({ ctx, input }) => {

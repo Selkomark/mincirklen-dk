@@ -92,12 +92,12 @@
       "status": "Status",
       "pending": "Väntande",
       "granted": "Beviljad",
-      "revoked": "Återkallad"
+      "revoked": "Återkallad",
+      "rejected": "Avvisade"
     },
     "open": "Öppen",
     "inviteOnly": "Endast inbjudan",
     "openToEveryone": "Öppen för alla",
-    "hideSignups": "Dölj anmälningar",
     "manageSignups": "Hantera anmälningar",
     "autoOpen": "Öppna automatiskt enligt schema (öppnar oavsett reglaget ovan när tiden är inne)",
     "autoOpenDate": "Datum för automatisk öppning",
@@ -107,11 +107,8 @@
       "loadFailed": "Kunde inte ladda anmälningar.",
       "grantFailed": "Kunde inte bevilja åtkomst.",
       "revokeFailed": "Kunde inte återkalla åtkomst.",
-      "copiedFor": "Inbjudningslänk kopierad till urklipp — redo att skickas till {{email}}.",
-      "empty": "Inga anmälningar ännu.",
       "columns": {
         "email": "E-post",
-        "status": "Status",
         "signedUp": "Anmäld"
       },
       "granted": "Beviljad",
@@ -124,7 +121,24 @@
       "revoke": "Återkalla",
       "revokeTitle": "Återkalla åtkomst?",
       "revokeBody": "{{email}} kommer inte längre att kunna använda sin inbjudningslänk. Du kan bevilja åtkomst igen senare om du ändrar dig.",
-      "revokeConfirm": "Återkalla åtkomst"
+      "revokeConfirm": "Återkalla åtkomst",
+      "rejected": "Avvisad",
+      "reject": "Avvisa",
+      "rejectFailed": "Kunde inte avvisa anmälan.",
+      "tabsLabel": "Anmälningar efter status",
+      "tabs": {
+        "pending": "Väntar på godkännande",
+        "granted": "Beviljade",
+        "revoked": "Återkallade",
+        "rejected": "Avvisade"
+      },
+      "emptyByStatus": {
+        "pending": "Inget väntar på godkännande.",
+        "granted": "Ingen har beviljats åtkomst ännu.",
+        "revoked": "Inga återkallade anmälningar.",
+        "rejected": "Inga avvisade anmälningar."
+      },
+      "grantedNotice": "Inbjudan skickad till {{email}}. Länken finns också i ditt urklipp om du vill skicka den på annat sätt."
     }
   },
   "roles": {
