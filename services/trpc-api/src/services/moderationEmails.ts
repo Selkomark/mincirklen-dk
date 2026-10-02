@@ -31,8 +31,13 @@ export function reportReceivedEmail(): EmailContent {
 export function reportDecidedEmail(status: SessionReportDecision): EmailContent {
   const outcome =
     status === 'dismissed'
-      ? 'After looking into it, we did not find grounds to act on this report. If something new happens, please report it again.'
-      : 'A moderator has looked into it and taken it from here. For everyone\'s privacy we don\'t share what was done, but your report was heard.'
+      ? 'Thank you for taking the time to report this. A moderator has looked carefully at what happened and, on this occasion, ' +
+        'did not find grounds to act. That does not mean your concern was misplaced \u2014 if anything else happens, please tell us again. ' +
+        'Reports like yours are how we keep an eye on things.'
+      : 'Thank you for speaking up. A moderator has looked carefully at what happened, reached a decision, and taken the steps ' +
+        'needed to keep MinCirklen a safe place. Out of respect for everyone\'s privacy we don\'t share the details of what was done, ' +
+        'but please know your report made a difference.\n\n' +
+        'Please keep looking out for one another. Every report helps make the circles safer for everybody.'
   return { subject: 'An update on your report', text: `${outcome}${SIGN_OFF}` }
 }
 

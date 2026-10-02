@@ -14,8 +14,12 @@ describe('moderation emails', () => {
     expect(reportReceivedEmail().subject).toBe('We received your report')
     expect(reportReceivedEmail().text).toContain('Nobody in the circle has been told')
     const reviewed = reportDecidedEmail('reviewed')
-    expect(reviewed.text).toContain("we don't share what was done")
+    expect(reviewed.text).toContain('Thank you for speaking up')
+    expect(reviewed.text).toContain('taken the steps')
+    expect(reviewed.text).toContain("don't share the details")
+    expect(reviewed.text).toContain('safer for everybody')
     expect(reportDecidedEmail('dismissed').text).toContain('did not find grounds')
+    expect(reportDecidedEmail('dismissed').text).toContain('Thank you for taking the time')
   })
 
   test('a warning carries the moderator\'s own words', () => {
