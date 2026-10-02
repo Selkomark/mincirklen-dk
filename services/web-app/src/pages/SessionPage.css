@@ -314,24 +314,19 @@
   }
 }
 
-/* Per-message report toggle (SessionCenterPanel): hidden until the row is
-   hovered or focused so the timeline stays calm, always visible once a
-   message is selected, and always visible where there's no hover. */
+/* Per-message report toggle (SessionCenterPanel): always present but
+   faded so the timeline stays calm and the affordance is still
+   discoverable; full strength on hover/focus and once selected. */
 .dash-message-select {
-  opacity: 0;
+  opacity: 0.45;
   transition: opacity var(--duration-fast) var(--easing-standard);
 }
 
 .dash-message-row:hover .dash-message-select,
 .dash-message-row:focus-within .dash-message-select,
-.dash-message-select--selected {
+.dash-message-select--selected,
+.dash-message-select[data-focus-visible] {
   opacity: 1;
-}
-
-@media (hover: none) {
-  .dash-message-select {
-    opacity: 1;
-  }
 }
 
 /* Floating "N messages selected · Report · Clear" bar over the timeline,

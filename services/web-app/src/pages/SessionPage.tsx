@@ -1572,9 +1572,9 @@ function SessionCenterPanel({
                   trailing={
                     // Only other members' messages can be reported — your
                     // own already has the "ask for another look" action.
-                    // Hidden until the row is hovered/focused (SessionPage.css)
-                    // so a calm timeline isn't lined with flags; stays
-                    // visible once selected.
+                    // Faded until hovered/focused (SessionPage.css) so a calm
+                    // timeline isn't lined with flags, but always there to
+                    // find; full strength once selected.
                     m.userId !== myUserId ? (
                       <IconButton
                         className={['dash-message-select', selectedMessageIds.has(m.id) && 'dash-message-select--selected'].filter(Boolean).join(' ')}
