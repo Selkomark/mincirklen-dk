@@ -621,14 +621,16 @@ function DecisionModal({
           </div>
         </fieldset>
 
+        {/* Two ways to close a report, never both at once: apply the
+            outcomes (needs at least one), or dismiss it (needs none). */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
           <Button
             variant={outcomes.some((o) => o.action === 'ban') ? 'urgent' : 'safe'}
-            isDisabled={!ready || pending !== null}
+            isDisabled={!ready || outcomes.length === 0 || pending !== null}
             isPending={pending === 'reviewed'}
             onPress={() => void decide('reviewed')}
           >
-            {outcomes.length === 0 ? t('reports.decisionReviewed') : t('reports.decisionReviewedWithOutcomes', { count: outcomes.length })}
+            {t('reports.decisionApply', { count: outcomes.length })}
           </Button>
           <Button
             variant="secondary"
@@ -636,13 +638,11 @@ function DecisionModal({
             isPending={pending === 'dismissed'}
             onPress={() => void decide('dismissed')}
           >
-            {t('reports.decisionDismissed')}
+            {t('reports.decisionDismiss')}
           </Button>
-          {outcomes.length > 0 && (
-            <Text variant="muted" style={{ margin: 0, fontSize: 'var(--font-size-xs)' }}>
-              {t('reports.dismissUnavailable')}
-            </Text>
-          )}
+          <Text variant="muted" style={{ margin: 0, fontSize: 'var(--font-size-xs)' }}>
+            {outcomes.length === 0 ? t('reports.decisionHintNoOutcomes') : t('reports.decisionHintWithOutcomes')}
+          </Text>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <Button variant="ghost" onPress={onClose} isDisabled={pending !== null}>

@@ -241,8 +241,6 @@
     "decisionIntro": "Skriv din begrundelse først. Den gemmes sammen med rapporten som dokumentation for hvorfor, og den er påkrævet, før du kan afgøre.",
     "noteLabel": "Din begrundelse",
     "notePlaceholder": "Hvad du fandt i samtalen, og hvorfor du afgør det sådan…",
-    "decisionReviewed": "Gennemgået — jeg har undersøgt eller handlet på det",
-    "decisionDismissed": "Afvis — intet at handle på",
     "loadFailed": "Kunne ikke indlæse sessionsrapporter.",
     "decideFailed": "Kunne ikke gemme afgørelsen — den er muligvis allerede afgjort af en anden.",
     "reportedMessage": "Rapporteret besked",
@@ -291,7 +289,6 @@
       "other": "Andet"
     },
     "banWarning": "En udelukkelse er permanent og gælder alle login-identiteter knyttet til dette medlem.",
-    "dismissUnavailable": "At afvise betyder, at der ikke var noget at handle på; fjern udfaldene for at afvise.",
     "decidedBy": "Afgjort {{when}} af {{who}}",
     "history": {
       "title": "Historik",
@@ -314,14 +311,17 @@
     "outcomes": {
       "title": "Udfald",
       "members": "Medlemmer i denne rapport",
-      "none": "Ingen udfald endnu — afgørelsen registreres uden yderligere handling. Tilføj ét for at handle på et medlem eller de rapporterede beskeder; tilføj flere for at behandle medlemmer forskelligt.",
+      "none": "Ingen udfald endnu. Tilføj ét for at handle på et medlem eller på de rapporterede beskeder; tilføj flere for at behandle medlemmer forskelligt.",
       "add": "Tilføj et udfald",
       "remove": "Fjern",
       "nth": "Udfald {{n}}",
       "actionLabel": "Handling",
       "actionPlaceholder": "Vælg, hvad der skal gøres"
     },
-    "decisionReviewedWithOutcomes_one": "Gennemgået — anvend {{count}} udfald",
-    "decisionReviewedWithOutcomes_other": "Gennemgået — anvend {{count}} udfald"
+    "decisionApply_one": "Anvend {{count}} udfald og luk rapporten",
+    "decisionApply_other": "Anvend {{count}} udfald og luk rapporten",
+    "decisionDismiss": "Afvis rapporten — der skal ikke gøres noget",
+    "decisionHintNoOutcomes": "Tilføj mindst ét udfald for at handle på rapporten, eller afvis den, hvis der ikke skal gøres noget.",
+    "decisionHintWithOutcomes": "Fjern udfaldene ovenfor for i stedet at afvise."
   }
 }

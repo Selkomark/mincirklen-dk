@@ -241,8 +241,6 @@
     "decisionIntro": "Write down your reasoning first. It is kept with the report as the record of why, and is required before you can decide.",
     "noteLabel": "Your reasoning",
     "notePlaceholder": "What you found in the conversation and why you are deciding this way…",
-    "decisionReviewed": "Reviewed — I looked into it or acted on it",
-    "decisionDismissed": "Dismiss — nothing to act on",
     "loadFailed": "Failed to load session reports.",
     "decideFailed": "Failed to save the decision — it may already have been decided by someone else.",
     "reportedMessage": "Reported message",
@@ -291,7 +289,6 @@
       "other": "Other"
     },
     "banWarning": "A ban is permanent and applies to every sign-in identity linked to this member.",
-    "dismissUnavailable": "Dismissing means there was nothing to act on; remove the outcomes to dismiss.",
     "decidedBy": "Decided {{when}} by {{who}}",
     "history": {
       "title": "History",
@@ -314,14 +311,17 @@
     "outcomes": {
       "title": "Outcomes",
       "members": "Members in this report",
-      "none": "No outcomes yet — the decision will be recorded with no further action. Add one to act on a member or the reported messages; add several to treat members differently.",
+      "none": "No outcomes yet. Add one to act on a member or on the reported messages; add several to treat members differently.",
       "add": "Add an outcome",
       "remove": "Remove",
       "nth": "Outcome {{n}}",
       "actionLabel": "Action",
       "actionPlaceholder": "Choose what to do"
     },
-    "decisionReviewedWithOutcomes_one": "Reviewed — apply {{count}} outcome",
-    "decisionReviewedWithOutcomes_other": "Reviewed — apply {{count}} outcomes"
+    "decisionApply_one": "Apply {{count}} outcome and close the report",
+    "decisionApply_other": "Apply {{count}} outcomes and close the report",
+    "decisionDismiss": "Dismiss the report — nothing needs doing",
+    "decisionHintNoOutcomes": "Add at least one outcome to act on this report, or dismiss it if nothing needs doing.",
+    "decisionHintWithOutcomes": "To dismiss instead, remove the outcomes above."
   }
 }

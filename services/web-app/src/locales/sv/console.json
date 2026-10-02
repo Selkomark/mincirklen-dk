@@ -241,8 +241,6 @@
     "decisionIntro": "Skriv ner din motivering först. Den sparas med rapporten som dokumentation av varför, och krävs innan du kan besluta.",
     "noteLabel": "Din motivering",
     "notePlaceholder": "Vad du såg i samtalet och varför du beslutar så här…",
-    "decisionReviewed": "Granskad — jag har tittat på eller agerat på det",
-    "decisionDismissed": "Avfärda — inget att agera på",
     "loadFailed": "Kunde inte ladda sessionsrapporter.",
     "decideFailed": "Kunde inte spara beslutet — det kan redan ha beslutats av någon annan.",
     "reportedMessage": "Rapporterat meddelande",
@@ -291,7 +289,6 @@
       "other": "Annat"
     },
     "banWarning": "En avstängning är permanent och gäller alla inloggningsidentiteter kopplade till medlemmen.",
-    "dismissUnavailable": "Att avfärda betyder att det inte fanns något att agera på; ta bort utfallen för att avfärda.",
     "decidedBy": "Beslutad {{when}} av {{who}}",
     "history": {
       "title": "Historik",
@@ -314,14 +311,17 @@
     "outcomes": {
       "title": "Utfall",
       "members": "Medlemmar i den här rapporten",
-      "none": "Inga utfall ännu — beslutet registreras utan ytterligare åtgärd. Lägg till ett för att agera på en medlem eller de rapporterade meddelandena; lägg till flera för att behandla medlemmar olika.",
+      "none": "Inga utfall ännu. Lägg till ett för att agera på en medlem eller på de rapporterade meddelandena; lägg till flera för att behandla medlemmar olika.",
       "add": "Lägg till ett utfall",
       "remove": "Ta bort",
       "nth": "Utfall {{n}}",
       "actionLabel": "Åtgärd",
       "actionPlaceholder": "Välj vad som ska göras"
     },
-    "decisionReviewedWithOutcomes_one": "Granskad — tillämpa {{count}} utfall",
-    "decisionReviewedWithOutcomes_other": "Granskad — tillämpa {{count}} utfall"
+    "decisionApply_one": "Tillämpa {{count}} utfall och stäng rapporten",
+    "decisionApply_other": "Tillämpa {{count}} utfall och stäng rapporten",
+    "decisionDismiss": "Avfärda rapporten — inget behöver göras",
+    "decisionHintNoOutcomes": "Lägg till minst ett utfall för att agera på rapporten, eller avfärda den om inget behöver göras.",
+    "decisionHintWithOutcomes": "Ta bort utfallen ovan för att avfärda i stället."
   }
 }
