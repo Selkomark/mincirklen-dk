@@ -146,11 +146,11 @@ export const FlagIcon = (
 // is an independent small tag in the header line ("Reported member",
 // "Reported message"); either can be used without the other. Both apply
 // on top of whatever the bubble would otherwise look like, so the row
-// still reads as the same message the circle saw. `trailing` is a slot
-// beside the bubble for a per-message action (the circle's report-this-
-// message button); `onReportFalsePositive` is optional for the same
-// reason — a reviewer reading a transcript has no "that's my message"
-// action.
+// still reads as the same message the circle saw. `leading` is a slot
+// before the avatar (the circle's report-selection checkbox) and
+// `trailing` one beside the bubble (its report-this-message button);
+// `onReportFalsePositive` is optional for the same reason — a reviewer
+// reading a transcript has no "that's my message" action.
 export const MessageRow = memo(function MessageRow({
   message,
   member,
@@ -160,6 +160,7 @@ export const MessageRow = memo(function MessageRow({
   isReported = false,
   highlight = false,
   highlightLabel,
+  leading,
   trailing,
   className,
   t,
@@ -172,6 +173,7 @@ export const MessageRow = memo(function MessageRow({
   isReported?: boolean
   highlight?: boolean
   highlightLabel?: string
+  leading?: ReactNode
   trailing?: ReactNode
   className?: string
   t: TFunction<'session'>
@@ -181,6 +183,7 @@ export const MessageRow = memo(function MessageRow({
 
   return (
     <div className={className} style={{ display: 'flex', gap: 10, maxWidth: 560 }}>
+      {leading}
       <MemberAvatar member={member} size={32} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>

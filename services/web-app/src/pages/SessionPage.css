@@ -314,11 +314,15 @@
   }
 }
 
-/* Per-message report toggle (SessionCenterPanel): always present but
-   faded so the timeline stays calm and the affordance is still
-   discoverable; full strength on hover/focus and once selected. */
+/* Per-message report toggle (SessionCenterPanel): hidden until the row is
+   hovered or focused so the timeline stays calm, visible once selected,
+   and always visible where there's no hover. Half the DS IconButton's
+   size — it sits beside a bubble, not in a toolbar. */
 .dash-message-select {
-  opacity: 0.45;
+  width: 20px;
+  height: 20px;
+  align-self: center;
+  opacity: 0;
   transition: opacity var(--duration-fast) var(--easing-standard);
 }
 
@@ -327,6 +331,21 @@
 .dash-message-select--selected,
 .dash-message-select[data-focus-visible] {
   opacity: 1;
+}
+
+@media (hover: none) {
+  .dash-message-select {
+    opacity: 1;
+  }
+}
+
+/* Selection-mode checkbox (or an equal-width spacer on own messages) in
+   front of the avatar — a fixed column so every bubble shifts right by
+   the same amount when the pick-list appears. */
+.dash-message-check {
+  width: 20px;
+  flex: none;
+  align-self: center;
 }
 
 /* Floating "N messages selected · Report · Clear" bar over the timeline,

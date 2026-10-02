@@ -1569,12 +1569,32 @@ function SessionCenterPanel({
                   isReported={reportedMessageIds.has(m.id)}
                   highlight={selectedMessageIds.has(m.id)}
                   className="dash-message-row"
+                  leading={
+                    // Once anything is selected the timeline switches into
+                    // a pick-list: every reportable message gets a checkbox
+                    // on the left, so adding the rest of an exchange is a
+                    // click each rather than a hover hunt. Own messages keep
+                    // a spacer so the bubbles stay aligned.
+                    selectedMessageIds.size > 0 ? (
+                      m.userId !== myUserId ? (
+                        <Checkbox
+                          className="dash-message-check"
+                          aria-label={selectedMessageIds.has(m.id) ? t('composer.unreportMessage') : t('composer.reportMessage')}
+                          isSelected={selectedMessageIds.has(m.id)}
+                          onChange={() => onToggleSelectMessage(m)}
+                        />
+                      ) : (
+                        <span className="dash-message-check" aria-hidden="true" />
+                      )
+                    ) : undefined
+                  }
                   trailing={
                     // Only other members' messages can be reported — your
                     // own already has the "ask for another look" action.
-                    // Faded until hovered/focused (SessionPage.css) so a calm
-                    // timeline isn't lined with flags, but always there to
-                    // find; full strength once selected.
+                    // Hidden until the row is hovered/focused (SessionPage.css)
+                    // so a calm timeline isn't lined with flags; this is the
+                    // entry point, the checkboxes above take over once a
+                    // selection exists.
                     m.userId !== myUserId ? (
                       <IconButton
                         className={['dash-message-select', selectedMessageIds.has(m.id) && 'dash-message-select--selected'].filter(Boolean).join(' ')}
