@@ -216,6 +216,11 @@ removed / messages hidden / banned.
 To do: wire a real transport behind the same `sendEmail(message)` shape —
 provider choice, credentials via env, bounce/complaint handling, a
 templated member-facing body in all supported languages, and an
-integration test against the provider's sandbox. A reference for how to
-proceed exists outside this repo; pick it up when this is scheduled. Keep
-the adapter's interface stable so the service layer doesn't change.
+integration test against the provider's sandbox. Keep the adapter's
+interface stable so the service layer doesn't change.
+
+Provider decided: AhaSend, for both directions. The full plan — outbound
+swap, the inbound webhook that answers "Closed account — request for
+record" emails automatically, the prerequisite `account_bans.email_hash`
+migration without which no inbound lookup is possible, and the reference
+approach it's based on — is in `docs/email_automation.md`.

@@ -16,6 +16,10 @@ circles to be heard in.
 - [docs/gdpr-runbook.md](docs/gdpr-runbook.md) — local-dev-only reference
   for the abuse-prevention ban ledger and post-deletion data-disclosure
   logic; never a production procedure — see `DPIA_PRELAUNCH.md` R8
+- [docs/email_automation.md](docs/email_automation.md) — TODO plan for
+  real email: AhaSend for outbound moderation emails and an inbound
+  webhook that answers closed-account record requests, with the
+  prerequisite email-hash migration and the reference approach
 - [REJECTED_IDEAS.md](REJECTED_IDEAS.md) / [PROMISING_IDEAS.md](PROMISING_IDEAS.md) —
   product/feature ideas evaluated against `CHARTER.md`, with why
 - [docs/executive_blueprint.md](docs/executive_blueprint.md) —
