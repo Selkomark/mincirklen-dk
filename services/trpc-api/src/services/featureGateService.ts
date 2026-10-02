@@ -148,6 +148,7 @@ export interface GateStatsEntry {
   pendingCount: number
   grantedCount: number
   revokedCount: number
+  rejectedCount: number
 }
 
 export interface ListGatesWithStatsDeps {
