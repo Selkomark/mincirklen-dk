@@ -397,22 +397,46 @@
   z-index: 2;
 }
 
-/* A selected message quoted inside the report modal. */
-.dash-report-quote {
+/* Selected messages quoted inside the report modal: one compact line
+   each — who · when, the text clipped to the line, a remove button —
+   in a list that scrolls rather than growing the modal past the form. */
+.dash-report-quotes {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: var(--space-2) var(--space-3);
+  gap: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.dash-report-quote {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: 4px var(--space-2) 4px var(--space-3);
   border-left: 3px solid var(--signal-urgent);
   border-radius: var(--radius-sm);
   background: var(--surface-sunken);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   color: var(--text-primary);
-  white-space: pre-wrap;
-  word-break: break-word;
 }
 
 .dash-report-quote__meta {
-  font-size: var(--font-size-xs);
+  flex: none;
   color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.dash-report-quote__text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-report-quote__remove {
+  width: 20px;
+  height: 20px;
+  flex: none;
 }

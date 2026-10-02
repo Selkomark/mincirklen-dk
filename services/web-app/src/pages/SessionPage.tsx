@@ -331,6 +331,7 @@ function ReportSessionModal({
   reportable,
   selectedMessages,
   onClearSelection,
+  onDeselectMessage,
 }: {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
@@ -338,6 +339,7 @@ function ReportSessionModal({
   reportable: Member[]
   selectedMessages: ChatMessage[]
   onClearSelection: () => void
+  onDeselectMessage: (messageId: string) => void
 }) {
   const { t } = useTranslation('session')
   const { effectiveTimeZone } = usePreferences()
@@ -395,27 +397,6 @@ function ReportSessionModal({
             {t('reportModal.description')}
           </p>
 
-          {selectedMessages.length > 0 && (
-            <div>
-              <div style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)' as unknown as number, color: 'var(--text-primary)', marginBottom: 'var(--space-2)' }}>
-                {t('reportModal.selectedMessages')}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {selectedMessages.map((m) => {
-                  const author = reportable.find((r) => r.userId === m.userId)
-                  return (
-                    <div key={m.id} className="dash-report-quote">
-                      <span className="dash-report-quote__meta">
-                        {author?.label ?? '—'} · {formatMessageTimestamp(m.createdAt, effectiveTimeZone)}
-                      </span>
-                      <span>{m.body}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
           <div>
             <div style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)' as unknown as number, color: 'var(--text-primary)', marginBottom: 'var(--space-2)' }}>
               {t('reportModal.whoIsThisAbout')}{' '}
@@ -442,6 +423,46 @@ function ReportSessionModal({
               ))}
             </div>
           </div>
+
+          {selectedMessages.length > 0 && (
+            <div>
+              <div style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)' as unknown as number, color: 'var(--text-primary)', marginBottom: 'var(--space-2)' }}>
+                {t('reportModal.selectedMessages')}
+              </div>
+              {/* One compact line per message, oldest first, each removable
+                  — a wrong pick shouldn't mean closing the modal and
+                  hunting for the checkbox again. Removing the last of an
+                  author's messages unlocks their chip above automatically
+                  (lockedIds is derived). */}
+              <div className="dash-report-quotes">
+                {[...selectedMessages]
+                  .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+                  .map((m) => {
+                    const author = reportable.find((r) => r.userId === m.userId)
+                    return (
+                      <div key={m.id} className="dash-report-quote">
+                        <span className="dash-report-quote__meta">
+                          {author?.label ?? '—'} · {formatMessageTimestamp(m.createdAt, effectiveTimeZone)}
+                        </span>
+                        <span className="dash-report-quote__text" title={m.body}>
+                          {m.body}
+                        </span>
+                        <IconButton
+                          className="dash-report-quote__remove"
+                          label={t('composer.unreportMessage')}
+                          onClick={() => onDeselectMessage(m.id)}
+                          icon={
+                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                              <path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                            </svg>
+                          }
+                        />
+                      </div>
+                    )
+                  })}
+              </div>
+            </div>
+          )}
 
           <Textarea
             label={t('reportModal.whatsGoingOn')}
@@ -1948,6 +1969,7 @@ export function SessionPage({
         reportable={reportable}
         selectedMessages={selectedMessages}
         onClearSelection={() => setSelectedMessages([])}
+        onDeselectMessage={(id) => setSelectedMessages((prev) => prev.filter((m) => m.id !== id))}
       />
       <AccountModal isOpen={accountModalOpen} onOpenChange={setAccountModalOpen} />
       <DashShell
