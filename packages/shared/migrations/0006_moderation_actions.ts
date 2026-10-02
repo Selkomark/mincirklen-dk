@@ -16,6 +16,8 @@ const PERMISSIONS: Array<{ slug: string; description: string }> = [
 const GRANTS: Record<string, string[]> = {
   ADMIN: ['users.ban'],
   'TRUST-SAFETY-LEAD': ['users.ban'],
+  // Manages who holds which role, so also the heaviest account action.
+  'ACCESS-MANAGER': ['users.ban'],
 }
 
 export async function up(db: Kysely<any>): Promise<void> {
