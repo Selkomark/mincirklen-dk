@@ -6,6 +6,7 @@ import { useJsonLd } from '../useJsonLd'
 import { SITE_ORIGIN } from '../siteConfig'
 import { useLocale } from '../App'
 import { PUBLIC_PAGES, publicPagePath, type PublicPageId } from './pages'
+import './PublicPageView.css'
 
 export function PublicPageView({ id }: { id: PublicPageId }) {
   const locale = useLocale()
@@ -88,7 +89,7 @@ export function PublicPageView({ id }: { id: PublicPageId }) {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
           {page.sections.map((s) => (
-            <div key={s.heading} id={s.id} style={s.id ? { scrollMarginTop: 96 } : undefined}>
+            <div key={s.heading} id={s.id} className={s.id ? 'public-section public-section--linkable' : 'public-section'}>
               <h2 style={{ margin: 0, marginBottom: 'var(--space-2)', fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-bold)' as unknown as number, color: 'var(--text-primary)' }}>
                 {s.heading}
               </h2>

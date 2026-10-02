@@ -21,25 +21,16 @@ export type PublicPageId =
 // a real mailbox exists.
 const CLOSED_ACCOUNT_REQUEST_EMAIL = 'mahan@selkomark.com'
 const CLOSED_ACCOUNT_REQUEST_SUBJECT = 'Closed account — request for record'
-// Labeled body so a request arrives with what's needed to find the
-// record and verify it's the account holder asking — the same
-// fixed-template approach the transparency page's access requests use,
-// so these can be filtered and handled without an in-app intake form.
+// One labelled field: the account's email is the only key an automated
+// handler needs to find the record and send the copy to that same
+// address — anything more would be noise to type and to parse. Fixed
+// subject so these can be filtered, same approach as the transparency
+// page's access requests.
 const CLOSED_ACCOUNT_REQUEST_BODY = `Please send me a copy of the record behind the closure of my MinCirklen account.
 
-Email address the account used (send this from that address if you can):
+Email address the account used:
 
 
-Roughly when the account was closed (a date, or "around" a month):
-
-
-Name of the circle it happened in, if you know it:
-
-
-Anything else that helps us find the right record (optional):
-
-
-I understand this request can't reopen the account, and that the copy will be sent to the address the account used.
 `
 const CLOSED_ACCOUNT_REQUEST_MAILTO = `mailto:${CLOSED_ACCOUNT_REQUEST_EMAIL}?subject=${encodeURIComponent(CLOSED_ACCOUNT_REQUEST_SUBJECT)}&body=${encodeURIComponent(CLOSED_ACCOUNT_REQUEST_BODY)}`
 
@@ -266,7 +257,7 @@ export const PUBLIC_PAGES: Record<PublicPageId, PublicPageData> = {
         cta: {
           href: CLOSED_ACCOUNT_REQUEST_MAILTO,
           label: 'Email a request',
-          note: `Opens your email client with a template addressed to ${CLOSED_ACCOUNT_REQUEST_EMAIL} — the address the account used, roughly when it was closed, and the circle if you know it.`,
+          note: `Opens your email client with a template addressed to ${CLOSED_ACCOUNT_REQUEST_EMAIL}. All we need is the email address the account used — the copy is sent there.`,
         },
       },
       {
