@@ -325,6 +325,74 @@ export interface GateSignupsTable {
   granted_by: string | null
 }
 
+// One row per outbound email. Metadata only, never the rendered body:
+// the template key, language and variables are enough to re-render a
+// preview in /manage, and moderation emails carry text we don't want
+// duplicated into another table. The recipient is kept masked plus an
+// HMAC (EMAIL_HASH_KEY) so the row can be matched to a suppression or
+// a later ban-record request without storing the address itself; the
+// unmasked address, where a user row still exists, is decrypted from
+// users.email_ciphertext on demand for users.read_pii holders.
+export interface EmailMessagesTable {
+  id: Generated<string>
+  template_key: string
+  language: 'en' | 'sv' | 'da'
+  to_email_masked: string
+  to_email_hash: string
+  user_id: string | null
+  subject: string
+  variables: JSONColumnType<Record<string, unknown>, Record<string, unknown> | undefined>
+  // See packages/shared/src/schemas/email.ts EMAIL_STATUSES and
+  // services/trpc-api/src/services/emailStatus.ts for the ordering.
+  status: Generated<'queued' | 'sent' | 'accepted' | 'delayed' | 'delivered' | 'opened' | 'clicked' | 'bounced' | 'failed' | 'suppressed' | 'complained'>
+  provider: 'log' | 'ahasend'
+  // The provider's own id for the message (AhaSend returns the RFC
+  // Message-ID); what webhook events are matched on. Null for the log
+  // provider and for sends that failed before the provider accepted.
+  provider_message_id: string | null
+  error: string | null
+  // Sent from the admin Templates tab, not by a product flow — badged
+  // in the list and left out of the stats.
+  is_test: Generated<boolean>
+  created_at: Timestamp
+  updated_at: Timestamp
+  sent_at: NullableTimestamp
+  last_event_at: NullableTimestamp
+}
+
+// Every webhook event the provider delivered, as received (minus the
+// recipient address, which is stripped before storage). `webhook_id` is
+// the provider's per-delivery id and is unique, so a retried or replayed
+// delivery is a no-op. `message_id` is null for account-level events
+// (suppression.created, domain.dns_error) and for message events whose
+// provider id we don't know.
+export interface EmailEventsTable {
+  id: Generated<string>
+  message_id: string | null
+  provider_message_id: string | null
+  webhook_id: string
+  type: string
+  occurred_at: Timestamp
+  data: JSONColumnType<Record<string, unknown>, Record<string, unknown> | undefined>
+  created_at: Timestamp
+}
+
+// Addresses the provider has stopped delivering to (hard bounces,
+// complaints), from its suppression.created event. Recipient kept as
+// hash + mask, same as email_messages. sending_domain is '' rather than
+// null when the event doesn't carry one, so the uniqueness holds.
+export interface EmailSuppressionsTable {
+  id: Generated<string>
+  recipient_hash: string
+  recipient_masked: string
+  sending_domain: Generated<string>
+  reason: string | null
+  expires_at: NullableTimestamp
+  raw: JSONColumnType<Record<string, unknown>, Record<string, unknown> | undefined>
+  created_at: Timestamp
+  updated_at: Timestamp
+}
+
 export interface Database {
   users: UsersTable
   sessions: SessionsTable
@@ -349,4 +417,7 @@ export interface Database {
   admin_bootstrap: AdminBootstrapTable
   feature_gate_states: FeatureGateStatesTable
   gate_signups: GateSignupsTable
+  email_messages: EmailMessagesTable
+  email_events: EmailEventsTable
+  email_suppressions: EmailSuppressionsTable
 }
