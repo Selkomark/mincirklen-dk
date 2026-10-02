@@ -2,7 +2,7 @@
   "documentTitle": "Administration — MinCirklen",
   "nav": {
     "moderation": "Moderering",
-    "review": "Granskningskö",
+    "review": "Flaggade meddelanden",
     "accessControl": "Åtkomstkontroll",
     "users": "Användare",
     "roles": "Roller och behörigheter",
@@ -38,7 +38,7 @@
     "second_other": "{{count}} sekunder"
   },
   "review": {
-    "loadFailed": "Kunde inte ladda granskningskön.",
+    "loadFailed": "Kunde inte ladda flaggade meddelanden.",
     "submitFailed": "Kunde inte skicka beslutet — försök igen.",
     "messageRemoved": "(meddelande borttaget)",
     "columns": {
@@ -59,7 +59,7 @@
       "false_negative": "Missad (borde ha flaggats)"
     },
     "readOnly": "Endast visning",
-    "tabsLabel": "Granskningskö efter status",
+    "tabsLabel": "Flaggade meddelanden efter status",
     "tabs": {
       "pending": "Väntar på granskning",
       "decided": "Beslutade"

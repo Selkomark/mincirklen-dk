@@ -2,7 +2,7 @@
   "documentTitle": "Administration — MinCirklen",
   "nav": {
     "moderation": "Moderation",
-    "review": "Gennemgangskø",
+    "review": "Markerede beskeder",
     "accessControl": "Adgangsstyring",
     "users": "Brugere",
     "roles": "Roller og rettigheder",
@@ -38,7 +38,7 @@
     "second_other": "{{count}} sekunder"
   },
   "review": {
-    "loadFailed": "Kunne ikke indlæse gennemgangskøen.",
+    "loadFailed": "Kunne ikke indlæse markerede beskeder.",
     "submitFailed": "Kunne ikke indsende afgørelsen — prøv igen.",
     "messageRemoved": "(besked fjernet)",
     "columns": {
@@ -59,7 +59,7 @@
       "false_negative": "Overset (burde være markeret)"
     },
     "readOnly": "Kun visning",
-    "tabsLabel": "Gennemgangskø efter status",
+    "tabsLabel": "Markerede beskeder efter status",
     "tabs": {
       "pending": "Afventer gennemgang",
       "decided": "Afgjort"

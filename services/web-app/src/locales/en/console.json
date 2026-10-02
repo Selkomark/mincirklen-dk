@@ -2,7 +2,7 @@
   "documentTitle": "Manage — MinCirklen",
   "nav": {
     "moderation": "Moderation",
-    "review": "Review queue",
+    "review": "Flagged messages",
     "accessControl": "Access control",
     "users": "Users",
     "roles": "Roles & permissions",
@@ -38,7 +38,7 @@
     "second_other": "{{count}} seconds"
   },
   "review": {
-    "loadFailed": "Failed to load the review queue.",
+    "loadFailed": "Failed to load flagged messages.",
     "submitFailed": "Failed to submit the decision — try again.",
     "messageRemoved": "(message removed)",
     "columns": {
@@ -59,7 +59,7 @@
       "false_negative": "Missed (should have flagged)"
     },
     "readOnly": "View only",
-    "tabsLabel": "Review queue by status",
+    "tabsLabel": "Flagged messages by status",
     "tabs": {
       "pending": "Awaiting review",
       "decided": "Decided"
