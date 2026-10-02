@@ -1,0 +1,145 @@
+/* The 30-day counters above the sent log. */
+.emails-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--space-3);
+}
+
+/* Filter row above the table: the status select stays a sensible width
+   instead of stretching across the page. */
+.emails-filter {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.emails-filter .ds-select {
+  min-width: 220px;
+}
+
+/* The rendered email, in an iframe so its own styles never leak into the
+   console and the console's never leak in. sandbox="" keeps scripts and
+   navigation out. */
+.emails-preview {
+  width: 100%;
+  min-height: 420px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: #f4f4f2;
+}
+
+.emails-preview--text {
+  margin: 0;
+  padding: var(--space-4);
+  min-height: 420px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  white-space: pre-wrap;
+  overflow: auto;
+}
+
+.emails-detail-modal,
+.emails-template-modal {
+  max-width: 880px;
+}
+
+/* Two columns on a wide screen: the template's settings on the left,
+   the preview on the right; one column on a phone. */
+.emails-template {
+  display: grid;
+  grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+  gap: var(--space-5);
+}
+
+@media (max-width: 760px) {
+  .emails-template {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The event timeline: a dot, the type badge, the time, and any detail
+   the event carried. */
+.emails-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.emails-timeline__item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.emails-timeline__when {
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.emails-timeline__detail {
+  margin-top: 2px;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+
+.emails-meta {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-1) var(--space-4);
+  font-size: var(--font-size-sm);
+}
+
+.emails-meta dt {
+  color: var(--text-secondary);
+}
+
+.emails-meta dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.emails-template-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.emails-template-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--easing-standard),
+    background-color var(--duration-fast) var(--easing-standard);
+}
+
+.emails-template-entry:hover {
+  border-color: var(--accent-safe);
+}
+
+.emails-template-entry__key {
+  font-family: var(--font-family-mono, monospace);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}

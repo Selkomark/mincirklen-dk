@@ -12,6 +12,7 @@ import { UsersTab } from './UsersTab'
 import { ReviewQueueTab } from './ReviewQueueTab'
 import { GatesTab } from './GatesTab'
 import { ReportsTab } from './ReportsTab'
+import { EmailsTab } from './EmailsTab'
 import { SidebarMenu } from './SidebarMenu'
 import './ManagePage.css'
 
@@ -26,12 +27,12 @@ const SIDEBAR_BORDER = '#2e2e2e'
 // language like the rest of the app.
 interface NavItem {
   section: ManageSection
-  labelKey: 'nav.review' | 'nav.reports' | 'nav.users' | 'nav.roles' | 'nav.gates'
+  labelKey: 'nav.review' | 'nav.reports' | 'nav.users' | 'nav.roles' | 'nav.gates' | 'nav.emails'
   permission: string
 }
 
 interface NavGroup {
-  labelKey: 'nav.moderation' | 'nav.accessControl' | 'nav.earlyAccess'
+  labelKey: 'nav.moderation' | 'nav.accessControl' | 'nav.earlyAccess' | 'nav.communication'
   items: NavItem[]
 }
 
@@ -58,6 +59,10 @@ const NAV_GROUPS: NavGroup[] = [
   {
     labelKey: 'nav.earlyAccess',
     items: [{ section: 'gates', labelKey: 'nav.gates', permission: 'gates.read' }],
+  },
+  {
+    labelKey: 'nav.communication',
+    items: [{ section: 'emails', labelKey: 'nav.emails', permission: 'emails.read' }],
   },
 ]
 
@@ -213,6 +218,7 @@ function SectionContent({ section, access }: { section: ManageSection; access: A
     )
   }
   if (section === 'gates') return <GatesTab canManage={can('gates.manage')} />
+  if (section === 'emails') return <EmailsTab canSendTest={can('emails.send_test')} />
   return <UsersTab canEditRoles={can('users.update')} canAddNote={can('users.update')} canBan={can('users.ban')} />
 }
 

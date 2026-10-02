@@ -11,7 +11,9 @@
     "noSections": "No sections available",
     "backToSite": "← Back to site",
     "reports": "Session reports",
-    "toggleMenu": "Toggle navigation"
+    "toggleMenu": "Toggle navigation",
+    "communication": "Communication",
+    "emails": "Emails"
   },
   "noSectionPermissions": "Nothing to show — you have admin access but no section permissions yet.",
   "common": {
@@ -375,5 +377,124 @@
     "decisionDismiss": "Dismiss the report — nothing needs doing",
     "decisionHintNoOutcomes": "Add at least one outcome to act on this report, or dismiss it if nothing needs doing.",
     "decisionHintWithOutcomes": "To dismiss instead, remove the outcomes above."
+  },
+  "emails": {
+    "loadFailed": "Failed to load emails.",
+    "previewFailed": "Failed to render the preview.",
+    "empty": "No emails sent yet.",
+    "testBadge": "Test",
+    "tabsLabel": "Emails by view",
+    "tabs": {
+      "sent": "Sent",
+      "templates": "Templates",
+      "suppressions": "Suppressions"
+    },
+    "stats": {
+      "sent": "Sent, last {{days}} days",
+      "delivered": "Delivered",
+      "opened": "Opened",
+      "bounced": "Bounced",
+      "complained": "Complaints"
+    },
+    "filter": {
+      "status": "Status",
+      "allStatuses": "All statuses"
+    },
+    "columns": {
+      "when": "When",
+      "recipient": "Recipient",
+      "template": "Template",
+      "subject": "Subject",
+      "status": "Status"
+    },
+    "status": {
+      "queued": "Queued",
+      "sent": "Sent",
+      "accepted": "Accepted",
+      "delayed": "Delayed",
+      "delivered": "Delivered",
+      "opened": "Opened",
+      "clicked": "Clicked",
+      "bounced": "Bounced",
+      "failed": "Failed",
+      "suppressed": "Suppressed",
+      "complained": "Complained"
+    },
+    "languages": {
+      "en": "English",
+      "da": "Danish",
+      "sv": "Swedish"
+    },
+    "templateNames": {
+      "report_received": "Report received",
+      "report_decided": "Report decided",
+      "member_warned": "Member warned",
+      "member_removed_from_circle": "Removed from a circle",
+      "member_messages_hidden": "Messages removed",
+      "member_banned": "Account closed",
+      "member_unbanned": "Account reopened",
+      "gate_invite": "Gate invitation"
+    },
+    "events": {
+      "message.reception": "Accepted by provider",
+      "message.sent": "Sent",
+      "message.delivered": "Delivered",
+      "message.transient_error": "Delayed",
+      "message.opened": "Opened",
+      "message.clicked": "Link clicked",
+      "message.bounced": "Bounced",
+      "message.failed": "Failed",
+      "message.suppressed": "Suppressed",
+      "message.complained": "Marked as spam",
+      "suppression.created": "Suppression added",
+      "domain.dns_error": "Domain DNS error"
+    },
+    "detail": {
+      "title": "Email",
+      "created": "Created",
+      "sent": "Sent",
+      "providerId": "Provider id",
+      "member": "Member",
+      "events": "Delivery events",
+      "noEvents": "No events from the provider yet."
+    },
+    "preview": {
+      "open": "Preview",
+      "refresh": "Refresh preview",
+      "html": "HTML",
+      "text": "Text",
+      "subject": "Subject: {{subject}}",
+      "frameTitle": "Email preview"
+    },
+    "templates": {
+      "intro": "Every email the platform sends, as code. Open one to see it rendered in each language, change the variables, and send yourself a test.",
+      "language": "Language",
+      "variables": "Variables (JSON)",
+      "variablesHint": "The values the template is rendered with. Start from the sample and edit.",
+      "invalidJson": "The variables are not valid JSON.",
+      "previewRejected": "The template rejected these variables.",
+      "to": "Send a test to",
+      "toPlaceholder": "you@example.com",
+      "send": "Send test",
+      "sent": "Test sent to {{to}}.",
+      "sendOutcome": "The test was not sent: {{status}}.",
+      "sendFailed": "Failed to send the test."
+    },
+    "sendOutcome": {
+      "suppressed": "the address is suppressed",
+      "failed": "the provider refused it",
+      "skipped": "nothing to send to"
+    },
+    "suppressions": {
+      "intro": "Addresses the provider has stopped delivering to, usually after a hard bounce or a spam complaint. The platform does not send to them.",
+      "empty": "No suppressed addresses.",
+      "never": "Never",
+      "columns": {
+        "domain": "Sending domain",
+        "reason": "Reason",
+        "expires": "Expires",
+        "added": "Added"
+      }
+    }
   }
 }

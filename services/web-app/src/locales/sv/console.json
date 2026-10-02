@@ -11,7 +11,9 @@
     "noSections": "Inga sektioner tillgängliga",
     "backToSite": "← Tillbaka till webbplatsen",
     "reports": "Sessionsrapporter",
-    "toggleMenu": "Visa eller dölj navigering"
+    "toggleMenu": "Visa eller dölj navigering",
+    "communication": "Kommunikation",
+    "emails": "E-post"
   },
   "noSectionPermissions": "Inget att visa — du har adminåtkomst men ännu inga behörigheter för någon sektion.",
   "common": {
@@ -375,5 +377,124 @@
     "decisionDismiss": "Avfärda rapporten — inget behöver göras",
     "decisionHintNoOutcomes": "Lägg till minst ett utfall för att agera på rapporten, eller avfärda den om inget behöver göras.",
     "decisionHintWithOutcomes": "Ta bort utfallen ovan för att avfärda i stället."
+  },
+  "emails": {
+    "loadFailed": "Kunde inte ladda e-post.",
+    "previewFailed": "Kunde inte visa förhandsgranskningen.",
+    "empty": "Ingen e-post skickad ännu.",
+    "testBadge": "Test",
+    "tabsLabel": "E-post efter vy",
+    "tabs": {
+      "sent": "Skickat",
+      "templates": "Mallar",
+      "suppressions": "Spärrade adresser"
+    },
+    "stats": {
+      "sent": "Skickat, senaste {{days}} dagarna",
+      "delivered": "Levererat",
+      "opened": "Öppnat",
+      "bounced": "Studsat",
+      "complained": "Klagomål"
+    },
+    "filter": {
+      "status": "Status",
+      "allStatuses": "Alla statusar"
+    },
+    "columns": {
+      "when": "När",
+      "recipient": "Mottagare",
+      "template": "Mall",
+      "subject": "Ämne",
+      "status": "Status"
+    },
+    "status": {
+      "queued": "I kö",
+      "sent": "Skickat",
+      "accepted": "Mottaget",
+      "delayed": "Försenat",
+      "delivered": "Levererat",
+      "opened": "Öppnat",
+      "clicked": "Klickat",
+      "bounced": "Studsat",
+      "failed": "Misslyckat",
+      "suppressed": "Spärrat",
+      "complained": "Klagomål"
+    },
+    "languages": {
+      "en": "Engelska",
+      "da": "Danska",
+      "sv": "Svenska"
+    },
+    "templateNames": {
+      "report_received": "Rapport mottagen",
+      "report_decided": "Rapport avgjord",
+      "member_warned": "Medlem varnad",
+      "member_removed_from_circle": "Borttagen från en cirkel",
+      "member_messages_hidden": "Meddelanden borttagna",
+      "member_banned": "Konto stängt",
+      "member_unbanned": "Konto återöppnat",
+      "gate_invite": "Inbjudan"
+    },
+    "events": {
+      "message.reception": "Mottaget av leverantör",
+      "message.sent": "Skickat",
+      "message.delivered": "Levererat",
+      "message.transient_error": "Försenat",
+      "message.opened": "Öppnat",
+      "message.clicked": "Länk klickad",
+      "message.bounced": "Studsat",
+      "message.failed": "Misslyckat",
+      "message.suppressed": "Spärrat",
+      "message.complained": "Markerat som skräppost",
+      "suppression.created": "Spärr tillagd",
+      "domain.dns_error": "DNS-fel på domän"
+    },
+    "detail": {
+      "title": "E-post",
+      "created": "Skapad",
+      "sent": "Skickad",
+      "providerId": "Leverantörs-id",
+      "member": "Medlem",
+      "events": "Leveranshändelser",
+      "noEvents": "Inga händelser från leverantören ännu."
+    },
+    "preview": {
+      "open": "Förhandsgranska",
+      "refresh": "Uppdatera förhandsgranskning",
+      "html": "HTML",
+      "text": "Text",
+      "subject": "Ämne: {{subject}}",
+      "frameTitle": "Förhandsgranskning av e-post"
+    },
+    "templates": {
+      "intro": "All e-post plattformen skickar, som kod. Öppna en för att se den på varje språk, ändra variablerna och skicka ett test till dig själv.",
+      "language": "Språk",
+      "variables": "Variabler (JSON)",
+      "variablesHint": "Värdena mallen renderas med. Utgå från exemplet och redigera.",
+      "invalidJson": "Variablerna är inte giltig JSON.",
+      "previewRejected": "Mallen avvisade dessa variabler.",
+      "to": "Skicka ett test till",
+      "toPlaceholder": "du@example.com",
+      "send": "Skicka test",
+      "sent": "Test skickat till {{to}}.",
+      "sendOutcome": "Testet skickades inte: {{status}}.",
+      "sendFailed": "Kunde inte skicka testet."
+    },
+    "sendOutcome": {
+      "suppressed": "adressen är spärrad",
+      "failed": "leverantören avvisade det",
+      "skipped": "ingen att skicka till"
+    },
+    "suppressions": {
+      "intro": "Adresser leverantören slutat leverera till, oftast efter en hård studs eller ett skräppostklagomål. Plattformen skickar inte till dem.",
+      "empty": "Inga spärrade adresser.",
+      "never": "Aldrig",
+      "columns": {
+        "domain": "Avsändardomän",
+        "reason": "Orsak",
+        "expires": "Upphör",
+        "added": "Tillagd"
+      }
+    }
   }
 }

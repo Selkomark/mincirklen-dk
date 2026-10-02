@@ -11,7 +11,9 @@
     "noSections": "Ingen sektioner tilgængelige",
     "backToSite": "← Tilbage til sitet",
     "reports": "Sessionsrapporter",
-    "toggleMenu": "Vis eller skjul navigation"
+    "toggleMenu": "Vis eller skjul navigation",
+    "communication": "Kommunikation",
+    "emails": "E-mails"
   },
   "noSectionPermissions": "Intet at vise — du har adminadgang, men endnu ingen rettigheder til nogen sektion.",
   "common": {
@@ -375,5 +377,124 @@
     "decisionDismiss": "Afvis rapporten — der skal ikke gøres noget",
     "decisionHintNoOutcomes": "Tilføj mindst ét udfald for at handle på rapporten, eller afvis den, hvis der ikke skal gøres noget.",
     "decisionHintWithOutcomes": "Fjern udfaldene ovenfor for i stedet at afvise."
+  },
+  "emails": {
+    "loadFailed": "Kunne ikke indlæse e-mails.",
+    "previewFailed": "Kunne ikke vise forhåndsvisningen.",
+    "empty": "Ingen e-mails sendt endnu.",
+    "testBadge": "Test",
+    "tabsLabel": "E-mails efter visning",
+    "tabs": {
+      "sent": "Sendt",
+      "templates": "Skabeloner",
+      "suppressions": "Blokerede adresser"
+    },
+    "stats": {
+      "sent": "Sendt, seneste {{days}} dage",
+      "delivered": "Leveret",
+      "opened": "Åbnet",
+      "bounced": "Afvist",
+      "complained": "Klager"
+    },
+    "filter": {
+      "status": "Status",
+      "allStatuses": "Alle statusser"
+    },
+    "columns": {
+      "when": "Hvornår",
+      "recipient": "Modtager",
+      "template": "Skabelon",
+      "subject": "Emne",
+      "status": "Status"
+    },
+    "status": {
+      "queued": "I kø",
+      "sent": "Sendt",
+      "accepted": "Modtaget",
+      "delayed": "Forsinket",
+      "delivered": "Leveret",
+      "opened": "Åbnet",
+      "clicked": "Klikket",
+      "bounced": "Afvist",
+      "failed": "Fejlet",
+      "suppressed": "Blokeret",
+      "complained": "Klaget"
+    },
+    "languages": {
+      "en": "Engelsk",
+      "da": "Dansk",
+      "sv": "Svensk"
+    },
+    "templateNames": {
+      "report_received": "Rapport modtaget",
+      "report_decided": "Rapport afgjort",
+      "member_warned": "Medlem advaret",
+      "member_removed_from_circle": "Fjernet fra en cirkel",
+      "member_messages_hidden": "Beskeder fjernet",
+      "member_banned": "Konto lukket",
+      "member_unbanned": "Konto genåbnet",
+      "gate_invite": "Invitation"
+    },
+    "events": {
+      "message.reception": "Modtaget af udbyder",
+      "message.sent": "Sendt",
+      "message.delivered": "Leveret",
+      "message.transient_error": "Forsinket",
+      "message.opened": "Åbnet",
+      "message.clicked": "Link klikket",
+      "message.bounced": "Afvist",
+      "message.failed": "Fejlet",
+      "message.suppressed": "Blokeret",
+      "message.complained": "Markeret som spam",
+      "suppression.created": "Blokering tilføjet",
+      "domain.dns_error": "DNS-fejl på domæne"
+    },
+    "detail": {
+      "title": "E-mail",
+      "created": "Oprettet",
+      "sent": "Sendt",
+      "providerId": "Udbyder-id",
+      "member": "Medlem",
+      "events": "Leveringshændelser",
+      "noEvents": "Ingen hændelser fra udbyderen endnu."
+    },
+    "preview": {
+      "open": "Forhåndsvis",
+      "refresh": "Opdatér forhåndsvisning",
+      "html": "HTML",
+      "text": "Tekst",
+      "subject": "Emne: {{subject}}",
+      "frameTitle": "Forhåndsvisning af e-mail"
+    },
+    "templates": {
+      "intro": "Alle e-mails, platformen sender, som kode. Åbn en for at se den på hvert sprog, ændre variablerne og sende dig selv en test.",
+      "language": "Sprog",
+      "variables": "Variabler (JSON)",
+      "variablesHint": "Værdierne skabelonen gengives med. Start fra eksemplet og redigér.",
+      "invalidJson": "Variablerne er ikke gyldig JSON.",
+      "previewRejected": "Skabelonen afviste disse variabler.",
+      "to": "Send en test til",
+      "toPlaceholder": "dig@example.com",
+      "send": "Send test",
+      "sent": "Test sendt til {{to}}.",
+      "sendOutcome": "Testen blev ikke sendt: {{status}}.",
+      "sendFailed": "Kunne ikke sende testen."
+    },
+    "sendOutcome": {
+      "suppressed": "adressen er blokeret",
+      "failed": "udbyderen afviste den",
+      "skipped": "ingen at sende til"
+    },
+    "suppressions": {
+      "intro": "Adresser udbyderen er holdt op med at levere til, typisk efter en hård afvisning eller en spam-klage. Platformen sender ikke til dem.",
+      "empty": "Ingen blokerede adresser.",
+      "never": "Aldrig",
+      "columns": {
+        "domain": "Afsenderdomæne",
+        "reason": "Årsag",
+        "expires": "Udløber",
+        "added": "Tilføjet"
+      }
+    }
   }
 }
