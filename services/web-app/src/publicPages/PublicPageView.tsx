@@ -19,12 +19,18 @@ export function PublicPageView({ id }: { id: PublicPageId }) {
   // page — so the target doesn't exist yet and nothing happens. Scroll
   // ourselves once the sections are in the DOM, and again if the hash
   // changes while on the page.
+  // The highlight is a class we set, not :target — browsers don't
+  // reliably re-match :target for an element that appears after the
+  // document loaded, which is every section here.
   useEffect(() => {
     const scrollToHash = () => {
       const hash = window.location.hash.slice(1)
+      document.querySelectorAll('.public-section--targeted').forEach((el) => el.classList.remove('public-section--targeted'))
       if (!hash) return
       const target = document.getElementById(hash)
-      if (target) requestAnimationFrame(() => target.scrollIntoView({ block: 'start' }))
+      if (!target) return
+      target.classList.add('public-section--targeted')
+      requestAnimationFrame(() => target.scrollIntoView({ block: 'start' }))
     }
     scrollToHash()
     window.addEventListener('hashchange', scrollToHash)

@@ -1,8 +1,9 @@
 /* Sections with an id can be deep-linked (…#closed-accounts). When the
-   URL's hash names one, :target applies: a soft wash fades in and holds,
-   so after the scroll the reader can see which block the link meant —
-   and where its button is. The padding keeps the wash clear of the text;
-   the negative margin cancels it out so unlit sections don't shift. */
+   URL's hash names one, PublicPageView marks it --targeted: a soft wash
+   fades in and holds, so after the scroll the reader can see which block
+   the link meant — and where its button is. The padding keeps the wash
+   clear of the text; the negative margin cancels it out so unlit
+   sections don't shift. */
 .public-section--linkable {
   scroll-margin-top: 96px;
   margin: calc(-1 * var(--space-3)) calc(-1 * var(--space-4));
@@ -11,7 +12,7 @@
   border: 1px solid transparent;
 }
 
-.public-section--linkable:target {
+.public-section--targeted {
   background: var(--accent-safe-surface);
   border-color: var(--accent-safe);
   animation: public-section-settle 2.4s var(--easing-standard) both;
@@ -33,7 +34,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .public-section--linkable:target {
+  .public-section--targeted {
     animation: none;
   }
 }
