@@ -53,7 +53,9 @@
     "cancel": "Cancel",
     "submitted": "Report about {{about}} submitted — a moderator will review it.",
     "submitError": "Something went wrong submitting your report. Please try again.",
-    "submit": "Submit report"
+    "submit": "Submit report",
+    "selectedMessages": "Messages you're reporting",
+    "autoSelected": "(selected from the messages above — add anyone else involved)"
   },
   "accountModal": {
     "back": "Back",
@@ -158,7 +160,9 @@
     "onlyYouCanSeeThis": "Only you can see this",
     "reportFalsePositive": "Ask for another look",
     "falsePositiveReported": "We'll take another look",
-    "falsePositiveReportedNotice": "Thanks — we're looking into it."
+    "falsePositiveReportedNotice": "Thanks — we're looking into it.",
+    "reportMessage": "Report this message",
+    "unreportMessage": "Remove from report"
   },
   "rightPanel": {
     "essentialPages": "Essential pages",
@@ -189,5 +193,11 @@
     "moreRecentSessionsLoadFailed": "Could not load more sessions",
     "sessionLoadFailed": "Could not load this session right now.",
     "earlierMessagesLoadFailed": "Could not load earlier messages right now."
+  },
+  "reportBar": {
+    "selected_one": "{{count}} message selected",
+    "selected_other": "{{count}} messages selected",
+    "report": "Report",
+    "clear": "Clear"
   }
 }

@@ -22,6 +22,7 @@ import { DashShell } from '../components/DashShell'
 import { DashLogoHeader } from '../components/DashLogoHeader'
 import { EssentialPagesPanel } from '../components/EssentialPagesPanel'
 import {
+  type ChatMessage,
   type CrisisResource,
   type RecentVisit,
   type SessionSummary,
@@ -40,7 +41,7 @@ import {
   visitDisplayName,
   visitSession,
 } from './sessionShared'
-import { type Member, JoinEventRow, memberFor, MemberAvatar, MessageRow } from './sessionMessages'
+import { type Member, FlagIcon, formatMessageTimestamp, JoinEventRow, memberFor, MemberAvatar, MessageRow } from './sessionMessages'
 import './SessionPage.css'
 
 // Whether a turn-inactivity countdown reaching zero with a draft present
@@ -318,24 +319,38 @@ function CrisisModal({
   )
 }
 
+// `selectedMessages` are the messages the member flagged in the timeline
+// before opening this (SessionCenterPanel's per-message report button).
+// Their authors are selected automatically and can't be deselected while
+// the message stays in the report — whoever wrote it is responsible for
+// it; the server applies the same rule (sessionReportService.ts).
 function ReportSessionModal({
   isOpen,
   onOpenChange,
   sessionId,
   reportable,
+  selectedMessages,
+  onClearSelection,
 }: {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
   sessionId: string
   reportable: Member[]
+  selectedMessages: ChatMessage[]
+  onClearSelection: () => void
 }) {
   const { t } = useTranslation('session')
+  const { effectiveTimeZone } = usePreferences()
   const [text, setText] = useState('')
   const [aboutIds, setAboutIds] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
+  const lockedIds = new Set(selectedMessages.map((m) => m.userId))
+  const effectiveAboutIds = [...new Set([...aboutIds, ...lockedIds])]
+
   function toggleAbout(id: string) {
+    if (lockedIds.has(id)) return
     setAboutIds((ids) => (ids.includes(id) ? ids.filter((i) => i !== id) : [...ids, id]))
   }
 
@@ -351,13 +366,19 @@ function ReportSessionModal({
     setSubmitError(null)
     setIsSubmitting(true)
     try {
-      await submitSessionReport(sessionId, aboutIds, text.trim())
+      await submitSessionReport(
+        sessionId,
+        effectiveAboutIds,
+        text.trim(),
+        selectedMessages.map((m) => m.id),
+      )
       const about = reportable
-        .filter((m) => aboutIds.includes(m.userId))
+        .filter((m) => effectiveAboutIds.includes(m.userId))
         .map((m) => m.label)
         .join(', ')
       setText('')
       setAboutIds([])
+      onClearSelection()
       addToast(t('reportModal.submitted', { about }), { variant: 'safe' })
       close()
     } catch {
@@ -374,11 +395,32 @@ function ReportSessionModal({
             {t('reportModal.description')}
           </p>
 
+          {selectedMessages.length > 0 && (
+            <div>
+              <div style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)' as unknown as number, color: 'var(--text-primary)', marginBottom: 'var(--space-2)' }}>
+                {t('reportModal.selectedMessages')}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {selectedMessages.map((m) => {
+                  const author = reportable.find((r) => r.userId === m.userId)
+                  return (
+                    <div key={m.id} className="dash-report-quote">
+                      <span className="dash-report-quote__meta">
+                        {author?.label ?? '—'} · {formatMessageTimestamp(m.createdAt, effectiveTimeZone)}
+                      </span>
+                      <span>{m.body}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           <div>
             <div style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)' as unknown as number, color: 'var(--text-primary)', marginBottom: 'var(--space-2)' }}>
               {t('reportModal.whoIsThisAbout')}{' '}
               <span style={{ color: 'var(--text-secondary)', fontWeight: 'var(--font-weight-regular)' as unknown as number }}>
-                {t('reportModal.selectAllThatApply')}
+                {lockedIds.size > 0 ? t('reportModal.autoSelected') : t('reportModal.selectAllThatApply')}
               </span>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -386,7 +428,14 @@ function ReportSessionModal({
                 <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>{t('reportModal.nobodyElseJoined')}</span>
               )}
               {reportable.map((m) => (
-                <button key={m.userId} type="button" onClick={() => toggleAbout(m.userId)} style={chipStyle(aboutIds.includes(m.userId))}>
+                <button
+                  key={m.userId}
+                  type="button"
+                  onClick={() => toggleAbout(m.userId)}
+                  aria-pressed={effectiveAboutIds.includes(m.userId)}
+                  aria-disabled={lockedIds.has(m.userId)}
+                  style={{ ...chipStyle(effectiveAboutIds.includes(m.userId)), cursor: lockedIds.has(m.userId) ? 'default' : 'pointer' }}
+                >
                   <MemberAvatar member={m} size={20} />
                   {m.label}
                 </button>
@@ -409,7 +458,7 @@ function ReportSessionModal({
             <Button
               variant="urgent"
               isPending={isSubmitting}
-              isDisabled={!text.trim() || aboutIds.length === 0}
+              isDisabled={!text.trim() || effectiveAboutIds.length === 0}
               onPress={() => handleSubmit(close)}
             >
               {t('reportModal.submit')}
@@ -711,12 +760,23 @@ function SessionCenterPanel({
   onToggleMobileMenu,
   onReportableChange,
   onVisited,
+  selectedMessageIds,
+  onToggleSelectMessage,
+  onClearSelection,
+  onOpenReport,
 }: {
   sessionId: string
   mobileMenuOpen: boolean
   onToggleMobileMenu: () => void
   onReportableChange: (reportable: Member[]) => void
   onVisited: () => void
+  // Per-message reporting — the selection itself lives in the shell
+  // (next to ReportSessionModal, which consumes it), this panel only
+  // renders the per-row toggle and the floating "N selected" bar.
+  selectedMessageIds: Set<string>
+  onToggleSelectMessage: (message: ChatMessage) => void
+  onClearSelection: () => void
+  onOpenReport: () => void
 }) {
   const { t } = useTranslation('session')
   const [loadState, setLoadState] = useState<DashboardLoadState>({ status: 'checking' })
@@ -1507,11 +1567,40 @@ function SessionCenterPanel({
                   timeZone={effectiveTimeZone}
                   onReportFalsePositive={handleReportFalsePositive}
                   isReported={reportedMessageIds.has(m.id)}
+                  highlight={selectedMessageIds.has(m.id)}
+                  className="dash-message-row"
+                  trailing={
+                    // Only other members' messages can be reported — your
+                    // own already has the "ask for another look" action.
+                    // Hidden until the row is hovered/focused (SessionPage.css)
+                    // so a calm timeline isn't lined with flags; stays
+                    // visible once selected.
+                    m.userId !== myUserId ? (
+                      <IconButton
+                        className={['dash-message-select', selectedMessageIds.has(m.id) && 'dash-message-select--selected'].filter(Boolean).join(' ')}
+                        icon={FlagIcon}
+                        label={selectedMessageIds.has(m.id) ? t('composer.unreportMessage') : t('composer.reportMessage')}
+                        variant={selectedMessageIds.has(m.id) ? 'urgent' : 'default'}
+                        onClick={() => onToggleSelectMessage(m)}
+                      />
+                    ) : undefined
+                  }
                   t={t}
                 />
               ),
             )}
           </div>
+          {selectedMessageIds.size > 0 && (
+            <div className="dash-report-bar" role="status">
+              <span>{t('reportBar.selected', { count: selectedMessageIds.size })}</span>
+              <Button variant="urgent" onPress={onOpenReport}>
+                {t('reportBar.report')}
+              </Button>
+              <Button variant="ghost" onPress={onClearSelection}>
+                {t('reportBar.clear')}
+              </Button>
+            </div>
+          )}
           {newMessageCount > 0 && (
             <button
               type="button"
@@ -1703,6 +1792,18 @@ export function SessionPage({
   const [accountModalOpen, setAccountModalOpen] = useState(false)
   const [searchDraft, setSearchDraft] = useState('')
   const [reportable, setReportable] = useState<Member[]>([])
+  // Messages picked for a report — kept here with the modal, not in the
+  // center panel, so switching panels/sidebars mid-report keeps them.
+  // Cleared on a successful submit (ReportSessionModal) or by the bar's
+  // Clear, and whenever the session changes.
+  const [selectedMessages, setSelectedMessages] = useState<ChatMessage[]>([])
+  const selectedMessageIds = useMemo(() => new Set(selectedMessages.map((m) => m.id)), [selectedMessages])
+  useEffect(() => {
+    setSelectedMessages([])
+  }, [sessionId])
+  function toggleSelectMessage(message: ChatMessage) {
+    setSelectedMessages((prev) => (prev.some((m) => m.id === message.id) ? prev.filter((m) => m.id !== message.id) : [...prev, message]))
+  }
   // Bumped by SessionCenterPanel's onVisited, once a session's visit is
   // actually recorded server-side — see useRecentVisits' refreshKey
   // param for why this can't just be `sessionId` (that fires the
@@ -1809,7 +1910,14 @@ export function SessionPage({
 
   return (
     <>
-      <ReportSessionModal isOpen={reportOpen} onOpenChange={setReportOpen} sessionId={sessionId} reportable={reportable} />
+      <ReportSessionModal
+        isOpen={reportOpen}
+        onOpenChange={setReportOpen}
+        sessionId={sessionId}
+        reportable={reportable}
+        selectedMessages={selectedMessages}
+        onClearSelection={() => setSelectedMessages([])}
+      />
       <AccountModal isOpen={accountModalOpen} onOpenChange={setAccountModalOpen} />
       <DashShell
         sidebarHeader={sidebarHeader}
@@ -1826,6 +1934,10 @@ export function SessionPage({
             mobileMenuOpen={mobileMenuOpen}
             onToggleMobileMenu={() => setMobileMenuOpen((v) => !v)}
             onReportableChange={setReportable}
+            selectedMessageIds={selectedMessageIds}
+            onToggleSelectMessage={toggleSelectMessage}
+            onClearSelection={() => setSelectedMessages([])}
+            onOpenReport={() => setReportOpen(true)}
             onVisited={() => setVisitNonce((n) => n + 1)}
           />
         }

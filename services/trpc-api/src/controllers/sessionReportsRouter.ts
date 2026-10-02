@@ -4,7 +4,7 @@ import {
   sessionReportTranscriptInputSchema,
 } from '@mincirklen/shared'
 import { TRPCError } from '@trpc/server'
-import { listTranscriptWindow } from '../repositories/messageRepository'
+import { findEarliestMessageAt, listTranscriptWindow } from '../repositories/messageRepository'
 import { getRoster } from '../repositories/sessionRepository'
 import {
   applySessionReportDecision,
@@ -72,9 +72,13 @@ export const sessionReportsRouter = router({
       const anchor = await findSessionReportAnchor(ctx.appEnv.db, input.reportId)
       if (!anchor) throw toTRPCError(new SessionReportNotFoundError('session report not found'))
 
+      // A report that names messages opens on the earliest of them — the
+      // thing the member actually pointed at — otherwise on the moment it
+      // was filed.
+      const anchorAt = (await findEarliestMessageAt(ctx.appEnv.db, anchor.messageIds)) ?? anchor.createdAtExact
       const window =
         input.direction === 'around' || !input.cursor
-          ? await listTranscriptWindow(ctx.appEnv.db, { sessionId: anchor.sessionId, direction: 'around', at: anchor.createdAtExact, limit: input.limit })
+          ? await listTranscriptWindow(ctx.appEnv.db, { sessionId: anchor.sessionId, direction: 'around', at: anchorAt, limit: input.limit })
           : await listTranscriptWindow(ctx.appEnv.db, { sessionId: anchor.sessionId, direction: input.direction, cursor: input.cursor, limit: input.limit })
 
       const rosterEntries = await getRoster(ctx.appEnv.db, anchor.sessionId)
@@ -85,6 +89,6 @@ export const sessionReportsRouter = router({
       )
       const roster = rosterEntries.map((entry) => ({ ...entry, displayName: displayNames.get(entry.userId) ?? null }))
 
-      return { ...window, roster, reportedAt: anchor.createdAt, aboutUserIds: anchor.aboutUserIds }
+      return { ...window, roster, reportedAt: anchor.createdAt, aboutUserIds: anchor.aboutUserIds, messageIds: anchor.messageIds }
     }),
 })

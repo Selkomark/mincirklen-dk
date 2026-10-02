@@ -12,6 +12,7 @@ export async function insertSessionReport(
     sessionId: string
     reporterUserId: string
     aboutUserIds: string[]
+    messageIds?: string[]
     body: string
   },
 ): Promise<void> {
@@ -24,6 +25,7 @@ export async function insertSessionReport(
       // mergeAgreements — the pg driver doesn't implicitly serialize a
       // plain JS array into the jsonb column type on its own.
       about_user_ids: sql`${JSON.stringify(params.aboutUserIds)}::jsonb`,
+      message_ids: sql`${JSON.stringify(params.messageIds ?? [])}::jsonb`,
       body: params.body,
     })
     .execute()
@@ -37,6 +39,7 @@ export interface SessionReportRow {
   sessionName: string | null
   reporterUserId: string | null
   aboutUserIds: string[]
+  messageIds: string[]
   body: string
   status: SessionReportStatus
   createdAt: Date
@@ -69,6 +72,7 @@ export async function listSessionReports(
       'sessions.name as session_name',
       'session_reports.reporter_user_id as reporter_user_id',
       'session_reports.about_user_ids as about_user_ids',
+      'session_reports.message_ids as message_ids',
       'session_reports.body as body',
       'session_reports.status as status',
       'session_reports.created_at as created_at',
@@ -103,6 +107,7 @@ export async function listSessionReports(
       sessionName: row.session_name,
       reporterUserId: row.reporter_user_id,
       aboutUserIds: row.about_user_ids,
+      messageIds: row.message_ids,
       body: row.body,
       status: row.status,
       createdAt: row.created_at,
@@ -131,14 +136,20 @@ export async function findSessionReportStatus(db: Kysely<Database>, reportId: st
 export async function findSessionReportAnchor(
   db: Kysely<Database>,
   reportId: string,
-): Promise<{ sessionId: string; createdAt: Date; createdAtExact: string; aboutUserIds: string[] } | null> {
+): Promise<{ sessionId: string; createdAt: Date; createdAtExact: string; aboutUserIds: string[]; messageIds: string[] } | null> {
   const row = await db
     .selectFrom('session_reports')
-    .select(['session_id', 'created_at', 'about_user_ids', sql<string>`created_at::text`.as('created_at_exact')])
+    .select(['session_id', 'created_at', 'about_user_ids', 'message_ids', sql<string>`created_at::text`.as('created_at_exact')])
     .where('id', '=', reportId)
     .executeTakeFirst()
   return row
-    ? { sessionId: row.session_id, createdAt: row.created_at, createdAtExact: row.created_at_exact, aboutUserIds: row.about_user_ids }
+    ? {
+        sessionId: row.session_id,
+        createdAt: row.created_at,
+        createdAtExact: row.created_at_exact,
+        aboutUserIds: row.about_user_ids,
+        messageIds: row.message_ids,
+      }
     : null
 }
 

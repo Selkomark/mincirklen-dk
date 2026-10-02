@@ -17,6 +17,12 @@ export interface SubmitSessionReportParams {
   sessionId: string
   reporterUserId: string
   aboutUserIds: string[]
+  // Specific messages the member is reporting (SessionPage.tsx's per-
+  // message report action). Optional detail on top of aboutUserIds, not
+  // a replacement — but whoever wrote a reported message is responsible
+  // for it, so their id is folded into aboutUserIds below regardless of
+  // what the picker sent.
+  messageIds: string[]
   body: string
 }
 
@@ -29,7 +35,10 @@ export interface SubmitSessionReportDeps {
   // the reporter, rather than a second, differently-shaped repository
   // function.
   isAboutUserMember(userId: string): Promise<boolean>
-  insertReport(): Promise<void>
+  // message id → author id, for the given ids that exist in THIS
+  // session only; an id from any other session is simply absent.
+  findMessageAuthors(messageIds: string[]): Promise<Map<string, string>>
+  insertReport(params: { aboutUserIds: string[]; messageIds: string[] }): Promise<void>
   logReport(params: SubmitSessionReportParams): void
 }
 
@@ -38,7 +47,18 @@ export async function submitSessionReport(deps: SubmitSessionReportDeps, params:
     throw new NotAMemberError('reporting user is not a member of this session')
   }
 
-  const aboutChecks = await Promise.all(params.aboutUserIds.map((id) => deps.isAboutUserMember(id)))
+  const messageIds = [...new Set(params.messageIds)]
+  const authors = messageIds.length > 0 ? await deps.findMessageAuthors(messageIds) : new Map<string, string>()
+  if (messageIds.some((id) => !authors.has(id))) {
+    // Same shape as the membership errors below: a report can't point at
+    // a message outside its own circle, and the caller has no legitimate
+    // reason to probe which ids exist elsewhere.
+    throw new NotAMemberError('one or more reported messages are not in this session')
+  }
+
+  const aboutUserIds = [...new Set([...params.aboutUserIds, ...authors.values()])]
+
+  const aboutChecks = await Promise.all(aboutUserIds.map((id) => deps.isAboutUserMember(id)))
   if (aboutChecks.some((isMember) => !isMember)) {
     // Same error/mapping as above (toTRPCError -> FORBIDDEN) — a report
     // can't reference someone outside the session either way, and the
@@ -47,8 +67,8 @@ export async function submitSessionReport(deps: SubmitSessionReportDeps, params:
     throw new NotAMemberError('one or more reported users are not members of this session')
   }
 
-  await deps.insertReport()
-  deps.logReport(params)
+  await deps.insertReport({ aboutUserIds, messageIds })
+  deps.logReport({ ...params, aboutUserIds, messageIds })
 }
 
 // ---- Review (the /manage "Session reports" tab) ----

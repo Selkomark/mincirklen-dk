@@ -26,6 +26,7 @@ interface SessionReport {
   // itself survives them (migrations/0001_init.ts).
   reporterUserId: string | null
   aboutUserIds: string[]
+  messageIds: string[]
   body: string
   status: ReportStatus
   createdAt: string
@@ -41,6 +42,9 @@ interface TranscriptPage {
   roster: RosterEntry[]
   reportedAt: string
   aboutUserIds: string[]
+  // The messages the member pointed at, if any — ringed and tagged in
+  // the transcript, and what the view opens centred on.
+  messageIds: string[]
 }
 
 const STATUSES: ReportStatus[] = ['open', 'reviewed', 'dismissed']
@@ -219,6 +223,7 @@ function Transcript({ reportId, onRoster }: { reportId: string; onRoster: (roste
   const topSentinelRef = useRef<HTMLDivElement>(null)
   const bottomSentinelRef = useRef<HTMLDivElement>(null)
   const dividerRef = useRef<HTMLDivElement>(null)
+  const firstReportedRef = useRef<HTMLDivElement>(null)
   const { snapshotBeforeShift } = useScrollShiftCompensation(containerRef, topShiftVersion)
   const centredRef = useRef(false)
 
@@ -228,14 +233,16 @@ function Transcript({ reportId, onRoster }: { reportId: string; onRoster: (roste
     if (page) onRoster(page.roster)
   }, [page, onRoster])
 
-  // Open centred on the report marker, once, when the first page lands —
-  // the reviewer starts at what prompted the report and reads outward.
+  // Open centred on the first reported message when the report names
+  // any, otherwise on the "report filed" marker — once, when the first
+  // page lands. The reviewer starts at what prompted the report and
+  // reads outward.
   useLayoutEffect(() => {
     if (!page || centredRef.current) return
-    const divider = dividerRef.current
+    const target = firstReportedRef.current ?? dividerRef.current
     const container = containerRef.current
-    if (divider && container) {
-      container.scrollTop = divider.offsetTop - container.clientHeight / 2
+    if (target && container) {
+      container.scrollTop = target.offsetTop - container.clientHeight / 2 + target.clientHeight / 2
     }
     centredRef.current = true
   }, [page])
@@ -287,7 +294,9 @@ function Transcript({ reportId, onRoster }: { reportId: string; onRoster: (roste
   }
 
   const reportedAtMs = new Date(page.reportedAt).getTime()
-  const reported = new Set(page.aboutUserIds)
+  const reportedMembers = new Set(page.aboutUserIds)
+  const reportedMessages = new Set(page.messageIds)
+  const firstReportedId = page.messages.find((m) => reportedMessages.has(m.id))?.id ?? null
   // The marker goes before the first message sent after the report — or
   // at the very end if nothing was said afterwards.
   const dividerIndex = page.messages.findIndex((m) => new Date(m.createdAt).getTime() > reportedAtMs)
@@ -297,16 +306,20 @@ function Transcript({ reportId, onRoster }: { reportId: string; onRoster: (roste
   const renderMessage = (m: ChatMessage) => {
     const member = memberFor(m.userId, page.roster, null)
     if (m.type === 'system') return <JoinEventRow key={m.id} message={m} member={member} timeZone={TIME_ZONE} t={st} />
+    const isReportedMessage = reportedMessages.has(m.id)
     return (
-      <div key={m.id}>
+      <div key={m.id} ref={m.id === firstReportedId ? firstReportedRef : undefined}>
         {m.moderationStatus !== 'pass' && <div className="reports-transcript__withheld">{t('reports.withheld')}</div>}
         <MessageRow
           message={m}
           member={member}
           isOwn={false}
           timeZone={TIME_ZONE}
-          highlight={reported.has(m.userId)}
-          highlightLabel={t('reports.reportedMember')}
+          // Ring only the messages the member actually pointed at; every
+          // other message from a reported member gets the tag alone, so
+          // the specific complaint stands out from the general context.
+          highlight={isReportedMessage}
+          highlightLabel={isReportedMessage ? t('reports.reportedMessage') : reportedMembers.has(m.userId) ? t('reports.reportedMember') : undefined}
           t={st}
         />
       </div>
@@ -440,6 +453,12 @@ function ReviewReportModal({ report, onClose, onDecided }: { report: SessionRepo
                   <MemberChip key={id} userId={id} roster={roster} />
                 ))}
               </span>
+              {report.messageIds.length > 0 && (
+                <>
+                  <span className="reports-review__label">{t('reports.messages')}</span>
+                  <span>{t('reports.messagesReported', { count: report.messageIds.length })}</span>
+                </>
+              )}
             </div>
           </div>
           {report.status === 'open' && (

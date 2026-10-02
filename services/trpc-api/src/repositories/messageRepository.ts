@@ -387,3 +387,32 @@ export async function listTranscriptWindow(db: Kysely<Database>, params: Transcr
   const newest = page[page.length - 1]
   return { messages: page.map(toMessageRow), olderCursor: null, newerCursor: hasNewer && newest ? cursorOf(newest) : null }
 }
+
+// For sessionReportService.ts's submitSessionReport: which of these
+// message ids exist in this session, and who wrote each. Scoped by
+// session_id so an id from another circle is simply absent — the
+// service treats absence as "not yours to report".
+export async function findMessageAuthors(db: Kysely<Database>, sessionId: string, messageIds: string[]): Promise<Map<string, string>> {
+  if (messageIds.length === 0) return new Map()
+  const rows = await db
+    .selectFrom('messages')
+    .select(['id', 'user_id'])
+    .where('session_id', '=', sessionId)
+    .where('type', '=', 'user')
+    .where('id', 'in', messageIds)
+    .execute()
+  return new Map(rows.map((row) => [row.id, row.user_id]))
+}
+
+// The transcript anchor for a report that names messages: the earliest
+// of them, as exact timestamptz text (same precision rationale as the
+// cursors above). Null when none of the ids exist any more.
+export async function findEarliestMessageAt(db: Kysely<Database>, messageIds: string[]): Promise<string | null> {
+  if (messageIds.length === 0) return null
+  const row = await db
+    .selectFrom('messages')
+    .select(sql<string>`min(created_at)::text`.as('earliest'))
+    .where('id', 'in', messageIds)
+    .executeTakeFirst()
+  return row?.earliest ?? null
+}

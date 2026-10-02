@@ -135,8 +135,16 @@ export function agreeToGuidelines(sessionId: string): Promise<{ agreed: true }> 
 // here (unlike skipTurn's SkipTurnNotYourTurnError case above), since a
 // 403 can't happen through the modal's normal flow: aboutUserIds only
 // ever comes from the caller's own already-fetched roster.
-export function submitSessionReport(sessionId: string, aboutUserIds: string[], body: string): Promise<{ status: 'submitted' }> {
-  return postTrpc('session.report', { sessionId, aboutUserIds, body })
+// `messageIds`: the specific messages the member picked (SessionPage.tsx's
+// per-message report action). The server folds each one's author into
+// aboutUserIds itself, so a report can be about messages alone.
+export function submitSessionReport(
+  sessionId: string,
+  aboutUserIds: string[],
+  body: string,
+  messageIds: string[] = [],
+): Promise<{ status: 'submitted' }> {
+  return postTrpc('session.report', { sessionId, aboutUserIds, messageIds, body })
 }
 
 // The report-icon button next to the sender's own flag/crisis message

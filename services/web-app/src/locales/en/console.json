@@ -231,6 +231,10 @@
     "decisionReviewed": "Reviewed — I looked into it or acted on it",
     "decisionDismissed": "Dismiss — nothing to act on",
     "loadFailed": "Failed to load session reports.",
-    "decideFailed": "Failed to save the decision — it may already have been decided by someone else."
+    "decideFailed": "Failed to save the decision — it may already have been decided by someone else.",
+    "reportedMessage": "Reported message",
+    "messages": "Messages",
+    "messagesReported_one": "{{count}} message reported",
+    "messagesReported_other": "{{count}} messages reported"
   }
 }

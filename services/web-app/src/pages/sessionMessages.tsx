@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { Avatar } from '../components/Avatar'
@@ -125,7 +125,7 @@ export function MemberAvatar({
 // already-rendered message to redo its `formatMessageTimestamp` work
 // (a fresh Intl.DateTimeFormat construction each call) — only a message
 // whose own props actually changed re-renders.
-const FlagIcon = (
+export const FlagIcon = (
   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true">
     <path d="M5 3v18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     <path d="M5 4h13l-3 4 3 4H5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -140,12 +140,17 @@ const FlagIcon = (
 // like a normal 'pass' message — it's a human override, not the
 // classifier's own verdict, and still only this user's own eyes see it.
 //
-// `highlight` is the moderator transcript's "this is a reported member's
-// message" marker (pages/manage/ReportsTab.tsx): a signal-colored ring
-// and a small tag, applied on top of whatever the bubble would otherwise
-// look like, so the row still reads as the same message the circle saw.
-// `onReportFalsePositive` is optional for the same reason — a reviewer
-// reading a transcript has no "that's my message" action.
+// `highlight` draws a signal-colored ring around the bubble — a selected
+// message in the circle's own report flow, or a reported message in the
+// moderator transcript (pages/manage/ReportsTab.tsx). `highlightLabel`
+// is an independent small tag in the header line ("Reported member",
+// "Reported message"); either can be used without the other. Both apply
+// on top of whatever the bubble would otherwise look like, so the row
+// still reads as the same message the circle saw. `trailing` is a slot
+// beside the bubble for a per-message action (the circle's report-this-
+// message button); `onReportFalsePositive` is optional for the same
+// reason — a reviewer reading a transcript has no "that's my message"
+// action.
 export const MessageRow = memo(function MessageRow({
   message,
   member,
@@ -155,6 +160,8 @@ export const MessageRow = memo(function MessageRow({
   isReported = false,
   highlight = false,
   highlightLabel,
+  trailing,
+  className,
   t,
 }: {
   message: ChatMessage
@@ -165,13 +172,15 @@ export const MessageRow = memo(function MessageRow({
   isReported?: boolean
   highlight?: boolean
   highlightLabel?: string
+  trailing?: ReactNode
+  className?: string
   t: TFunction<'session'>
 }) {
   const isWithheld = isOwn && message.moderationStatus !== 'pass'
   const alreadyReported = isReported || message.falsePositiveReportedAt !== null
 
   return (
-    <div style={{ display: 'flex', gap: 10, maxWidth: 560 }}>
+    <div className={className} style={{ display: 'flex', gap: 10, maxWidth: 560 }}>
       <MemberAvatar member={member} size={32} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
@@ -184,7 +193,7 @@ export const MessageRow = memo(function MessageRow({
               {t('composer.onlyYouCanSeeThis')}
             </span>
           )}
-          {highlight && highlightLabel && (
+          {highlightLabel && (
             <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--signal-urgent)', fontWeight: 'var(--font-weight-medium)' as unknown as number }}>
               {highlightLabel}
             </span>
@@ -223,6 +232,7 @@ export const MessageRow = memo(function MessageRow({
               onClick={() => onReportFalsePositive(message.id)}
             />
           )}
+          {trailing}
         </div>
       </div>
     </div>

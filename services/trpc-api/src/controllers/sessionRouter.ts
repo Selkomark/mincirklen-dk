@@ -18,6 +18,7 @@ import {
   recordFlaggedMessage,
   recordPassedMessage,
   reportFalsePositive as reportFalsePositiveRepo,
+  findMessageAuthors,
 } from '../repositories/messageRepository'
 import { insertSessionReport } from '../repositories/sessionReportRepository'
 import {
@@ -342,10 +343,23 @@ export const sessionRouter = router({
   // deliberately doesn't try to swallow persistence failures the way
   // escalateCrisis above does.
   report: verifiedProcedure
-    .input(sessionIdInput.extend({ aboutUserIds: z.array(z.string().uuid()).min(1), body: z.string().trim().min(1).max(2000) }))
+    // Either subjects or messages must be given (a report has to point at
+    // something); the service folds message authors into the subjects, so
+    // messages alone are a complete report.
+    .input(
+      sessionIdInput
+        .extend({
+          aboutUserIds: z.array(z.string().uuid()).default([]),
+          messageIds: z.array(z.string().uuid()).max(20).default([]),
+          body: z.string().trim().min(1).max(2000),
+        })
+        .refine((input) => input.aboutUserIds.length > 0 || input.messageIds.length > 0, {
+          message: 'a report must name at least one member or message',
+        }),
+    )
     .mutation(async ({ ctx, input }) => {
       const { db } = ctx.appEnv
-      const { sessionId, aboutUserIds, body } = input
+      const { sessionId, aboutUserIds, messageIds, body } = input
       const reporterUserId = ctx.userId
 
       try {
@@ -353,10 +367,11 @@ export const sessionRouter = router({
           {
             isReporterMember: () => isSessionMember(db, sessionId, reporterUserId),
             isAboutUserMember: (userId) => isSessionMember(db, sessionId, userId),
-            insertReport: () => insertSessionReport(db, { sessionId, reporterUserId, aboutUserIds, body }),
+            findMessageAuthors: (ids) => findMessageAuthors(db, sessionId, ids),
+            insertReport: (resolved) => insertSessionReport(db, { sessionId, reporterUserId, body, ...resolved }),
             logReport: (params) => console.error('[REPORT] session reported', params),
           },
-          { sessionId, reporterUserId, aboutUserIds, body },
+          { sessionId, reporterUserId, aboutUserIds, messageIds, body },
         )
         return { status: 'submitted' as const }
       } catch (err) {

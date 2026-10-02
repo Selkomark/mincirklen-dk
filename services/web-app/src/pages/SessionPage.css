@@ -313,3 +313,64 @@
     width: 36px;
   }
 }
+
+/* Per-message report toggle (SessionCenterPanel): hidden until the row is
+   hovered or focused so the timeline stays calm, always visible once a
+   message is selected, and always visible where there's no hover. */
+.dash-message-select {
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--easing-standard);
+}
+
+.dash-message-row:hover .dash-message-select,
+.dash-message-row:focus-within .dash-message-select,
+.dash-message-select--selected {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .dash-message-select {
+    opacity: 1;
+  }
+}
+
+/* Floating "N messages selected · Report · Clear" bar over the timeline,
+   positioned like the jump-to-bottom button below it. */
+.dash-report-bar {
+  position: absolute;
+  left: 50%;
+  bottom: var(--space-4);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border: 1px solid var(--signal-urgent);
+  border-radius: var(--radius-full);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-md);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  white-space: nowrap;
+  z-index: 2;
+}
+
+/* A selected message quoted inside the report modal. */
+.dash-report-quote {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--signal-urgent);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.dash-report-quote__meta {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}

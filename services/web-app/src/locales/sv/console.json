@@ -231,6 +231,10 @@
     "decisionReviewed": "Granskad — jag har tittat på eller agerat på det",
     "decisionDismissed": "Avfärda — inget att agera på",
     "loadFailed": "Kunde inte ladda sessionsrapporter.",
-    "decideFailed": "Kunde inte spara beslutet — det kan redan ha beslutats av någon annan."
+    "decideFailed": "Kunde inte spara beslutet — det kan redan ha beslutats av någon annan.",
+    "reportedMessage": "Rapporterat meddelande",
+    "messages": "Meddelanden",
+    "messagesReported_one": "{{count}} meddelande rapporterat",
+    "messagesReported_other": "{{count}} meddelanden rapporterade"
   }
 }

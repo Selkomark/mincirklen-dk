@@ -53,7 +53,9 @@
     "cancel": "Annuller",
     "submitted": "Rapport om {{about}} indsendt — en moderator gennemgår den.",
     "submitError": "Der gik noget galt under indsendelsen af din rapport. Prøv igen.",
-    "submit": "Indsend rapport"
+    "submit": "Indsend rapport",
+    "selectedMessages": "Beskeder, du rapporterer",
+    "autoSelected": "(valgt ud fra beskederne ovenfor — tilføj andre involverede)"
   },
   "accountModal": {
     "back": "Tilbage",
@@ -158,7 +160,9 @@
     "onlyYouCanSeeThis": "Kun du kan se dette",
     "reportFalsePositive": "Bed om et nyt kig",
     "falsePositiveReported": "Vi kigger på det igen",
-    "falsePositiveReportedNotice": "Tak — vi kigger på det."
+    "falsePositiveReportedNotice": "Tak — vi kigger på det.",
+    "reportMessage": "Rapportér denne besked",
+    "unreportMessage": "Fjern fra rapporten"
   },
   "rightPanel": {
     "essentialPages": "Vigtige sider",
@@ -189,5 +193,11 @@
     "moreRecentSessionsLoadFailed": "Kunne ikke indlæse flere sessioner",
     "sessionLoadFailed": "Kunne ikke indlæse denne session lige nu.",
     "earlierMessagesLoadFailed": "Kunne ikke indlæse tidligere beskeder lige nu."
+  },
+  "reportBar": {
+    "selected_one": "{{count}} besked valgt",
+    "selected_other": "{{count}} beskeder valgt",
+    "report": "Rapportér",
+    "clear": "Ryd"
   }
 }

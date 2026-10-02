@@ -730,6 +730,104 @@ describe('session reports review (sessionReports.*)', () => {
   })
 })
 
+describe('reports that name messages', () => {
+  async function verifiedMember(sessionId: string): Promise<{ cookie: string; userId: string }> {
+    const { cookie, userId } = await mintBareUserCookie()
+    await linkIdentity(db, userId, 'google', `test-subject-${userId}`)
+    const profileRes = await app.request('/trpc/auth.completeProfile', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ firstName: 'Member', lastName: 'Test', gender: 'other', country: 'GB', mobileNumber: '+44 20 7946 0958', stayAnonymous: true }),
+    })
+    expect(profileRes.status).toBe(200)
+    await joinSession(db, sessionId, userId)
+    return { cookie, userId }
+  }
+
+  test('session.report folds the authors of named messages into the subjects and stores the ids', async () => {
+    const session = await createSession(db)
+    const reporter = await verifiedMember(session.id)
+    const alice = await insertUser(db)
+    const bob = await insertUser(db)
+    await joinSession(db, session.id, alice.id)
+    await joinSession(db, session.id, bob.id)
+    const aliceMessage = await insertMessage(db, { sessionId: session.id, userId: alice.id, body: 'something hurtful' })
+    const bobMessage = await insertMessage(db, { sessionId: session.id, userId: bob.id, body: 'piling on' })
+
+    // Picks only Alice as a subject but points at one of Bob's messages too.
+    const res = await app.request('/trpc/session.report', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: reporter.cookie },
+      body: JSON.stringify({ sessionId: session.id, aboutUserIds: [alice.id], messageIds: [aliceMessage.id, bobMessage.id], body: 'e2e message report' }),
+    })
+    expect(res.status).toBe(200)
+
+    const stored = await db.selectFrom('session_reports').select(['about_user_ids', 'message_ids']).where('session_id', '=', session.id).executeTakeFirstOrThrow()
+    expect([...stored.about_user_ids].sort()).toEqual([alice.id, bob.id].sort())
+    expect([...stored.message_ids].sort()).toEqual([aliceMessage.id, bobMessage.id].sort())
+  })
+
+  test('session.report refuses a message from another circle, and a report naming nothing at all', async () => {
+    const session = await createSession(db)
+    const other = await createSession(db)
+    const reporter = await verifiedMember(session.id)
+    const stranger = await insertUser(db)
+    await joinSession(db, other.id, stranger.id)
+    const elsewhere = await insertMessage(db, { sessionId: other.id, userId: stranger.id, body: 'not in your circle' })
+
+    const foreign = await app.request('/trpc/session.report', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: reporter.cookie },
+      body: JSON.stringify({ sessionId: session.id, messageIds: [elsewhere.id], body: 'x' }),
+    })
+    expect(foreign.status).toBe(403)
+
+    const empty = await app.request('/trpc/session.report', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: reporter.cookie },
+      body: JSON.stringify({ sessionId: session.id, body: 'x' }),
+    })
+    expect(empty.status).toBe(400)
+  })
+
+  test('the moderator transcript opens on the earliest named message and returns the ids', async () => {
+    const admin = await findRoleByName(db, 'ADMIN')
+    if (!admin) throw new Error('seeded ADMIN role not found')
+    const session = await createSession(db)
+    const moderator = await verifiedMember(session.id)
+    await assignRoleToUser(db, moderator.userId, admin.id)
+    const alice = await insertUser(db)
+    await joinSession(db, session.id, alice.id)
+
+    const pause = () => new Promise((resolve) => setTimeout(resolve, 5))
+    const early = await insertMessage(db, { sessionId: session.id, userId: alice.id, body: 'early' })
+    await pause()
+    const named = await insertMessage(db, { sessionId: session.id, userId: alice.id, body: 'the one reported' })
+    await pause()
+    await insertMessage(db, { sessionId: session.id, userId: alice.id, body: 'later' })
+    await pause()
+    await insertSessionReport(db, { sessionId: session.id, reporterUserId: moderator.userId, aboutUserIds: [alice.id], messageIds: [named.id], body: 'e2e anchored' })
+
+    const listRes = await app.request(`/trpc/sessionReports.list?input=${encodeURIComponent(JSON.stringify({ status: 'open', limit: 50 }))}`, { headers: { cookie: moderator.cookie } })
+    const list = (await listRes.json()) as { result: { data: { reports: { id: string; sessionId: string; messageIds: string[] }[] } } }
+    const report = list.result.data.reports.find((r) => r.sessionId === session.id)!
+    expect(report.messageIds).toEqual([named.id])
+
+    // With a window of one each side, the named message is the last of the
+    // "before" side (<= anchor) and the report's own filing moment is later.
+    const res = await app.request(
+      `/trpc/sessionReports.transcript?input=${encodeURIComponent(JSON.stringify({ reportId: report.id, direction: 'around', limit: 1 }))}`,
+      { headers: { cookie: moderator.cookie } },
+    )
+    expect(res.status).toBe(200)
+    const transcript = (await res.json()) as { result: { data: { messages: { id: string; body: string }[]; messageIds: string[]; olderCursor: string | null } } }
+    expect(transcript.result.data.messages.map((m) => m.body)).toEqual(['the one reported', 'later'])
+    expect(transcript.result.data.messageIds).toEqual([named.id])
+    expect(transcript.result.data.olderCursor).not.toBeNull()
+    expect(early.id).toBeDefined()
+  })
+})
+
 describe('/health', () => {
   test('reports each dependency check', async () => {
     const res = await app.request('/health')

@@ -231,6 +231,10 @@
     "decisionReviewed": "Gennemgået — jeg har undersøgt eller handlet på det",
     "decisionDismissed": "Afvis — intet at handle på",
     "loadFailed": "Kunne ikke indlæse sessionsrapporter.",
-    "decideFailed": "Kunne ikke gemme afgørelsen — den er muligvis allerede afgjort af en anden."
+    "decideFailed": "Kunne ikke gemme afgørelsen — den er muligvis allerede afgjort af en anden.",
+    "reportedMessage": "Rapporteret besked",
+    "messages": "Beskeder",
+    "messagesReported_one": "{{count}} besked rapporteret",
+    "messagesReported_other": "{{count}} beskeder rapporteret"
   }
 }

@@ -163,6 +163,9 @@ export interface SessionReportsTable {
   // migrations/0001_init.ts.
   reporter_user_id: string | null
   about_user_ids: JSONColumnType<string[]>
+  // Specific messages the report points at, possibly none —
+  // migrations/0005_session_report_message_ids.ts.
+  message_ids: JSONColumnType<string[]>
   body: string
   created_at: Timestamp
   // Review state for the /manage "Session reports" tab — see
