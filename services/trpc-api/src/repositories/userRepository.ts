@@ -76,6 +76,25 @@ export async function findEmailForUser(db: Kysely<Database>, kms: KmsConfig, use
   return decryptField(kms, row.email_ciphertext)
 }
 
+// Address and preferred language together, for an email to a member
+// (emailService.ts) — one query rather than two round trips. Language
+// is null when the member hasn't set one (or has no profile yet);
+// the caller falls back to English.
+export async function findEmailAndLanguageForUser(
+  db: Kysely<Database>,
+  kms: KmsConfig,
+  userId: string,
+): Promise<{ email: string; language: string | null } | null> {
+  const row = await db
+    .selectFrom('users')
+    .leftJoin('user_profiles', 'user_profiles.user_id', 'users.id')
+    .select(['users.email_ciphertext', 'user_profiles.language'])
+    .where('users.id', '=', userId)
+    .executeTakeFirst()
+  if (!row?.email_ciphertext) return null
+  return { email: await decryptField(kms, row.email_ciphertext), language: row.language ?? null }
+}
+
 // The other half of lifting a ban: the live-block flag goes, so the
 // person's next login (now passing the ban check) works normally.
 export async function clearBannedAt(db: Kysely<Database>, userId: string): Promise<void> {

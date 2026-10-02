@@ -341,7 +341,7 @@ export interface EmailMessagesTable {
   to_email_hash: string
   user_id: string | null
   subject: string
-  variables: JSONColumnType<Record<string, unknown>, Record<string, unknown> | undefined>
+  variables: JSONColumnType<Record<string, unknown>, Record<string, unknown> | undefined, Record<string, unknown>>
   // See packages/shared/src/schemas/email.ts EMAIL_STATUSES and
   // services/trpc-api/src/services/emailStatus.ts for the ordering.
   status: Generated<'queued' | 'sent' | 'accepted' | 'delayed' | 'delivered' | 'opened' | 'clicked' | 'bounced' | 'failed' | 'suppressed' | 'complained'>
@@ -373,7 +373,7 @@ export interface EmailEventsTable {
   webhook_id: string
   type: string
   occurred_at: Timestamp
-  data: JSONColumnType<Record<string, unknown>, Record<string, unknown> | undefined>
+  data: JSONColumnType<Record<string, unknown>, Record<string, unknown> | undefined, Record<string, unknown>>
   created_at: Timestamp
 }
 
@@ -388,7 +388,7 @@ export interface EmailSuppressionsTable {
   sending_domain: Generated<string>
   reason: string | null
   expires_at: NullableTimestamp
-  raw: JSONColumnType<Record<string, unknown>, Record<string, unknown> | undefined>
+  raw: JSONColumnType<Record<string, unknown>, Record<string, unknown> | undefined, Record<string, unknown>>
   created_at: Timestamp
   updated_at: Timestamp
 }
