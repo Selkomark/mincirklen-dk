@@ -1,11 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import { Alert } from '../../components/Alert'
-import { Button } from '../../components/Button'
 import { Spinner } from '../../components/Spinner'
-import { landingPath, managePath, pPath, useLocale, type ManageSection } from '../../App'
-import { logout } from '../../logout'
-import { ThemeToggle } from '../../ThemeToggle'
+import { managePath, pPath, useLocale, type ManageSection } from '../../App'
 import { ErrorPage } from '../ErrorPage'
 import { useDocumentTitle } from '../../useDocumentTitle'
 import { hasAccess, useAccess, type Access } from './useAccess'
@@ -14,6 +11,7 @@ import { RolesTab } from './RolesTab'
 import { UsersTab } from './UsersTab'
 import { ReviewQueueTab } from './ReviewQueueTab'
 import { GatesTab } from './GatesTab'
+import { SidebarMenu } from './SidebarMenu'
 
 const SIDEBAR_BG = '#171717'
 const SIDEBAR_TEXT = '#d4d4d4'
@@ -105,34 +103,6 @@ function NavLink({ item, isActive, onNavigate }: { item: NavItem; isActive: bool
   )
 }
 
-function LogoutRow() {
-  const { t } = useTranslation('landing')
-  const locale = useLocale()
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  async function handleLogout() {
-    setError(null)
-    setIsLoggingOut(true)
-    try {
-      await logout()
-      window.location.href = landingPath(locale)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.logoutFailed'))
-      setIsLoggingOut(false)
-    }
-  }
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      {error && <Alert variant="urgent">{error}</Alert>}
-      <Button variant="ghost" isPending={isLoggingOut} onPress={() => void handleLogout()} style={{ width: '100%', color: SIDEBAR_TEXT }}>
-        {t('header.logOut')}
-      </Button>
-    </div>
-  )
-}
-
 function Sidebar({
   access,
   activeSection,
@@ -146,6 +116,7 @@ function Sidebar({
 }) {
   const { t } = useTranslation('console')
   const locale = useLocale()
+  const [logoutError, setLogoutError] = useState<string | null>(null)
   const visibleGroups = NAV_GROUPS.map((group) => ({
     ...group,
     items: group.items.filter((item) => hasAccess(access, item.permission)),
@@ -165,8 +136,15 @@ function Sidebar({
     >
       <div style={{ padding: '20px 20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <LogoMark onClick={onLogoClick} />
-        <ThemeToggle />
+        {/* Language, theme and log out live behind this one trigger —
+            see SidebarMenu.tsx. */}
+        <SidebarMenu onLogoutError={setLogoutError} />
       </div>
+      {logoutError && (
+        <div style={{ padding: '0 12px 8px' }}>
+          <Alert variant="urgent">{logoutError}</Alert>
+        </div>
+      )}
 
       <nav style={{ flex: 1, padding: '0 12px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
         {visibleGroups.length === 0 ? (
@@ -214,7 +192,6 @@ function Sidebar({
         <a href={pPath(locale)} style={{ fontSize: 'var(--font-size-sm)', color: SIDEBAR_TEXT, textDecoration: 'none' }}>
           {t('nav.backToSite')}
         </a>
-        <LogoutRow />
       </div>
     </aside>
   )

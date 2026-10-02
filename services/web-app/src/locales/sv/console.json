@@ -176,5 +176,13 @@
       "session_policies": "Sessionspolicyer",
       "users": "Användare"
     }
+  },
+  "menu": {
+    "label": "Meny",
+    "language": "Språk",
+    "darkMode": "Mörkt läge",
+    "lightMode": "Ljust läge",
+    "logOut": "Logga ut",
+    "logoutFailed": "Något gick fel vid utloggningen."
   }
 }

@@ -176,5 +176,13 @@
       "session_policies": "Session policies",
       "users": "Users"
     }
+  },
+  "menu": {
+    "label": "Menu",
+    "language": "Language",
+    "darkMode": "Dark mode",
+    "lightMode": "Light mode",
+    "logOut": "Log out",
+    "logoutFailed": "Something went wrong logging out."
   }
 }

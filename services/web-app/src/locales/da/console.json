@@ -176,5 +176,13 @@
       "session_policies": "Sessionspolitikker",
       "users": "Brugere"
     }
+  },
+  "menu": {
+    "label": "Menu",
+    "language": "Sprog",
+    "darkMode": "Mørk tilstand",
+    "lightMode": "Lys tilstand",
+    "logOut": "Log ud",
+    "logoutFailed": "Noget gik galt under log ud."
   }
 }

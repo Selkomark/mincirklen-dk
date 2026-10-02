@@ -1,0 +1,45 @@
+/* Additions on top of components/Menu/Menu.css's ds-menu* classes for
+   the admin sidebar menu: a section header, a fixed-width leading slot
+   so labels line up whether or not a row carries a check/icon, and the
+   selected/urgent states the base DS item styles don't define. */
+.console-menu {
+  min-width: 200px;
+}
+
+.console-menu__header {
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.console-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.console-menu__check {
+  display: inline-block;
+  width: 1em;
+  flex: none;
+  text-align: center;
+  color: var(--accent-safe);
+}
+
+.console-menu__item[data-selected] {
+  color: var(--accent-safe);
+  font-weight: var(--font-weight-medium);
+}
+
+.console-menu__item--urgent {
+  color: var(--signal-urgent);
+}
+
+.console-menu__separator {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--border-subtle);
+}
