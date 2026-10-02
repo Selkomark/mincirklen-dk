@@ -988,7 +988,7 @@ describe('session report actions', () => {
     })
     expect(res.status).toBe(200)
 
-    const stored = await db.selectFrom('session_report_actions').select(['action', 'target_user_ids']).where('report_id', '=', report.id).orderBy('created_at').execute()
+    const stored = await db.selectFrom('session_report_actions').select(['action', 'target_user_ids']).where('report_id', '=', report.id).orderBy('position').execute()
     expect(stored.map((r) => [r.action, r.target_user_ids])).toEqual([
       ['warn', [alice.id]],
       ['ban', [bob.id]],

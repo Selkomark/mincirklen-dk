@@ -101,7 +101,7 @@ async function outcomesByReport(db: Kysely<Database>, reportIds: string[]): Prom
     .select(['report_id', 'action', 'target_user_ids', 'member_message', 'ban_reason_category'])
     .where('report_id', 'in', reportIds)
     .orderBy('created_at', 'asc')
-    .orderBy('id', 'asc')
+    .orderBy('position', 'asc')
     .execute()
   for (const row of rows) {
     out.set(row.report_id, [
@@ -257,12 +257,13 @@ export async function applySessionReportDecision(
       await trx
         .insertInto('session_report_actions')
         .values(
-          params.outcomes.map((outcome) => ({
+          params.outcomes.map((outcome, position) => ({
             report_id: params.reportId,
             action: outcome.action,
             target_user_ids: sql`${JSON.stringify(outcome.targetUserIds)}::jsonb`,
             member_message: outcome.memberMessage,
             ban_reason_category: outcome.banReasonCategory,
+            position,
           })),
         )
         .execute()

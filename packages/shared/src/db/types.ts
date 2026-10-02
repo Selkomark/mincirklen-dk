@@ -199,6 +199,9 @@ export interface SessionReportActionsTable {
   target_user_ids: JSONColumnType<string[], string[] | undefined>
   member_message: string | null
   ban_reason_category: 'predatory_contact' | 'harassment' | 'crisis_abuse' | 'illegal_content' | 'other' | null
+  // The order the reviewer listed the outcomes in (0-based) —
+  // migrations/0009. Rows of one decision share a created_at.
+  position: Generated<number>
   created_at: Timestamp
 }
 
