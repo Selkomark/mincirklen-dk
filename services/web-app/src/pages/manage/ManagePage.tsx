@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Alert } from '../../components/Alert'
 import { Spinner } from '../../components/Spinner'
 import { managePath, pPath, useLocale, type ManageSection } from '../../App'
@@ -13,6 +13,7 @@ import { ReviewQueueTab } from './ReviewQueueTab'
 import { GatesTab } from './GatesTab'
 import { ReportsTab } from './ReportsTab'
 import { SidebarMenu } from './SidebarMenu'
+import './ManagePage.css'
 
 const SIDEBAR_BG = '#171717'
 const SIDEBAR_TEXT = '#d4d4d4'
@@ -112,11 +113,15 @@ function Sidebar({
   activeSection,
   onNavigate,
   onLogoClick,
+  isOpen,
 }: {
   access: Access
   activeSection: ManageSection
   onNavigate: (section: ManageSection) => void
   onLogoClick: () => void
+  // Only meaningful below 768px, where the sidebar is a drawer — see
+  // ManagePage.css. On desktop it is always shown regardless.
+  isOpen: boolean
 }) {
   const { t } = useTranslation('console')
   const locale = useLocale()
@@ -127,17 +132,7 @@ function Sidebar({
   })).filter((group) => group.items.length > 0)
 
   return (
-    <aside
-      style={{
-        width: 240,
-        flex: 'none',
-        background: SIDEBAR_BG,
-        color: SIDEBAR_TEXT,
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-      }}
-    >
+    <aside className={['console-sidebar', isOpen && 'console-sidebar--open'].filter(Boolean).join(' ')} style={{ background: SIDEBAR_BG, color: SIDEBAR_TEXT }}>
       <div style={{ padding: '20px 20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <LogoMark onClick={onLogoClick} />
         {/* Language, theme and log out live behind this one trigger —
@@ -237,6 +232,21 @@ export function ManagePage({
   const { t: ct } = useTranslation('console')
   useDocumentTitle(ct('documentTitle'))
   const status = useAccess()
+  // The phone-width nav drawer (ManagePage.css). Closes on every
+  // navigation and on Escape, the way the session shell's drawer does.
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  useEffect(() => {
+    if (!mobileNavOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileNavOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [mobileNavOpen])
+  const navigate = (next: ManageSection) => {
+    setMobileNavOpen(false)
+    onNavigate(next)
+  }
   // Called unconditionally (hooks rule) ahead of the loading/error
   // returns below — null while status isn't 'loaded' yet just means no
   // timer is armed until the real duration is known.
@@ -266,25 +276,40 @@ export function ManagePage({
   const firstAccessible = NAV_ITEMS.find((item) => hasAccess(access, item.permission))?.section ?? null
   const activeSection = section && NAV_ITEMS.some((item) => item.section === section) ? section : firstAccessible
 
+  const title = activeSection ? ct(NAV_ITEMS.find((item) => item.section === activeSection)?.labelKey ?? 'nav.review') : ct('documentTitle')
+
   return (
-    <div style={{ display: 'flex', height: '100%' }}>
+    <div className="console-root">
+      {mobileNavOpen && <div className="console-drawer-backdrop" onClick={() => setMobileNavOpen(false)} />}
       <Sidebar
         access={access}
         activeSection={activeSection ?? 'review'}
-        onNavigate={onNavigate}
-        onLogoClick={() => firstAccessible && onNavigate(firstAccessible)}
+        onNavigate={navigate}
+        onLogoClick={() => firstAccessible && navigate(firstAccessible)}
+        isOpen={mobileNavOpen}
       />
-      <main style={{ flex: 1, overflow: 'auto', padding: 'clamp(20px, 4vw, 32px)' }}>
-        {activeSection ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-            <h1 style={{ margin: 0, fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-primary)' }}>
-              {ct(NAV_ITEMS.find((item) => item.section === activeSection)?.labelKey ?? 'nav.review')}
-            </h1>
-            <SectionContent section={activeSection} access={access} />
+      <main className="console-main">
+        <div className="console-main__inner">
+          <div className="console-header">
+            <button
+              type="button"
+              className="console-mobile-toggle"
+              onClick={() => setMobileNavOpen((v) => !v)}
+              aria-expanded={mobileNavOpen}
+              aria-label={ct('nav.toggleMenu')}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+              </svg>
+            </button>
+            <h1 className="console-header__title">{title}</h1>
           </div>
-        ) : (
-          <div style={{ color: 'var(--text-secondary)' }}>{ct('noSectionPermissions')}</div>
-        )}
+          {activeSection ? (
+            <SectionContent section={activeSection} access={access} />
+          ) : (
+            <div style={{ color: 'var(--text-secondary)' }}>{ct('noSectionPermissions')}</div>
+          )}
+        </div>
       </main>
     </div>
   )

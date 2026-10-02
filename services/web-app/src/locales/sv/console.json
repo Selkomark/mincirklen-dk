@@ -10,7 +10,8 @@
     "gates": "Åtkomstgrindar",
     "noSections": "Inga sektioner tillgängliga",
     "backToSite": "← Tillbaka till webbplatsen",
-    "reports": "Sessionsrapporter"
+    "reports": "Sessionsrapporter",
+    "toggleMenu": "Visa eller dölj navigering"
   },
   "noSectionPermissions": "Inget att visa — du har adminåtkomst men ännu inga behörigheter för någon sektion.",
   "common": {

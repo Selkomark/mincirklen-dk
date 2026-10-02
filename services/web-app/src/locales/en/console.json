@@ -10,7 +10,8 @@
     "gates": "Gates",
     "noSections": "No sections available",
     "backToSite": "← Back to site",
-    "reports": "Session reports"
+    "reports": "Session reports",
+    "toggleMenu": "Toggle navigation"
   },
   "noSectionPermissions": "Nothing to show — you have admin access but no section permissions yet.",
   "common": {

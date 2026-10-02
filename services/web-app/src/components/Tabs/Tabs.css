@@ -9,9 +9,19 @@
   display: flex;
   gap: var(--space-2);
   border-bottom: 1px solid var(--border-subtle);
+  /* Many tabs on a narrow screen scroll sideways rather than wrapping
+     into a second row (which would break the underline strip). */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ds-tabs__list::-webkit-scrollbar {
+  display: none;
 }
 
 .ds-tabs__tab {
+  flex: none;
+  white-space: nowrap;
   padding: var(--space-3) var(--space-4);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);

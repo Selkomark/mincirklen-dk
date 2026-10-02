@@ -1,0 +1,110 @@
+/* The admin shell: a fixed dark sidebar beside a scrolling main column
+   on desktop; below 768px the same sidebar becomes a slide-in drawer
+   behind a hamburger in the page header. Mirrors components/DashShell.css
+   (the /s and /p shells) — same breakpoint, same drawer width, backdrop
+   and transition — so the two app shells behave the same on a phone.
+   The sidebar keeps its own dark palette rather than the DS surface, so
+   the drawer is styled here instead of reusing the .dash-drawer rules. */
+.console-root {
+  display: flex;
+  height: 100%;
+}
+
+.console-sidebar {
+  width: 240px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.console-main {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: clamp(20px, 4vw, 32px);
+}
+
+.console-main__inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.console-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.console-header__title {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.console-mobile-toggle,
+.console-drawer-backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .console-main {
+    padding: var(--space-4) var(--space-3);
+  }
+
+  .console-header__title {
+    font-size: var(--font-size-lg);
+  }
+
+  .console-mobile-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex: none;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+
+  .console-drawer-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgb(0 0 0 / 0.4);
+    z-index: 45;
+  }
+
+  .console-sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(300px, 85vw);
+    height: auto;
+    z-index: 50;
+    box-sizing: border-box;
+    overflow: hidden;
+    transform: translateX(-100%);
+    transition: transform var(--duration-base) var(--easing-standard);
+  }
+
+  .console-sidebar--open {
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .console-sidebar {
+    transition: none;
+  }
+}

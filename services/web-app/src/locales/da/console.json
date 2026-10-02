@@ -10,7 +10,8 @@
     "gates": "Adgangsporte",
     "noSections": "Ingen sektioner tilgængelige",
     "backToSite": "← Tilbage til sitet",
-    "reports": "Sessionsrapporter"
+    "reports": "Sessionsrapporter",
+    "toggleMenu": "Vis eller skjul navigation"
   },
   "noSectionPermissions": "Intet at vise — du har adminadgang, men endnu ingen rettigheder til nogen sektion.",
   "common": {
