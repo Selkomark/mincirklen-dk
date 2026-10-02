@@ -51,6 +51,10 @@ const STATUSES: ReportStatus[] = ['open', 'reviewed', 'dismissed']
 const PAGE_SIZE = 20
 const TRANSCRIPT_PAGE_SIZE = 30
 const COLUMNS = 4
+// Where the "report filed" marker lands on open: this far above the
+// bottom edge of the conversation panel — enough to show one or two
+// messages after the report for context, with the lead-up above.
+const MARKER_BOTTOM_MARGIN_PX = 120
 
 // The reviewer's own browser zone — there's no per-admin preference
 // here the way SessionPage has usePreferences, and the circle's times
@@ -232,9 +236,13 @@ function Transcript({ reportId, onRoster }: { reportId: string; onRoster: (roste
     if (page) onRoster(page.roster)
   }, [page, onRoster])
 
-  // Open centred on the "report filed" marker, once, when the first page
-  // lands — the fixed point every review starts from. Messages the report
-  // names are ringed wherever they fall and reached by scrolling.
+  // Open with the "report filed" marker near the bottom of the panel,
+  // once, when the first page lands — the fixed point every review starts
+  // from. What prompted a report is almost always the messages just
+  // before it, so the view gives those the room: the marker sits a
+  // healthy margin above the bottom edge, with the lead-up filling the
+  // panel above it. Messages the report names are ringed wherever they
+  // fall and reached by scrolling.
   useLayoutEffect(() => {
     if (!page || centredRef.current) return
     const target = dividerRef.current
@@ -244,7 +252,7 @@ function Transcript({ reportId, onRoster }: { reportId: string; onRoster: (roste
       // is relative to the nearest positioned ancestor (the modal), which
       // put the marker a few rows below the fold.
       const targetTop = target.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop
-      container.scrollTop = targetTop - container.clientHeight / 2 + target.clientHeight / 2
+      container.scrollTop = targetTop + target.clientHeight - container.clientHeight + MARKER_BOTTOM_MARGIN_PX
     }
     centredRef.current = true
   }, [page])
