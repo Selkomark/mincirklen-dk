@@ -40,7 +40,7 @@ export interface SessionReport {
   createdAt: string
   reviewedAt: string | null
   reviewedBy: string | null
-  // The deciding moderator as the admin UI names people: masked email.
+  // The deciding moderator, by email — staff identifying staff.
   reviewedByLabel: string | null
   decisionNote: string | null
   action: ReportAction | null

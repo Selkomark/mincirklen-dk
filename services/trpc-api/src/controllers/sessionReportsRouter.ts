@@ -18,7 +18,7 @@ import {
   type SessionReportRow,
 } from '../repositories/sessionReportRepository'
 import { insertMemberNote, listMemberNotesForUsers } from '../repositories/memberNoteRepository'
-import { findMaskedEmails } from '../repositories/rbacRepository'
+import { findModeratorLabels } from '../repositories/rbacRepository'
 import { listIdentitiesForUser } from '../repositories/userIdentityRepository'
 import { findDisplayNames } from '../repositories/userProfileRepository'
 import { setBannedAt } from '../repositories/userRepository'
@@ -57,9 +57,10 @@ function toTRPCError(err: unknown): TRPCError {
 // roles get to see the queue without being able to close anything in it;
 // banning needs users.ban on top (checked inside the service).
 // A report as the admin UI shows it: the row plus a human label for the
-// moderator who decided it (masked email, same as the Users tab).
-async function withReviewerLabels(ctx: { appEnv: { db: Parameters<typeof findMaskedEmails>[0]; vault: Parameters<typeof findMaskedEmails>[1] } }, reports: SessionReportRow[]) {
-  const labels = await findMaskedEmails(
+// moderator who decided it (their email — staff identifying staff, see
+// rbacRepository.ts's findModeratorLabels).
+async function withReviewerLabels(ctx: { appEnv: { db: Parameters<typeof findModeratorLabels>[0]; vault: Parameters<typeof findModeratorLabels>[1] } }, reports: SessionReportRow[]) {
+  const labels = await findModeratorLabels(
     ctx.appEnv.db,
     ctx.appEnv.vault,
     reports.map((r) => r.reviewedBy).filter((id): id is string => id !== null),
@@ -103,7 +104,7 @@ export const sessionReportsRouter = router({
         listMemberNotesForUsers(db, report.aboutUserIds),
         listReportsAboutUsers(db, report.aboutUserIds, input.reportId),
       ])
-      const labels = await findMaskedEmails(db, vault, [
+      const labels = await findModeratorLabels(db, vault, [
         ...notes.map((n) => n.createdBy).filter((id): id is string => id !== null),
         ...priorReports.map((r) => r.reviewedBy).filter((id): id is string => id !== null),
       ])

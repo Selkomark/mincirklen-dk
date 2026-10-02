@@ -353,16 +353,19 @@ export async function listUsersWithRoles(
   return { users, nextCursor: hasMore ? (page[page.length - 1]?.id ?? null) : null }
 }
 
-// How one moderator is shown to another: the same masked email the Users
-// tab shows, resolved for a set of ids at once. Never a raw id (useless
-// to a human) and never the full address (needless exposure).
-export async function findMaskedEmails(db: Kysely<Database>, kms: KmsConfig, userIds: string[]): Promise<Map<string, string>> {
+// How one moderator is shown to another: their full email, resolved for
+// a set of ids at once. Deliberately NOT masked, unlike members in the
+// Users tab (listUsersWithRoles above): these are staff and trusted
+// people identifying each other's decisions, and a masked address
+// defeats that. Only ever called for ids that are reviewers or note
+// authors — never for members.
+export async function findModeratorLabels(db: Kysely<Database>, kms: KmsConfig, userIds: string[]): Promise<Map<string, string>> {
   const ids = [...new Set(userIds)]
   if (ids.length === 0) return new Map()
   const rows = await db.selectFrom('users').select(['id', 'email_ciphertext']).where('id', 'in', ids).execute()
   const out = new Map<string, string>()
   for (const row of rows) {
-    if (row.email_ciphertext) out.set(row.id, maskEmail(await decryptField(kms, row.email_ciphertext)))
+    if (row.email_ciphertext) out.set(row.id, await decryptField(kms, row.email_ciphertext))
   }
   return out
 }
