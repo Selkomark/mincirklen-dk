@@ -19,10 +19,49 @@ const LOGIN_ERROR_KEYS: Record<string, string> = {
   account_banned: 'errors.accountBanned',
 }
 
+function loginErrorCode(): string | null {
+  return new URLSearchParams(window.location.search).get('error')
+}
+
 function loginErrorKey(): string | null {
-  const code = new URLSearchParams(window.location.search).get('error')
+  const code = loginErrorCode()
   if (!code) return null
   return LOGIN_ERROR_KEYS[code] ?? LOGIN_ERROR_KEYS.login_failed ?? null
+}
+
+// A closed account isn't an error to retry — the sign-in button would
+// just bounce them back here. So instead of the alert the other codes
+// get, the card becomes a plain statement: a large mark, what happened,
+// and where to ask for the record behind it (docs/gdpr-runbook.md).
+function BannedNotice({ locale }: { locale: ReturnType<typeof useLocale> }) {
+  const { t } = useTranslation('auth')
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 'var(--space-3)', padding: 'var(--space-2) 0' }}>
+      <div
+        aria-hidden="true"
+        style={{
+          width: 72,
+          height: 72,
+          borderRadius: 'var(--radius-full)',
+          background: 'var(--signal-urgent-surface)',
+          color: 'var(--signal-urgent)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+          <path d="M5.6 5.6l12.8 12.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+      </div>
+      <div style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-primary)' }}>{t('banned.title')}</div>
+      <p style={{ margin: 0, fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', lineHeight: 'var(--line-height-base)' }}>{t('banned.body')}</p>
+      <a href={publicPagePath('privacy-policy', locale)} className="ds-inline-link" style={{ fontSize: 'var(--font-size-sm)' }}>
+        {t('banned.recordLink')}
+      </a>
+    </div>
+  )
 }
 
 // Set by manage/sessionExpiry.ts's hard redirect when a /manage session
@@ -64,6 +103,7 @@ export function LoginPage({ nextPath }: LoginPageProps = {}) {
   const locale = useLocale()
   useDocumentTitle(t('login.documentTitle'))
   const errorKey = loginErrorKey()
+  const isBanned = loginErrorCode() === 'account_banned'
   // returnTo (an idle-expiry redirect's exact sub-path) takes precedence
   // over nextPath (always just the bare /manage root) — nextPath winning
   // would silently discard the specific page a user was bounced from.
@@ -102,22 +142,29 @@ export function LoginPage({ nextPath }: LoginPageProps = {}) {
               gap: 12,
             }}
           >
-            {errorKey && <Alert variant="urgent">{t(errorKey)}</Alert>}
+            {isBanned ? (
+              <BannedNotice locale={locale} />
+            ) : (
+              <>
+                {errorKey && <Alert variant="urgent">{t(errorKey)}</Alert>}
 
-            <Button
-              variant="secondary"
-              onPress={() => {
-                window.location.href = effectiveNext
-                  ? `/api/auth/google/start?next=${encodeURIComponent(effectiveNext)}`
-                  : '/api/auth/google/start'
-              }}
-              style={{ width: '100%' }}
-            >
-              <GoogleIcon />
-              {t('login.continueWithGoogle')}
-            </Button>
+                <Button
+                  variant="secondary"
+                  onPress={() => {
+                    window.location.href = effectiveNext
+                      ? `/api/auth/google/start?next=${encodeURIComponent(effectiveNext)}`
+                      : '/api/auth/google/start'
+                  }}
+                  style={{ width: '100%' }}
+                >
+                  <GoogleIcon />
+                  {t('login.continueWithGoogle')}
+                </Button>
+              </>
+            )}
 
-            {SHOW_OTHER_PROVIDERS &&
+            {!isBanned &&
+              SHOW_OTHER_PROVIDERS &&
               OTHER_PROVIDERS.map((provider) => (
                 <Button
                   key={provider.id}
@@ -130,9 +177,11 @@ export function LoginPage({ nextPath }: LoginPageProps = {}) {
                 </Button>
               ))}
 
-            <Alert variant="safe" style={{ marginTop: 8 }}>
-              {t('login.privacyNote')}
-            </Alert>
+            {!isBanned && (
+              <Alert variant="safe" style={{ marginTop: 8 }}>
+                {t('login.privacyNote')}
+              </Alert>
+            )}
           </div>
 
           <div style={{ textAlign: 'center', fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>
