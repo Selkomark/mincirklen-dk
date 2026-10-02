@@ -1,36 +1,111 @@
-# Email: outbound delivery and inbound automation (TODO)
+# Email: outbound delivery (built) and inbound automation (TODO)
 
-Status: **not built**. This is the plan and the reference material for when
-email moves off the logging stand-in. Nothing here is live; the only email
-code in the repo today is `services/trpc-api/src/adapters/emailAdapter.ts`,
-which writes the would-be message to the server log and delivers nothing.
+Status: **outbound built, inbound not started.** Provider: **AhaSend** for
+both directions, so the transactional emails going out today and the
+inbound record-request automation planned below share one domain setup
+and one set of credentials.
 
-Provider chosen: **AhaSend** — one service for both directions, so outbound
-moderation emails and the inbound record-request automation share one
-domain setup and one set of credentials.
+## Outbound, as built
 
-## What exists already (the seams this plugs into)
+### Pieces
 
-- **Outbound.** `createLoggingEmailSender()` implements `EmailSender`
-  (`sendEmail({ to, subject, text })`). One instance is created in
-  `services/trpc-api/src/controllers/memberEmail.ts` and every
-  report-lifecycle email goes through `emailMember(...)`, which resolves the
-  member's address server-side and never throws. Templates are pure
-  functions in `services/trpc-api/src/services/moderationEmails.ts`:
-  report received, report decided, member warned / removed / messages
-  hidden / account closed. Swapping the sender is one line in
-  `memberEmail.ts`; the service layer does not change.
-- **The inbound trigger.** The privacy policy's "If your account was
-  closed" section (`services/web-app/src/publicPages/pages.ts`) opens a
-  mailto with a fixed subject, `Closed account — request for record`, and a
-  one-field body: the email address the account used. That subject is the
-  automation's match key; that address is its lookup key.
-- **The record.** `account_bans` (+ `account_ban_evidence`) holds the
-  reason category, the decision summary, the evidence snapshots and
-  `banned_by`. Written by `services/trpc-api/src/services/banService.ts`,
-  one row per linked sign-in identity, keyed by identity hash so it
-  survives account deletion. See `docs/gdpr-runbook.md` for the disclosure
-  logic this exists to serve.
+- **Templates — `packages/emails` (`@mincirklen/emails`).** One React
+  component per email under `src/templates/`, rendered on the server with
+  `react-dom/server`'s static markup inside a shared `Layout` (brand line,
+  body, "who sent this, no reply needed" footer). `renderEmail(key,
+  language, variables)` validates the variables against the template's
+  zod schema, renders, and derives the plain-text part from the HTML
+  (`htmlToText.ts`), so every email goes out multipart from one source.
+  Each template carries `sampleVariables` for the admin preview and a
+  per-language strings table (`strings.en`, optional `da`/`sv`) that falls
+  back to English key by key — the i18n hook exists, only English copy is
+  written. The template catalog is typed against
+  `EMAIL_TEMPLATE_KEYS` in `packages/shared/src/schemas/email.ts`, so a
+  key without a template fails typecheck.
+- **Transport — `services/trpc-api/src/adapters/`.** `EmailSender`
+  (`emailAdapter.ts`) is the seam: `sendEmail({ to, subject, html, text })
+  → { providerMessageId }`. Two implementations: the logging sender
+  (`EMAIL_PROVIDER` unset or `log`; writes the masked recipient, subject
+  and text to the server log, delivers nothing) and `ahasendEmailAdapter.ts`
+  (`EMAIL_PROVIDER=ahasend`; `POST {AHASEND_API_URL}/accounts/{id}/messages`
+  with a bearer token, a 10 s timeout, and an `AhaSendError` that keeps the
+  HTTP status). Selected in `index.ts` the same way `KMS_PROVIDER` is.
+- **The send — `services/emailService.ts`.** `sendToMember(deps, userId,
+  templateKey, variables)` and `sendToAddress(deps, { to, templateKey,
+  variables, … })`. Render → suppression check → write an `email_messages`
+  row (status `queued`) → transport → mark `sent` with the provider id, or
+  `failed` with the error. A member's address and profile language come
+  from one query (`findEmailAndLanguageForUser`); unset language means
+  English. Best-effort throughout: a report, decision, ban or gate grant
+  never fails because an email didn't go out. Routers call
+  `createEmailServiceDeps(ctx.appEnv)` and name a template key.
+- **The record — three tables (migration 0016).** `email_messages`: one
+  row per send with the template key, language, variables (jsonb), masked
+  recipient, HMAC of the recipient under `EMAIL_HASH_KEY`
+  (`auth/emailHash.ts`), optional `user_id`, subject, status, provider
+  message id, error, `is_test`. **Never the rendered body** — the admin
+  preview re-renders from template + variables. `email_events`: every
+  provider webhook delivery, keyed uniquely by its `webhook-id` so retries
+  and replays are no-ops, with the recipient address stripped from the
+  stored payload. `email_suppressions`: addresses the provider has stopped
+  delivering to, hash + mask only.
+- **Status rules — `services/emailStatus.ts`.** `queued → sent → accepted
+  → delayed → delivered → opened → clicked`, forward only; `bounced`,
+  `failed`, `suppressed`, `complained` are terminal and never overwritten
+  by a later happy-path event.
+- **The webhook — `controllers/emailWebhookController.ts`.** `POST
+  /webhooks/ahasend` on trpc-api (`https://trpc.<host>/webhooks/ahasend`).
+  Verifies the Standard Webhooks signature (`webhook-id`,
+  `webhook-timestamp`, `webhook-signature`; HMAC-SHA256 over
+  `id.timestamp.body` under `AHASEND_WEBHOOK_SECRET`, ±5 min) in
+  `auth/standardWebhookSignature.ts`. 503 until the secret is set, 401
+  unsigned, 400 not-an-event, 500 only if the event could not be stored
+  (so the provider retries), otherwise 200. `services/emailWebhookService.ts`
+  stores the event, moves the matching message's status, and upserts
+  suppressions from `suppression.created`.
+- **Admin — `/manage/emails`** (`services/web-app/src/pages/manage/EmailsTab.tsx`),
+  behind `emails.read` (migration 0017): 30-day counters, the paged sent
+  log with a status filter, per message the metadata, the provider's event
+  timeline and a preview in a sandboxed frame; the template catalog with
+  language and variables editable and a live preview; the suppression
+  list. `emails.send_test` adds "send this template to an address",
+  recorded with `is_test`. Recipients show masked unless the viewer holds
+  `users.read_pii` and the member's row still exists to decrypt from.
+
+### Configuration
+
+| Variable | Meaning |
+|---|---|
+| `EMAIL_PROVIDER` | `log` (default) or `ahasend` |
+| `AHASEND_ACCOUNT_ID`, `AHASEND_API_KEY`, `AHASEND_DEFAULT_FROM` | required for `ahasend` |
+| `AHASEND_DEFAULT_FROM_NAME` | optional display name |
+| `AHASEND_API_URL` | defaults to `https://send.ahasend.com/v2` |
+| `AHASEND_WEBHOOK_SECRET` | the `whsec_…`/`aha-whsec-…` signing secret; webhook route is 503 without it |
+| `EMAIL_HASH_KEY` | required; keys the recipient hash — its own secret |
+
+Dev values are in `docker-compose.yml`; real ones belong in `.env`
+(gitignored) locally and in the deployment's secret store otherwise.
+
+### Local testing
+
+- Default (`log`): grant a gate signup or decide a report in /manage,
+  read the `[EMAIL]` line in `docker compose logs trpc-api`, and find the
+  row under /manage/emails → Sent.
+- Real provider: set `EMAIL_PROVIDER=ahasend` and the `AHASEND_*` values
+  in `.env`, `docker compose up -d trpc-api`, send a test from
+  /manage/emails → Templates. For the webhook,
+  `ahasend routes listen --forward-to https://trpc.dev-mincirklen.dk/webhooks/ahasend`
+  and watch the message's timeline fill in.
+- Tests: `bun test` in `packages/emails` (rendering, wording rules) and
+  `services/trpc-api` (adapter against an in-process fake server,
+  signature verification, status rules, webhook end to end, the
+  `emails.*` router).
+
+### Still to do on the outbound side
+
+- Danish and Swedish copy in each template's `strings` table.
+- Production domain setup (SPF/DKIM) and the webhook subscription
+  (`--events all`).
 
 ## Prerequisite before any inbound automation: an email key on the ban
 
@@ -39,36 +114,14 @@ OAuth identity hash, and the account's `email_ciphertext` lives on the
 `users` row, which is deleted when the person deletes their account — the
 exact moment this request flow matters most.
 
-So the first piece of work, independent of AhaSend, is a migration that
-adds **`email_hash`** to `account_bans`: an HMAC of the lowercased,
-trimmed address under a dedicated key (same key-separation posture as
-`IDENTITY_HASH_KEY` — a new env var, not a reuse), written at ban time by
-`banService.ts` from the decrypted address. The inbound handler then
-hashes the requester's stated address the same way and looks the record
-up by it. No plaintext email is stored; no existing row changes meaning.
-Back-fill is not possible for bans issued before the migration whose
-accounts are gone; those stay request-by-hand.
-
-## Outbound: replace the stand-in
-
-1. Verify the sending domain in the AhaSend dashboard (DNS TXT), set up
-   SPF/DKIM as it instructs.
-2. New adapter `services/trpc-api/src/adapters/ahasendEmailAdapter.ts`
-   implementing `EmailSender` over AhaSend's send API; API key via env
-   (`AHASEND_API_KEY`), from-address via env (`EMAIL_FROM`). Keep the
-   logging sender for local dev behind a flag (`EMAIL_PROVIDER=log|ahasend`),
-   mirroring how `KMS_PROVIDER` selects Vault vs GCP in
-   `services/trpc-api/src/index.ts`.
-3. Unit-test the adapter against an in-process fake HTTP server, the way
-   `websocketServiceAdapter.test.ts` does, covering success, a 4xx, and a
-   network failure — `emailMember` must keep swallowing failures.
-4. Translate the templates. The member's language is on their profile;
-   `moderationEmails.ts` currently returns English only. Thread a
-   language through and keep the two wording rules (a reporter never
-   learns what was done to anyone else; a member acted on never learns who
-   reported them).
-5. Bounce/complaint handling: at minimum log them; consider marking the
-   address undeliverable so repeated sends stop.
+So the first piece of inbound work is a migration that adds **`email_hash`**
+to `account_bans`: the HMAC `auth/emailHash.ts` already computes for
+sent-email rows, under the same `EMAIL_HASH_KEY`, written at ban time by
+`banService.ts` from the decrypted address. The inbound handler then hashes
+the requester's stated address the same way and looks the record up by it.
+No plaintext email is stored; no existing row changes meaning. Back-fill is
+not possible for bans issued before the migration whose accounts are gone;
+those stay request-by-hand.
 
 ## Inbound: closed-account record requests
 
@@ -96,7 +149,7 @@ us; we match on the subject and act.
    else: acknowledge and drop. Never reply to non-matching mail — it would
    confirm the address receives.
 6. **Lookup.** Take the address from the one-field body (fall back to the
-   envelope `from`), normalise, HMAC with the email-hash key, find
+   envelope `from`), normalise, HMAC with `EMAIL_HASH_KEY` (`auth/emailHash.ts`), find
    `account_bans` rows by `email_hash`. Only ever reply **to the address
    found in the record**, never to the `from` — the body is attacker
    controlled. If `from` and the stated address differ, still reply only to
@@ -116,7 +169,7 @@ us; we match on the subject and act.
 ## Development and testing
 
 - AhaSend CLI forwards real inbound events to a local server:
-  `ahasend routes listen --forward-to https://api.dev-mincirklen.dk/<webhook-path>`
+  `ahasend routes listen --forward-to https://trpc.dev-mincirklen.dk/<webhook-path>`
   (the dev hostnames are the Caddy ones — see `docs/local_dev.md`; never
   `localhost:port`).
 - Integration test the webhook with a recorded payload and a seeded ban

@@ -113,6 +113,16 @@ for why). UI at `glitchtip.dev-mincirklen.dk`.
 the cloud setup where it's never publicly reachable — only other containers
 on the compose network can reach it.
 
+Email is **not delivered** locally by default: `EMAIL_PROVIDER` is `log`,
+so every email `trpc-api` would send is written to its log
+(`docker compose logs trpc-api`, lines starting `[EMAIL]`) and recorded
+under `/manage/emails`. To send for real, put `EMAIL_PROVIDER=ahasend`
+plus `AHASEND_ACCOUNT_ID`, `AHASEND_API_KEY` and `AHASEND_DEFAULT_FROM` in
+`.env` and `docker compose up -d trpc-api`; to receive the provider's
+delivery events too, add `AHASEND_WEBHOOK_SECRET` and run
+`ahasend routes listen --forward-to https://trpc.dev-mincirklen.dk/webhooks/ahasend`.
+See `docs/email_automation.md`.
+
 `vault` runs in dev mode (in-memory, auto-unsealed, fixed root token
 `dev-only-not-for-production`) as a local stand-in for the cloud KMS
 `trpc-api` uses to encrypt `user_profiles` PII — see SECURITY.md's "Local

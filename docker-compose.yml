@@ -381,6 +381,24 @@ services:
       # those. One secret for every gate; the payload itself carries which
       # gate a token is for.
       GATE_INVITE_SECRET: dev-only-not-for-production-gate-invite
+      # Outbound email. Unset/"log" writes the would-be message to this
+      # container's log and delivers nothing; "ahasend" delivers through
+      # AhaSend's send API (adapters/ahasendEmailAdapter.ts) and needs the
+      # three AHASEND_* values below, which live in .env (gitignored).
+      # Every send is recorded either way and shown under /manage/emails.
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-log}
+      AHASEND_ACCOUNT_ID: ${AHASEND_ACCOUNT_ID:-}
+      AHASEND_API_KEY: ${AHASEND_API_KEY:-}
+      AHASEND_DEFAULT_FROM: ${AHASEND_DEFAULT_FROM:-}
+      AHASEND_DEFAULT_FROM_NAME: ${AHASEND_DEFAULT_FROM_NAME:-MinCirklen}
+      # Signs AhaSend's webhook deliveries (controllers/emailWebhookController.ts,
+      # POST https://trpc.dev-mincirklen.dk/webhooks/ahasend). Unset, the
+      # route answers 503. Forward real events locally with
+      # `ahasend routes listen --forward-to https://trpc.dev-mincirklen.dk/webhooks/ahasend`.
+      AHASEND_WEBHOOK_SECRET: ${AHASEND_WEBHOOK_SECRET:-}
+      # Keys the recipient hash on sent-email rows (auth/emailHash.ts) —
+      # separate from IDENTITY_HASH_KEY, same key-separation reasoning.
+      EMAIL_HASH_KEY: dev-only-not-for-production-email-hash
       # Unset by default — same "don't report dev noise unless opted in"
       # posture as web-app's VITE_SENTRY_DSN. See src/app.ts's sentry()
       # middleware and local-infra/glitchtip/init.py's printed DSN.

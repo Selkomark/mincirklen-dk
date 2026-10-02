@@ -202,25 +202,25 @@ archive rather than one flat file — is real but meaningfully more
 complexity, and only worth it once there's an actual reason (media
 support) to expect exports that large.
 
-## Email delivery: replace the logging adapter with a real provider
+## Email: what remains after the AhaSend integration
 
-Added 2026-10-02. `services/trpc-api/src/adapters/emailAdapter.ts` is a
-stand-in: `sendEmail()` writes the would-be message to the server log and
-delivers nothing. It exists so the moderation "warn member" action
-(sessionReportService.ts) has a seam to call today.
+Updated 2026-10-03. Outbound email is built: the AhaSend transport
+(`EMAIL_PROVIDER=ahasend`), React templates in `packages/emails`, a record
+of every send with the provider's delivery events, and the /manage Emails
+section. See `docs/email_automation.md` for the shape. Still to do:
 
-Every report-lifecycle email already goes through it (controllers/memberEmail.ts,
-services/moderationEmails.ts): report received, report decided, member warned /
-removed / messages hidden / banned.
-
-To do: wire a real transport behind the same `sendEmail(message)` shape —
-provider choice, credentials via env, bounce/complaint handling, a
-templated member-facing body in all supported languages, and an
-integration test against the provider's sandbox. Keep the adapter's
-interface stable so the service layer doesn't change.
-
-Provider decided: AhaSend, for both directions. The full plan — outbound
-swap, the inbound webhook that answers "Closed account — request for
-record" emails automatically, the prerequisite `account_bans.email_hash`
-migration without which no inbound lookup is possible, and the reference
-approach it's based on — is in `docs/email_automation.md`.
+- **Danish and Swedish copy.** Every template has a per-language strings
+  table that falls back to English key by key (`packages/emails/src/i18n.ts`);
+  only `en` is filled. A member's profile language already selects the
+  table, so translating is adding `da`/`sv` entries, no plumbing.
+- **Provider setup in production.** Verify the sending domain in AhaSend
+  (SPF/DKIM), set the three `AHASEND_*` values and `AHASEND_WEBHOOK_SECRET`
+  in the deployment, create the webhook with `--events all` pointing at
+  `https://trpc.<host>/webhooks/ahasend`.
+- **Inbound: closed-account record requests.** The second half of
+  `docs/email_automation.md`. Needs `account_bans.email_hash` first, keyed
+  with the same `EMAIL_HASH_KEY` and `auth/emailHash.ts` the sent-email rows
+  already use.
+- **Suppression follow-up.** A suppressed or bounced address is visible in
+  /manage/emails; nothing yet tells the member another way or prompts a
+  moderator. Decide whether that matters before marketing email arrives.
