@@ -9,7 +9,16 @@ import { ADMIN_ROUTE_SEGMENT } from '../../App'
 // the next load) already preserves window.location.search when it
 // rewrites a bare path to its locale-prefixed form, so `?returnTo=...`
 // survives that rewrite before LoginPage.tsx ever reads it.
+//
+// Any returnTo already on the current URL is dropped before capturing:
+// the page being left is the real target, and carrying the old param
+// along would nest one returnTo inside another on every repeat — which,
+// if anything ever fires this twice in a row, grows the URL without
+// bound until the proxy refuses it.
 export function redirectToAdminLoginForExpiredSession(): void {
-  const returnTo = window.location.pathname + window.location.search
+  const params = new URLSearchParams(window.location.search)
+  params.delete('returnTo')
+  const search = params.toString()
+  const returnTo = window.location.pathname + (search ? `?${search}` : '')
   window.location.href = `/${ADMIN_ROUTE_SEGMENT}?returnTo=${encodeURIComponent(returnTo)}`
 }
