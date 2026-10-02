@@ -276,17 +276,7 @@ export function ManagePage({
       />
       <main style={{ flex: 1, overflow: 'auto', padding: 'clamp(20px, 4vw, 32px)' }}>
         {activeSection ? (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 'var(--space-4)',
-              // Gates' signup/email columns benefit from the full width
-              // available; every other section still reads better capped
-              // at a readable line length.
-              maxWidth: activeSection === 'gates' ? undefined : 960,
-            }}
-          >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
             <h1 style={{ margin: 0, fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-primary)' }}>
               {NAV_ITEMS.find((item) => item.section === activeSection)?.label}
             </h1>
