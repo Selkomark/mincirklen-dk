@@ -1,10 +1,11 @@
 import { sql, type Kysely } from 'kysely'
 
 // Launch-ready RBAC data on top of 0001_init's schema and its lone
-// `admin` role: a ladder of session policies and a starter role per
-// area of the admin surface. Everything here is seed data, not schema —
+// `ADMIN` role: a ladder of session policies and a starter role per
+// area of the admin surface. Role names follow schemas/rbac.ts's
+// ROLE_NAME_PATTERN (UPPERCASE-WITH-DASHES). Everything here is seed data, not schema —
 // nothing is `is_system`, so an operator can rename, re-permission, or
-// re-time any of these (or delete the roles) from /manage. Only `admin`
+// re-time any of these (or delete the roles) from /manage. Only `ADMIN`
 // stays locked, as 0001 made it.
 //
 // Idempotent on purpose (ON CONFLICT DO NOTHING by the unique names):
@@ -54,31 +55,31 @@ const READ_EVERYTHING = ['admin.access', 'roles.read', 'session_policies.read', 
 
 const SEEDED_ROLES: SeededRole[] = [
   {
-    name: 'moderator',
+    name: 'MODERATOR',
     description: 'Reviews flagged and crisis moderation events',
     permissions: ['admin.access', 'moderation_events.review'],
     policy: policyName(8, 'hour'),
   },
   {
-    name: 'trust_safety_lead',
+    name: 'TRUST-SAFETY-LEAD',
     description: 'Moderation plus the ability to see users and change their roles',
     permissions: ['admin.access', 'moderation_events.review', 'users.read', 'users.update'],
     policy: policyName(3, 'hour'),
   },
   {
-    name: 'support',
+    name: 'SUPPORT',
     description: 'Helps members with their accounts; can see users and their roles but not change them',
     permissions: ['admin.access', 'users.read'],
     policy: policyName(8, 'hour'),
   },
   {
-    name: 'launch_manager',
+    name: 'LAUNCH-MANAGER',
     description: 'Runs early-access gates and their waitlists',
     permissions: ['admin.access', 'gates.read', 'gates.manage'],
     policy: policyName(8, 'hour'),
   },
   {
-    name: 'access_manager',
+    name: 'ACCESS-MANAGER',
     description: 'Manages roles, permissions, session policies and who holds which role',
     permissions: [
       'admin.access',
@@ -94,14 +95,14 @@ const SEEDED_ROLES: SeededRole[] = [
     policy: policyName(1, 'hour'),
   },
   {
-    name: 'auditor',
+    name: 'AUDITOR',
     description: 'Read-only view across the whole admin area',
     permissions: READ_EVERYTHING,
     policy: policyName(1, 'day'),
   },
 ]
 
-// 0001 seeded `admin` with no policy, which (before ROLE_MAX_IDLE_SECONDS)
+// 0001 seeded `ADMIN` with no policy, which (before ROLE_MAX_IDLE_SECONDS)
 // meant the 180-day member default. The role with every permission gets
 // the shortest default of the lot.
 const ADMIN_POLICY = policyName(1, 'hour')
@@ -182,7 +183,7 @@ export async function up(db: Kysely<any>): Promise<void> {
     await db
       .updateTable('roles')
       .set({ session_policy_id: adminPolicyId })
-      .where('name', '=', 'admin')
+      .where('name', '=', 'ADMIN')
       .where('session_policy_id', 'is', null)
       .execute()
   }

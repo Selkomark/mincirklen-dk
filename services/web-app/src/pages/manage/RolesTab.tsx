@@ -68,6 +68,27 @@ function formatDuration(maxIdleSeconds: number | undefined): string {
   return `${maxIdleSeconds} seconds`
 }
 
+// Role names are UPPERCASE-WITH-DASHES. The server enforces this via
+// packages/shared/src/schemas/rbac.ts's ROLE_NAME_PATTERN on every
+// create/update; this is the same expression (the web app doesn't
+// depend on @mincirklen/shared), kept in sync by hand. Rather than
+// reject what an admin types, shape it as they go: uppercase,
+// spaces/underscores become dashes, anything else is dropped.
+// Leading/trailing/double dashes can still appear mid-typing ("TRUST-"
+// on the way to "TRUST-SAFETY"), so the pattern check decides when the
+// button enables.
+const ROLE_NAME_PATTERN = /^[A-Z0-9]+(-[A-Z0-9]+)*$/
+
+function normalizeRoleName(raw: string): string {
+  return raw.toUpperCase().replace(/[\s_]+/g, '-').replace(/[^A-Z0-9-]/g, '')
+}
+
+const ROLE_NAME_HINT = 'Uppercase letters, numbers and dashes, e.g. TRUST-SAFETY-LEAD'
+
+function isValidRoleName(name: string): boolean {
+  return name.length >= 2 && ROLE_NAME_PATTERN.test(name)
+}
+
 // Seeded policies (migrations/0002) are named by their duration, so
 // "13 days (13 days)" would be noise — show the name alone then.
 function policyLabel(policy: SessionPolicy): string {
@@ -255,9 +276,9 @@ function EditRoleModal({
   const trimmedDescription = description.trim()
   const detailsChanged = trimmedName !== role.name || trimmedDescription !== (role.description ?? '')
 
-  // Mirrors the schema's name minimum (2 chars) so the button isn't
+  // Mirrors the schema (2+ chars, ROLE_NAME_PATTERN) so the button isn't
   // enabled for input the server will reject.
-  const nameValid = trimmedName.length >= 2
+  const nameValid = isValidRoleName(trimmedName)
 
   const save = async () => {
     if (!nameValid) return
@@ -302,7 +323,12 @@ function EditRoleModal({
           )
         ) : (
           <div className="roles-field-row">
-            <TextField label="Role name" value={name} onChange={(e) => setName(e.target.value)} />
+            <TextField
+              label="Role name"
+              value={name}
+              onChange={(e) => setName(normalizeRoleName(e.target.value))}
+              hint={ROLE_NAME_HINT}
+            />
             <TextField
               label="Description"
               placeholder="What this role is for"
@@ -356,7 +382,7 @@ function CreateRoleModal({ onClose, onCreated }: { onClose: () => void; onCreate
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const nameValid = name.trim().length >= 2
+  const nameValid = isValidRoleName(name.trim())
 
   const create = async () => {
     if (!nameValid) return
@@ -383,7 +409,13 @@ function CreateRoleModal({ onClose, onCreated }: { onClose: () => void; onCreate
         style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}
       >
         {error && <Alert variant="urgent">{error}</Alert>}
-        <TextField label="Role name" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+        <TextField
+          label="Role name"
+          value={name}
+          onChange={(e) => setName(normalizeRoleName(e.target.value))}
+          hint={ROLE_NAME_HINT}
+          autoFocus
+        />
         <TextField
           label="Description"
           placeholder="What this role is for (optional)"

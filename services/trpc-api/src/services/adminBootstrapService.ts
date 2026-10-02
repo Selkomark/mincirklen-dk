@@ -15,7 +15,7 @@ export interface BootstrapAdminDeps {
   markBootstrapCompleted: () => Promise<void>
 }
 
-const ADMIN_ROLE_NAME = 'admin'
+const ADMIN_ROLE_NAME = 'ADMIN'
 
 export async function bootstrapAdminIfMasterEmail(
   deps: BootstrapAdminDeps,

@@ -444,7 +444,7 @@ describe('session-policy idle expiry', () => {
   })
 
   test('rbac.sessionPolicies CRUD and rbac.roles.setSessionPolicy work end to end for an admin', async () => {
-    const admin = await findRoleByName(db, 'admin')
+    const admin = await findRoleByName(db, 'ADMIN')
     if (!admin) throw new Error('seeded admin role not found — check migrations/0001_init.ts')
 
     // verifiedProcedure (which hasPermission builds on) requires a linked

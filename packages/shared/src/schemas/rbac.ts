@@ -17,15 +17,29 @@ export const permissionSchema = z.object({
 })
 export type Permission = z.infer<typeof permissionSchema>
 
+// Role names are identifiers, not labels: uppercase ASCII letters and
+// digits, with single dashes as the only separator — ADMIN,
+// TRUST-SAFETY-LEAD, TIER2. No leading/trailing/double dash. Enforced
+// here (every create/update goes through these schemas) and mirrored
+// by the /manage form, which normalizes as the admin types so the rule
+// is felt as a convention rather than a rejection. The seeded roles
+// (migrations/0001_init.ts, 0002_*) follow it too.
+export const ROLE_NAME_PATTERN = /^[A-Z0-9]+(-[A-Z0-9]+)*$/
+const roleNameSchema = z
+  .string()
+  .min(2)
+  .max(100)
+  .regex(ROLE_NAME_PATTERN, 'Role names use uppercase letters, numbers and single dashes, e.g. TRUST-SAFETY-LEAD')
+
 export const createRoleInputSchema = z.object({
-  name: z.string().min(2).max(100),
+  name: roleNameSchema,
   description: z.string().max(500).optional(),
 })
 export type CreateRoleInput = z.infer<typeof createRoleInputSchema>
 
 export const updateRoleInputSchema = z.object({
   roleId: z.string().uuid(),
-  name: z.string().min(2).max(100),
+  name: roleNameSchema,
   description: z.string().max(500).optional(),
 })
 export type UpdateRoleInput = z.infer<typeof updateRoleInputSchema>

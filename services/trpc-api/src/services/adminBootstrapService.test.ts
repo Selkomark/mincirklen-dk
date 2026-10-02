@@ -81,7 +81,7 @@ describe('bootstrapAdminIfMasterEmail', () => {
       },
       { userId: 'u1', email: 'admin@example.com', masterEmail: 'admin@example.com' },
     )
-    expect(calls).toEqual(['admin'])
+    expect(calls).toEqual(['ADMIN'])
   })
 
   test('assigns the admin role and marks bootstrap complete on first match', async () => {
