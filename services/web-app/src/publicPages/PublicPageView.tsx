@@ -82,6 +82,16 @@ export function PublicPageView({ id }: { id: PublicPageId }) {
                   </>
                 )}
               </div>
+              {s.cta && (
+                <div style={{ marginTop: 'var(--space-3)' }}>
+                  <a href={s.cta.href} className="ds-button ds-button--safe" style={{ textDecoration: 'none', width: 'fit-content' }}>
+                    {s.cta.label}
+                  </a>
+                  {s.cta.note && (
+                    <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)', marginTop: 6 }}>{s.cta.note}</div>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>

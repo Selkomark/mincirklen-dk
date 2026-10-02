@@ -20,6 +20,28 @@ export type PublicPageId =
 // transparency page's access requests use — replace both together when
 // a real mailbox exists.
 const CLOSED_ACCOUNT_REQUEST_EMAIL = 'mahan@selkomark.com'
+const CLOSED_ACCOUNT_REQUEST_SUBJECT = 'Closed account — request for record'
+// Labeled body so a request arrives with what's needed to find the
+// record and verify it's the account holder asking — the same
+// fixed-template approach the transparency page's access requests use,
+// so these can be filtered and handled without an in-app intake form.
+const CLOSED_ACCOUNT_REQUEST_BODY = `Please send me a copy of the record behind the closure of my MinCirklen account.
+
+Email address the account used (send this from that address if you can):
+
+
+Roughly when the account was closed (a date, or "around" a month):
+
+
+Name of the circle it happened in, if you know it:
+
+
+Anything else that helps us find the right record (optional):
+
+
+I understand this request can't reopen the account, and that the copy will be sent to the address the account used.
+`
+const CLOSED_ACCOUNT_REQUEST_MAILTO = `mailto:${CLOSED_ACCOUNT_REQUEST_EMAIL}?subject=${encodeURIComponent(CLOSED_ACCOUNT_REQUEST_SUBJECT)}&body=${encodeURIComponent(CLOSED_ACCOUNT_REQUEST_BODY)}`
 
 export interface PublicPageData {
   id: PublicPageId
@@ -27,7 +49,10 @@ export interface PublicPageData {
   intro: string
   // `id` makes a section linkable (…/privacy-policy#closed-accounts);
   // PublicPageView renders it on the heading with scroll margin.
-  sections: { id?: string; heading: string; body: string; link?: { href: string; label: string } }[]
+  // `cta` renders as a button under the body (same pattern as the
+  // transparency page's "Email a request"), with an optional small note
+  // saying what it opens.
+  sections: { id?: string; heading: string; body: string; link?: { href: string; label: string }; cta?: { href: string; label: string; note?: string } }[]
   urgent?: boolean
 }
 
@@ -237,10 +262,11 @@ export const PUBLIC_PAGES: Record<PublicPageId, PublicPageData> = {
         id: 'closed-accounts',
         heading: 'If your account was closed',
         body:
-          "When we close an account for violating our Terms and Conditions, we keep a record of that decision: the category of violation, a short written summary of why, and the evidence it rested on. You have the right to see that record. Email us from the address the account used, with the subject \"Closed account — request for record\", and we will send you a copy within 30 days. We can't reopen an account this way, but you'll be able to see exactly what the decision was based on.",
-        link: {
-          href: `mailto:${CLOSED_ACCOUNT_REQUEST_EMAIL}?subject=${encodeURIComponent('Closed account — request for record')}`,
-          label: CLOSED_ACCOUNT_REQUEST_EMAIL,
+          "When we close an account for violating our Terms and Conditions, we keep a record of that decision: the category of violation, a short written summary of why, and the evidence it rested on. You have the right to see that record. Request it below and we will send a copy to the address the account used within 30 days. This can't reopen an account, but you'll see exactly what the decision was based on.",
+        cta: {
+          href: CLOSED_ACCOUNT_REQUEST_MAILTO,
+          label: 'Email a request',
+          note: `Opens your email client with a template addressed to ${CLOSED_ACCOUNT_REQUEST_EMAIL} — the address the account used, roughly when it was closed, and the circle if you know it.`,
         },
       },
       {
