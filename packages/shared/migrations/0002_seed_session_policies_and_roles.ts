@@ -17,18 +17,16 @@ const MINUTE = 60
 const HOUR = 60 * MINUTE
 const DAY = 24 * HOUR
 
-// Fibonacci per unit — 1, 2, 3, 5, 8, 13 (…) minutes, then hours, then
-// days — rather than one Fibonacci run in minutes, which lands on
-// values nobody would pick by hand (89 minutes, 4181 minutes). Each
-// unit's run stops where the next unit takes over, and the whole ladder
-// stops at 13 days: the last step under ROLE_MAX_IDLE_SECONDS (14 days,
-// packages/shared/src/auth/sessionToken.ts), which is also the most the
-// schema lets a policy store. Operators who want an in-between value
-// still can — these are ordinary rows, the input stays free-form.
+// A hand-picked ladder of round, human durations per unit — the steps
+// people actually reach for, not a formula. Tops out at 12 days, under
+// ROLE_MAX_IDLE_SECONDS (14 days, packages/shared/src/auth/sessionToken.ts),
+// which is also the most the schema lets a policy store. Operators who
+// want an in-between value still can — these are ordinary rows, the
+// input stays free-form.
 const LADDER: Array<{ unit: 'minute' | 'hour' | 'day'; seconds: number; steps: number[] }> = [
-  { unit: 'minute', seconds: MINUTE, steps: [1, 2, 3, 5, 8, 13, 21, 34, 55] },
-  { unit: 'hour', seconds: HOUR, steps: [1, 2, 3, 5, 8, 13] },
-  { unit: 'day', seconds: DAY, steps: [1, 2, 3, 5, 8, 13] },
+  { unit: 'minute', seconds: MINUTE, steps: [1, 2, 3, 5, 10, 15, 30] },
+  { unit: 'hour', seconds: HOUR, steps: [1, 2, 3, 5, 10] },
+  { unit: 'day', seconds: DAY, steps: [1, 2, 3, 5, 10, 12] },
 ]
 
 function policyName(count: number, unit: 'minute' | 'hour' | 'day'): string {
@@ -58,7 +56,7 @@ const SEEDED_ROLES: SeededRole[] = [
     name: 'MODERATOR',
     description: 'Reviews flagged and crisis moderation events',
     permissions: ['admin.access', 'moderation_events.review'],
-    policy: policyName(8, 'hour'),
+    policy: policyName(10, 'hour'),
   },
   {
     name: 'TRUST-SAFETY-LEAD',
@@ -70,13 +68,13 @@ const SEEDED_ROLES: SeededRole[] = [
     name: 'SUPPORT',
     description: 'Helps members with their accounts; can see users and their roles but not change them',
     permissions: ['admin.access', 'users.read'],
-    policy: policyName(8, 'hour'),
+    policy: policyName(10, 'hour'),
   },
   {
     name: 'LAUNCH-MANAGER',
     description: 'Runs early-access gates and their waitlists',
     permissions: ['admin.access', 'gates.read', 'gates.manage'],
-    policy: policyName(8, 'hour'),
+    policy: policyName(10, 'hour'),
   },
   {
     name: 'ACCESS-MANAGER',
