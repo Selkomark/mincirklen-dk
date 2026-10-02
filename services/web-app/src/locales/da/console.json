@@ -167,6 +167,14 @@
         "days": "Dage"
       },
       "createFailed": "Kunne ikke oprette sessionspolitikken — navnet er muligvis i brug, eller varigheden er uden for intervallet (1 minut til 2 uger)."
+    },
+    "permissionGroups": {
+      "admin": "Adminområde",
+      "gates": "Adgangsporte",
+      "moderation_events": "Moderationshændelser",
+      "roles": "Roller",
+      "session_policies": "Sessionspolitikker",
+      "users": "Brugere"
     }
   }
 }

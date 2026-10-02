@@ -167,6 +167,14 @@
         "days": "Dagar"
       },
       "createFailed": "Kunde inte skapa sessionspolicyn — namnet kan vara upptaget, eller så är varaktigheten utanför intervallet (1 minut till 2 veckor)."
+    },
+    "permissionGroups": {
+      "admin": "Adminområde",
+      "gates": "Åtkomstgrindar",
+      "moderation_events": "Modereringshändelser",
+      "roles": "Roller",
+      "session_policies": "Sessionspolicyer",
+      "users": "Användare"
     }
   }
 }

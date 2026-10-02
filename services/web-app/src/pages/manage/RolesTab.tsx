@@ -99,6 +99,16 @@ function policyLabel(t: ConsoleT, policy: SessionPolicy): string {
   return policy.name === duration ? policy.name : `${policy.name} (${duration})`
 }
 
+// Permission groups are slug prefixes (moderation_events, session_policies).
+// Known ones have a translated label; anything new the backend adds
+// before a translation exists falls back to the prefix humanized —
+// underscores to spaces, first letter capitalized — rather than the raw
+// identifier.
+function permissionGroupLabel(t: ConsoleT, prefix: string): string {
+  const humanized = prefix.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())
+  return t(`roles.permissionGroups.${prefix}`, { defaultValue: humanized })
+}
+
 function groupByPrefix(permissions: Permission[]): [string, Permission[]][] {
   const groups = new Map<string, Permission[]>()
   for (const permission of permissions) {
@@ -168,9 +178,13 @@ function PermissionEditor({
   selectedIds: Set<string>
   onChange: (next: Set<string>) => void
 }) {
-  const { t } = useTranslation('console')
+  const { t, i18n } = useTranslation('console')
   const [query, setQuery] = useState('')
-  const groups = searchPermissionGroups(groupByPrefix(allPermissions), query)
+  const groups = searchPermissionGroups(
+    groupByPrefix(allPermissions).map(([prefix, permissions]) => ({ prefix, label: permissionGroupLabel(t, prefix), permissions })),
+    query,
+    i18n.language,
+  )
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
@@ -194,10 +208,10 @@ function PermissionEditor({
         </Text>
       ) : (
         <div className="roles-permission-grid">
-          {groups.map(({ prefix, categoryMatched, permissions }) => (
+          {groups.map(({ prefix, label, categoryMatched, permissions }) => (
             <div key={prefix}>
               <div className={['roles-permission-group', categoryMatched && 'roles-permission-group--matched'].filter(Boolean).join(' ')}>
-                {prefix}
+                {label}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
                 {permissions.map(({ permission, matched }) => (
@@ -537,7 +551,7 @@ function RolesPanel({
   sessionPolicies: SessionPolicy[]
   reload: () => Promise<void>
 }) {
-  const { t } = useTranslation('console')
+  const { t, i18n } = useTranslation('console')
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<Role | null>(null)
   const [query, setQuery] = useState('')
@@ -553,7 +567,7 @@ function RolesPanel({
       ? allPermissions
       : (rolePermissionIds[role.id] ?? []).map((id) => permissionById.get(id)).filter((p): p is Permission => p !== undefined),
   }))
-  const visibleRoles = searchRoles(searchable, query)
+  const visibleRoles = searchRoles(searchable, query, i18n.language)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>

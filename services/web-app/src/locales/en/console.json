@@ -167,6 +167,14 @@
         "days": "Days"
       },
       "createFailed": "Failed to create session policy — name may already be taken, or the duration is out of range (1 minute to 2 weeks)."
+    },
+    "permissionGroups": {
+      "admin": "Admin area",
+      "gates": "Gates",
+      "moderation_events": "Moderation events",
+      "roles": "Roles",
+      "session_policies": "Session policies",
+      "users": "Users"
     }
   }
 }

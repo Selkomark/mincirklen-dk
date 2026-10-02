@@ -14,6 +14,11 @@
 // a partial word works while typing, and a small edit distance absorbs
 // typos. Every query word must match somewhere (AND); results rank by
 // how directly they matched.
+//
+// Languages: slugs and descriptions are English data, so English
+// synonyms always apply. The admin's own language (i18n.language) adds
+// its synonym table on top, so a Swedish admin can type "redigera
+// användare" or "edit users" and reach users.update either way.
 
 export interface SearchablePermission {
   slug: string
@@ -27,10 +32,12 @@ export interface SearchableRole {
   permissions: SearchablePermission[]
 }
 
+type Synonyms = Record<string, string[]>
+
 // Everyday word → the slug vocabulary it most likely means. Values are
 // stemmed on load along with everything else, so plural/singular
 // spelling here doesn't matter.
-const SYNONYMS: Record<string, string[]> = {
+const SYNONYMS_EN: Synonyms = {
   edit: ['update'],
   modify: ['update'],
   change: ['update'],
@@ -71,6 +78,143 @@ const SYNONYMS: Record<string, string[]> = {
   manage: ['admin', 'manage'],
 }
 
+const SYNONYMS_DA: Synonyms = {
+  rediger: ['update'],
+  redigere: ['update'],
+  ændre: ['update'],
+  ændr: ['update'],
+  opdater: ['update'],
+  skriv: ['update', 'create'],
+  se: ['read'],
+  vis: ['read'],
+  læs: ['read'],
+  læse: ['read'],
+  opret: ['create'],
+  oprette: ['create'],
+  ny: ['create'],
+  nye: ['create'],
+  tilføj: ['create'],
+  fjern: ['delete', 'revoke'],
+  slet: ['delete', 'revoke'],
+  tilbagekald: ['revoke'],
+  inaktiv: ['session', 'idle'],
+  inaktivitet: ['session', 'idle'],
+  session: ['session'],
+  udløb: ['session'],
+  udløber: ['session'],
+  log: ['session'],
+  rettighed: ['roles'],
+  rettigheder: ['roles'],
+  rolle: ['roles'],
+  roller: ['roles'],
+  moderation: ['moderation'],
+  moderer: ['moderation'],
+  moderator: ['moderation', 'review'],
+  markering: ['moderation', 'review'],
+  markeret: ['moderation', 'review'],
+  anmeld: ['moderation', 'review'],
+  gennemgang: ['review'],
+  kø: ['review'],
+  krise: ['moderation', 'review'],
+  bruger: ['users'],
+  brugere: ['users'],
+  medlem: ['users'],
+  medlemmer: ['users'],
+  konto: ['users'],
+  udeluk: ['users'],
+  udelukket: ['users'],
+  invitation: ['gates'],
+  venteliste: ['gates'],
+  tilmelding: ['gates'],
+  tilmeldinger: ['gates'],
+  port: ['gates'],
+  adgangsport: ['gates'],
+  adgangsporte: ['gates'],
+  lancering: ['gates'],
+  tidlig: ['gates'],
+  fuld: ['admin'],
+  alt: ['admin'],
+  administrer: ['admin', 'manage'],
+  administration: ['admin', 'manage'],
+  adgang: ['access'],
+  // Seeded session policies are named in English ("10 hours"), so the
+  // Danish unit words need to reach them.
+  minut: ['minute'],
+  minutter: ['minute'],
+  time: ['hour'],
+  timer: ['hour'],
+  dag: ['day'],
+  dage: ['day'],
+  uge: ['week'],
+  uger: ['week'],
+}
+
+const SYNONYMS_SV: Synonyms = {
+  redigera: ['update'],
+  ändra: ['update'],
+  uppdatera: ['update'],
+  skriv: ['update', 'create'],
+  visa: ['read'],
+  se: ['read'],
+  läs: ['read'],
+  läsa: ['read'],
+  skapa: ['create'],
+  ny: ['create'],
+  nya: ['create'],
+  lägg: ['create'],
+  radera: ['delete', 'revoke'],
+  bort: ['delete', 'revoke'],
+  återkalla: ['revoke'],
+  inaktiv: ['session', 'idle'],
+  inaktivitet: ['session', 'idle'],
+  session: ['session'],
+  utgång: ['session'],
+  logga: ['session'],
+  behörighet: ['roles'],
+  behörigheter: ['roles'],
+  roll: ['roles'],
+  roller: ['roles'],
+  moderering: ['moderation'],
+  moderera: ['moderation'],
+  moderator: ['moderation', 'review'],
+  flagga: ['moderation', 'review'],
+  flaggad: ['moderation', 'review'],
+  anmäl: ['moderation', 'review'],
+  granskning: ['review'],
+  kö: ['review'],
+  kris: ['moderation', 'review'],
+  användare: ['users'],
+  medlem: ['users'],
+  medlemmar: ['users'],
+  konto: ['users'],
+  avstäng: ['users'],
+  avstängd: ['users'],
+  inbjudan: ['gates'],
+  väntelista: ['gates'],
+  anmälan: ['gates'],
+  anmälningar: ['gates'],
+  grind: ['gates'],
+  åtkomstgrind: ['gates'],
+  åtkomstgrindar: ['gates'],
+  lansering: ['gates'],
+  tidig: ['gates'],
+  full: ['admin'],
+  allt: ['admin'],
+  hantera: ['admin', 'manage'],
+  administration: ['admin', 'manage'],
+  åtkomst: ['access'],
+  minut: ['minute'],
+  minuter: ['minute'],
+  timme: ['hour'],
+  timmar: ['hour'],
+  dag: ['day'],
+  dagar: ['day'],
+  vecka: ['week'],
+  veckor: ['week'],
+}
+
+const SYNONYMS_BY_LANGUAGE: Record<string, Synonyms> = { en: SYNONYMS_EN, da: SYNONYMS_DA, sv: SYNONYMS_SV }
+
 // Field weights — a hit on the role's own name should outrank the same
 // word buried in one permission's description.
 const WEIGHT_NAME = 5
@@ -89,6 +233,10 @@ export interface Field {
   weight: number
 }
 
+// English-shaped suffix stripping. Applied identically to queries,
+// documents and the synonym tables, so it only has to be consistent,
+// not linguistically right — a Danish or Swedish word that happens to
+// lose a trailing "s" loses it on both sides of the comparison.
 function stem(word: string): string {
   if (word.length <= 3) return word
   if (word.endsWith('ies')) return `${word.slice(0, -3)}y`
@@ -99,17 +247,31 @@ function stem(word: string): string {
   return word
 }
 
+// \p{L}/\p{N} rather than [a-z0-9] so æ, ø, å, ä, ö survive tokenizing.
 export function tokenize(text: string): string[] {
   return text
     .toLowerCase()
-    .split(/[^a-z0-9]+/)
+    .split(/[^\p{L}\p{N}]+/u)
     .filter((token) => token.length > 0)
     .map(stem)
 }
 
-const STEMMED_SYNONYMS = new Map<string, string[]>(
-  Object.entries(SYNONYMS).map(([word, targets]) => [stem(word), targets.map(stem)]),
+function stemSynonyms(table: Synonyms): Map<string, string[]> {
+  return new Map(Object.entries(table).map(([word, targets]) => [stem(word), targets.map(stem)]))
+}
+
+const STEMMED_SYNONYMS_BY_LANGUAGE = new Map(
+  Object.entries(SYNONYMS_BY_LANGUAGE).map(([language, table]) => [language, stemSynonyms(table)]),
 )
+
+// English always, plus the admin's language when it has a table.
+// `language` is i18n.language, which i18n.ts's `load: 'languageOnly'`
+// keeps to a bare code ("da", not "da-DK").
+function synonymTablesFor(language: string): Map<string, string[]>[] {
+  const english = STEMMED_SYNONYMS_BY_LANGUAGE.get('en')!
+  const own = language !== 'en' ? STEMMED_SYNONYMS_BY_LANGUAGE.get(language) : undefined
+  return own ? [english, own] : [english]
+}
 
 // Bounded Levenshtein distance — bails out early once it's clear the
 // distance exceeds `max`, since we only care about "close enough".
@@ -137,9 +299,29 @@ function allowedTypos(token: string): number {
   return 0
 }
 
+// Slug-vocabulary targets a query token maps to through the synonym
+// tables: an exact synonym entry at full synonym weight, or — so a
+// partially typed word works in any language ("redig" → "redigera") —
+// an entry the token is a prefix of, at prefix weight.
+function synonymTargets(queryToken: string, tables: Map<string, string[]>[]): { target: string; factor: number }[] {
+  const out: { target: string; factor: number }[] = []
+  for (const table of tables) {
+    const exact = table.get(queryToken)
+    if (exact) for (const target of exact) out.push({ target, factor: FACTOR_SYNONYM })
+    if (queryToken.length >= 3) {
+      for (const [word, targets] of table) {
+        if (word !== queryToken && word.startsWith(queryToken)) {
+          for (const target of targets) out.push({ target, factor: FACTOR_SYNONYM * FACTOR_PREFIX })
+        }
+      }
+    }
+  }
+  return out
+}
+
 // Best match factor for one query token against one field's tokens, or
 // 0 when nothing in the field resembles it.
-function matchFactor(queryToken: string, field: Field): number {
+function matchFactor(queryToken: string, field: Field, tables: Map<string, string[]>[]): number {
   if (field.tokens.has(queryToken)) return 1
 
   let best = 0
@@ -149,11 +331,11 @@ function matchFactor(queryToken: string, field: Field): number {
     else if (typos > 0 && withinEditDistance(queryToken, token, typos)) best = Math.max(best, FACTOR_FUZZY)
   }
 
-  for (const synonym of STEMMED_SYNONYMS.get(queryToken) ?? []) {
-    if (field.tokens.has(synonym)) best = Math.max(best, FACTOR_SYNONYM)
+  for (const { target, factor } of synonymTargets(queryToken, tables)) {
+    if (field.tokens.has(target)) best = Math.max(best, factor)
     else {
       for (const token of field.tokens) {
-        if (token.startsWith(synonym)) best = Math.max(best, FACTOR_SYNONYM * FACTOR_PREFIX)
+        if (token.startsWith(target)) best = Math.max(best, factor * FACTOR_PREFIX)
       }
     }
   }
@@ -181,13 +363,14 @@ function buildFields(role: SearchableRole): Field[] {
 // Score > 0 means every query token found something in some field; 0
 // means filtered out. Each token contributes its single best
 // (weight × factor) hit.
-export function scoreFields(fields: Field[], queryTokens: string[]): number {
+export function scoreFields(fields: Field[], queryTokens: string[], language: string): number {
   if (queryTokens.length === 0) return 1
+  const tables = synonymTablesFor(language)
   let total = 0
   for (const queryToken of queryTokens) {
     let best = 0
     for (const field of fields) {
-      best = Math.max(best, field.weight * matchFactor(queryToken, field))
+      best = Math.max(best, field.weight * matchFactor(queryToken, field, tables))
     }
     if (best === 0) return 0
     total += best
@@ -195,60 +378,72 @@ export function scoreFields(fields: Field[], queryTokens: string[]): number {
   return total
 }
 
-export function scoreRole(role: SearchableRole, queryTokens: string[]): number {
-  return scoreFields(buildFields(role), queryTokens)
+export function scoreRole(role: SearchableRole, queryTokens: string[], language: string): number {
+  return scoreFields(buildFields(role), queryTokens, language)
 }
 
 // Filters and ranks. An empty/whitespace query returns the input
 // untouched (same order), so the table doesn't reshuffle when the
 // field is cleared.
-export function searchRoles<T extends SearchableRole>(roles: T[], query: string): T[] {
+export function searchRoles<T extends SearchableRole>(roles: T[], query: string, language = 'en'): T[] {
   const queryTokens = tokenize(query)
   if (queryTokens.length === 0) return roles
 
   return roles
-    .map((role, index) => ({ role, index, score: scoreRole(role, queryTokens) }))
+    .map((role, index) => ({ role, index, score: scoreRole(role, queryTokens, language) }))
     .filter((entry) => entry.score > 0)
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .map((entry) => entry.role)
 }
 
 // The edit-role modal's permission filter. Groups are the slug-prefix
-// categories PermissionEditor already renders. A query that matches a
-// category (its prefix, e.g. "policies" → session_policies) keeps the
-// whole group, so someone can type an area and tick everything in it;
-// otherwise a group survives only through the individual permissions
-// that match. `matched` flags drive the highlight — a category hit
-// highlights the header, an item hit highlights the row.
+// categories PermissionEditor already renders, each with the translated
+// label it displays — so the label's words count as part of the
+// category too ("Sessionspolicyer" finds session_policies). A query
+// that matches a category keeps the whole group, so someone can type an
+// area and tick everything in it; otherwise a group survives only
+// through the individual permissions that match. `matched` flags drive
+// the highlight — a category hit highlights the header, an item hit
+// highlights the row.
+export interface PermissionGroup<P extends SearchablePermission> {
+  prefix: string
+  label: string
+  permissions: P[]
+}
+
 export interface PermissionGroupResult<P extends SearchablePermission> {
   prefix: string
+  label: string
   categoryMatched: boolean
   permissions: { permission: P; matched: boolean }[]
 }
 
 export function searchPermissionGroups<P extends SearchablePermission>(
-  groups: [string, P[]][],
+  groups: PermissionGroup<P>[],
   query: string,
+  language = 'en',
 ): PermissionGroupResult<P>[] {
   const queryTokens = tokenize(query)
   if (queryTokens.length === 0) {
-    return groups.map(([prefix, permissions]) => ({
+    return groups.map(({ prefix, label, permissions }) => ({
       prefix,
+      label,
       categoryMatched: false,
       permissions: permissions.map((permission) => ({ permission, matched: false })),
     }))
   }
 
   const results: PermissionGroupResult<P>[] = []
-  for (const [prefix, permissions] of groups) {
-    const categoryMatched = scoreFields([{ tokens: new Set(tokenize(prefix)), weight: 1 }], queryTokens) > 0
+  for (const { prefix, label, permissions } of groups) {
+    const categoryTokens = new Set([...tokenize(prefix), ...tokenize(label)])
+    const categoryMatched = scoreFields([{ tokens: categoryTokens, weight: 1 }], queryTokens, language) > 0
     const scored = permissions.map((permission) => {
       const fields: Field[] = [{ tokens: new Set(tokenize(permission.slug)), weight: WEIGHT_SLUG }]
       if (permission.description) fields.push({ tokens: new Set(tokenize(permission.description)), weight: WEIGHT_PERMISSION_DESCRIPTION })
-      return { permission, matched: scoreFields(fields, queryTokens) > 0 }
+      return { permission, matched: scoreFields(fields, queryTokens, language) > 0 }
     })
     const visible = categoryMatched ? scored : scored.filter((entry) => entry.matched)
-    if (visible.length > 0) results.push({ prefix, categoryMatched, permissions: visible })
+    if (visible.length > 0) results.push({ prefix, label, categoryMatched, permissions: visible })
   }
   return results
 }
