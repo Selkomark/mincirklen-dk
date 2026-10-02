@@ -76,7 +76,9 @@
       "addFailed": "Kunde inte lägga till anteckningen.",
       "by": "av {{who}}",
       "viewReport": "Visa rapport"
-    }
+    },
+    "copy": "Kopiera",
+    "copied": "Kopierat"
   },
   "gates": {
     "loadFailed": "Kunde inte ladda åtkomstgrindar.",

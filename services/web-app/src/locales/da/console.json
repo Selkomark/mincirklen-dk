@@ -76,7 +76,9 @@
       "addFailed": "Kunne ikke tilføje notatet.",
       "by": "af {{who}}",
       "viewReport": "Vis rapport"
-    }
+    },
+    "copy": "Kopiér",
+    "copied": "Kopieret"
   },
   "gates": {
     "loadFailed": "Kunne ikke indlæse adgangsporte.",

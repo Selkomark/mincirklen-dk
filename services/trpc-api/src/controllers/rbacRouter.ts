@@ -162,7 +162,9 @@ export const rbacRouter = router({
 
     list: hasPermission('users.read')
       .input(listUsersInputSchema)
-      .query(({ ctx, input }) => listUsersWithRoles(ctx.appEnv.db, ctx.appEnv.vault, input)),
+      .query(({ ctx, input }) =>
+        listUsersWithRoles(ctx.appEnv.db, ctx.appEnv.vault, input, { unmaskEmails: ctx.permissions.includes('users.read_pii') }),
+      ),
 
     updateRoles: hasPermission('users.update')
       .input(updateUserRolesInputSchema)

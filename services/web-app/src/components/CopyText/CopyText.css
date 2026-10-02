@@ -1,0 +1,61 @@
+.ds-copy-text {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  /* Room for the button so it overlays nothing when it appears. */
+  padding-right: 24px;
+}
+
+.ds-copy-text__value {
+  min-width: 0;
+}
+
+.ds-copy-text__button {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity var(--duration-fast) var(--easing-standard),
+    color var(--duration-fast) var(--easing-standard);
+}
+
+.ds-copy-text:hover .ds-copy-text__button,
+.ds-copy-text:focus-within .ds-copy-text__button,
+.ds-copy-text--copied .ds-copy-text__button {
+  opacity: 1;
+}
+
+.ds-copy-text__button:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.ds-copy-text__button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-copy-text--copied .ds-copy-text__button {
+  color: var(--accent-safe);
+  border-color: var(--accent-safe);
+}
+
+@media (hover: none) {
+  .ds-copy-text__button {
+    opacity: 1;
+  }
+}

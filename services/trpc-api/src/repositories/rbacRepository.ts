@@ -296,6 +296,10 @@ export interface UserWithRoles {
   // between those two steps. The unmasked address never leaves this
   // process.
   emailMasked: string | null
+  // The full address — only when the caller holds users.read_pii
+  // (listUsersWithRoles's `unmaskEmails`); null otherwise, so the
+  // unmasked value never leaves the process for anyone else.
+  email: string | null
   roles: { id: string; name: string }[]
 }
 
@@ -306,6 +310,7 @@ export async function listUsersWithRoles(
   db: Kysely<Database>,
   kms: KmsConfig,
   params: { cursor?: string; limit: number },
+  options: { unmaskEmails: boolean } = { unmaskEmails: false },
 ): Promise<{ users: UserWithRoles[]; nextCursor: string | null }> {
   let query = db
     .selectFrom('users')
@@ -341,13 +346,17 @@ export async function listUsersWithRoles(
   }
 
   const users = await Promise.all(
-    page.map(async (row) => ({
-      id: row.id,
-      createdAt: row.created_at,
-      bannedAt: row.banned_at,
-      emailMasked: row.email_ciphertext ? maskEmail(await decryptField(kms, row.email_ciphertext)) : null,
-      roles: rolesByUser.get(row.id) ?? [],
-    })),
+    page.map(async (row) => {
+      const email = row.email_ciphertext ? await decryptField(kms, row.email_ciphertext) : null
+      return {
+        id: row.id,
+        createdAt: row.created_at,
+        bannedAt: row.banned_at,
+        emailMasked: email ? maskEmail(email) : null,
+        email: options.unmaskEmails ? email : null,
+        roles: rolesByUser.get(row.id) ?? [],
+      }
+    }),
   )
 
   return { users, nextCursor: hasMore ? (page[page.length - 1]?.id ?? null) : null }

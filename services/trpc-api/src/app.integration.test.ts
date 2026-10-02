@@ -2,7 +2,8 @@ import { afterAll, describe, expect, test } from 'bun:test'
 import { createHmac } from 'node:crypto'
 import { DEFAULT_LOCAL_DATABASE_URL, createDb, createPgPool, createSessionToken, runMigrations } from '@mincirklen/shared'
 import { createApp } from './app'
-import { insertUser } from './repositories/userRepository'
+import { insertUser, setEmail } from './repositories/userRepository'
+import { encryptField } from './adapters/kmsAdapter'
 import { createSession, joinSession } from './repositories/sessionRepository'
 import { insertSessionReport } from './repositories/sessionReportRepository'
 import { insertMessage, listMessages as listMessagesRepo } from './repositories/messageRepository'
@@ -807,11 +808,11 @@ describe('reports that name messages', () => {
     await insertMessage(db, { sessionId: session.id, userId: alice.id, body: 'later' })
     await pause()
     await insertSessionReport(db, { sessionId: session.id, reporterUserId: moderator.userId, aboutUserIds: [alice.id], messageIds: [named.id], body: 'e2e anchored' })
-
-    const listRes = await app.request(`/trpc/sessionReports.list?input=${encodeURIComponent(JSON.stringify({ status: 'open', limit: 50 }))}`, { headers: { cookie: moderator.cookie } })
-    const list = (await listRes.json()) as { result: { data: { reports: { id: string; sessionId: string; messageIds: string[] }[] } } }
-    const report = list.result.data.reports.find((r) => r.sessionId === session.id)!
-    expect(report.messageIds).toEqual([named.id])
+    // Looked up directly, not by paging the whole open queue — on a test
+    // schema that has accumulated many runs, a single page wouldn't
+    // reliably contain it (ARCHITECTURE.md: tests must survive re-runs).
+    const report = await db.selectFrom('session_reports').select(['id', 'message_ids']).where('session_id', '=', session.id).executeTakeFirstOrThrow()
+    expect(report.message_ids).toEqual([named.id])
 
     // The window is around the filing moment (after every message here),
     // so with one each side only the newest message appears, on the
@@ -1071,6 +1072,54 @@ describe('session report history and labels', () => {
 
     const missing = await app.request(`/trpc/sessionReports.get?input=${encodeURIComponent(JSON.stringify({ reportId: crypto.randomUUID() }))}`, { headers: { cookie: mod.cookie } })
     expect(missing.status).toBe(404)
+  })
+})
+
+describe('users.read_pii', () => {
+  const TEST_VAULT = {
+    provider: 'vault' as const,
+    vaultAddr: process.env.TEST_VAULT_ADDR ?? 'http://localhost:8200',
+    vaultToken: process.env.TEST_VAULT_TOKEN ?? 'dev-only-not-for-production',
+  }
+
+  async function verifiedUser(roleName: string): Promise<{ cookie: string; userId: string }> {
+    const { cookie, userId } = await mintBareUserCookie()
+    await linkIdentity(db, userId, 'google', `test-subject-${userId}`)
+    const profileRes = await app.request('/trpc/auth.completeProfile', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ firstName: 'Mod', lastName: 'Test', gender: 'other', country: 'GB', mobileNumber: '+44 20 7946 0958', stayAnonymous: true }),
+    })
+    expect(profileRes.status).toBe(200)
+    const role = await findRoleByName(db, roleName)
+    if (!role) throw new Error(`seeded ${roleName} role not found`)
+    await assignRoleToUser(db, userId, role.id)
+    return { cookie, userId }
+  }
+
+  test('the full email comes back only to a role holding users.read_pii; everyone else gets the mask', async () => {
+    const member = await insertUser(db)
+    const address = `pii-${member.id}@example.com`
+    await setEmail(db, member.id, await encryptField(TEST_VAULT, address))
+
+    type Row = { id: string; email: string | null; emailMasked: string | null }
+    const listFor = async (cookie: string): Promise<Row | undefined> => {
+      const res = await app.request(`/trpc/rbac.users.list?input=${encodeURIComponent(JSON.stringify({ limit: 50 }))}`, { headers: { cookie } })
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as { result: { data: { users: Row[] } } }
+      return body.result.data.users.find((u) => u.id === member.id)
+    }
+
+    // AUDITOR reads users but was not granted users.read_pii.
+    const auditor = await verifiedUser('AUDITOR')
+    const masked = await listFor(auditor.cookie)
+    expect(masked?.emailMasked).toBe(`p***@example.com`)
+    expect(masked?.email).toBeNull()
+
+    const admin = await verifiedUser('ADMIN')
+    const unmasked = await listFor(admin.cookie)
+    expect(unmasked?.email).toBe(address)
+    expect(unmasked?.emailMasked).toBe(`p***@example.com`)
   })
 })
 

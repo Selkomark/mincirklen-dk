@@ -8,6 +8,7 @@ import { Avatar } from './components/Avatar'
 import { TextField } from './components/TextField'
 import { Textarea } from './components/Textarea'
 import { IconButton } from './components/IconButton'
+import { CopyText } from './components/CopyText'
 import { Checkbox } from './components/Checkbox'
 import { RadioGroup, Radio } from './components/RadioGroup'
 import { Switch } from './components/Switch'
@@ -118,6 +119,23 @@ const entries: CatalogEntry[] = [
       { name: '...rest', type: 'ButtonHTMLAttributes', description: 'Native button props (onClick, disabled, type, etc).' },
     ],
     code: `<Button variant="safe">Join session</Button>`,
+  },
+  {
+    name: 'CopyText',
+    group: 'Actions',
+    description: 'Inline text with a copy button that appears on hover/focus at the trailing edge. For ids, addresses, keys — anything someone would otherwise triple-click and drag.',
+    render: () => (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontFamily: 'monospace', fontSize: 12 }}>
+        <CopyText>8fe83a51-9d00-461f-9b0e-82c75e6c6b0d</CopyText>
+        <CopyText value="hello@example.com">h***@example.com</CopyText>
+      </div>
+    ),
+    props: [
+      { name: 'value', type: 'string', description: 'What goes to the clipboard. Defaults to the rendered text when children is a string.' },
+      { name: 'copyLabel', type: 'string', default: "'Copy'", description: 'Accessible name / tooltip before copying.' },
+      { name: 'copiedLabel', type: 'string', default: "'Copied'", description: 'Accessible name / tooltip for ~1.5s after copying.' },
+    ],
+    code: `<CopyText>8fe83a51-9d00-461f-9b0e-82c75e6c6b0d</CopyText>`,
   },
   {
     name: 'IconButton',

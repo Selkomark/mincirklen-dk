@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '../../components/Button'
 import { Badge } from '../../components/Badge'
 import { Checkbox } from '../../components/Checkbox'
+import { CopyText } from '../../components/CopyText'
 import { Alert } from '../../components/Alert'
 import { Modal } from '../../components/Modal'
 import { Skeleton } from '../../components/Skeleton'
@@ -22,7 +23,33 @@ interface UserWithRoles {
   // rbacRepository.ts for why that's a legacy/failure case, not a normal
   // signed-up user, now that Google sign-in is the only way in.
   emailMasked: string | null
+  // Full address — present only when this admin's role holds
+  // users.read_pii (rbacRouter.ts); null otherwise.
+  email: string | null
   roles: { id: string; name: string }[]
+}
+
+// Id and address are things an admin copies into a search, a ticket, a
+// query — so each is a CopyText. The address copies whatever is shown:
+// the full one when the role may see it, the mask otherwise.
+function UserCell({ user }: { user: UserWithRoles }) {
+  const { t } = useTranslation('console')
+  return (
+    <CopyText copyLabel={t('users.copy')} copiedLabel={t('users.copied')} style={{ fontFamily: 'monospace', fontSize: 'var(--font-size-xs)' }}>
+      {user.id}
+    </CopyText>
+  )
+}
+
+function EmailCell({ user }: { user: UserWithRoles }) {
+  const { t } = useTranslation('console')
+  const shown = user.email ?? user.emailMasked
+  if (!shown) return <span style={{ color: 'var(--text-secondary)' }}>—</span>
+  return (
+    <CopyText copyLabel={t('users.copy')} copiedLabel={t('users.copied')}>
+      {shown}
+    </CopyText>
+  )
 }
 
 interface Role {
@@ -166,8 +193,12 @@ function EditRolesRow({
   if (!editing) {
     return (
       <tr>
-        <td style={{ fontFamily: 'monospace', fontSize: 'var(--font-size-xs)' }}>{user.id}</td>
-        <td>{user.emailMasked ?? <span style={{ color: 'var(--text-secondary)' }}>—</span>}</td>
+        <td>
+          <UserCell user={user} />
+        </td>
+        <td>
+          <EmailCell user={user} />
+        </td>
         <td>
           {user.roles.length === 0 ? (
             <span style={{ color: 'var(--text-secondary)' }}>—</span>
@@ -199,8 +230,12 @@ function EditRolesRow({
 
   return (
     <tr>
-      <td style={{ fontFamily: 'monospace', fontSize: 'var(--font-size-xs)' }}>{user.id}</td>
-      <td>{user.emailMasked ?? <span style={{ color: 'var(--text-secondary)' }}>—</span>}</td>
+      <td>
+        <UserCell user={user} />
+      </td>
+      <td>
+        <EmailCell user={user} />
+      </td>
       <td colSpan={2}>
         <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
           {allRoles.map((role) => (

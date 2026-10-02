@@ -76,7 +76,9 @@
       "addFailed": "Failed to add the note.",
       "by": "by {{who}}",
       "viewReport": "View report"
-    }
+    },
+    "copy": "Copy",
+    "copied": "Copied"
   },
   "gates": {
     "loadFailed": "Failed to load gates.",
