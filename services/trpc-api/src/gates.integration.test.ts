@@ -81,7 +81,10 @@ async function createAdminActor(): Promise<Actor> {
   const actor = await createVerifiedActor()
   const role = await createRole(db, { name: `test-admin-${actor.userId}`, description: null })
   const permissions = await listPermissions(db)
-  const ids = permissions.filter((p) => ['admin.access', 'gates.read', 'gates.manage'].includes(p.slug)).map((p) => p.id)
+  // users.read_pii too: since gatesRouter.ts masks signup addresses for
+  // roles without it, and these tests match signups by address, the
+  // actor mirrors a real launch manager (migration 0011).
+  const ids = permissions.filter((p) => ['admin.access', 'gates.read', 'gates.manage', 'users.read_pii'].includes(p.slug)).map((p) => p.id)
   await replaceRolePermissions(db, role.id, ids)
   await assignRoleToUser(db, actor.userId, role.id)
   return actor

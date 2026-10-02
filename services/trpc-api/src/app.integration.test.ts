@@ -9,6 +9,7 @@ import { insertSessionReport } from './repositories/sessionReportRepository'
 import { insertMessage, listMessages as listMessagesRepo } from './repositories/messageRepository'
 import { linkIdentity } from './repositories/userIdentityRepository'
 import { upsertState } from './repositories/featureGateStateRepository'
+import { insertSignup } from './repositories/gateSignupRepository'
 import {
   assignRoleToUser,
   createRole,
@@ -1146,6 +1147,40 @@ describe('moderation_events.read vs .review', () => {
       body: JSON.stringify({ moderationEventId: crypto.randomUUID(), outcome: 'true_positive' }),
     })
     expect(decide.status).toBe(403)
+  })
+})
+
+describe('gate signup addresses and users.read_pii', () => {
+  async function verifiedUser(roleName: string): Promise<{ cookie: string }> {
+    const { cookie, userId } = await mintBareUserCookie()
+    await linkIdentity(db, userId, 'google', `test-subject-${userId}`)
+    const profileRes = await app.request('/trpc/auth.completeProfile', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ firstName: 'Gate', lastName: 'Test', gender: 'other', country: 'GB', mobileNumber: '+44 20 7946 0958', stayAnonymous: true }),
+    })
+    expect(profileRes.status).toBe(200)
+    const role = await findRoleByName(db, roleName)
+    if (!role) throw new Error(`seeded ${roleName} role not found`)
+    await assignRoleToUser(db, userId, role.id)
+    return { cookie }
+  }
+
+  test('an auditor sees masked signup addresses; a launch manager and an admin see them in full', async () => {
+    const address = `signup-${crypto.randomUUID()}@example.com`
+    await insertSignup(db, 'platform_launch', address)
+    const find = async (cookie: string): Promise<string | undefined> => {
+      const res = await app.request(`/trpc/gates.listSignups?input=${encodeURIComponent(JSON.stringify({ gateKey: 'platform_launch', limit: 50 }))}`, { headers: { cookie } })
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as { result: { data: { signups: { email: string }[] } } }
+      return body.result.data.signups.find((s) => s.email === address || s.email === `s***@example.com`)?.email
+    }
+    const auditor = await verifiedUser('AUDITOR')
+    expect(await find(auditor.cookie)).toBe('s***@example.com')
+    const launch = await verifiedUser('LAUNCH-MANAGER')
+    expect(await find(launch.cookie)).toBe(address)
+    const admin = await verifiedUser('ADMIN')
+    expect(await find(admin.cookie)).toBe(address)
   })
 })
 

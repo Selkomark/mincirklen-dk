@@ -13,6 +13,7 @@ import {
 import { TRPCError } from '@trpc/server'
 import { countsByGateKey, findSignupById, insertSignup, listSignups, markGranted, markRevoked } from '../repositories/gateSignupRepository'
 import { findState, listStates, upsertState } from '../repositories/featureGateStateRepository'
+import { maskEmail } from '../repositories/rbacRepository'
 import {
   SignupNotFoundError,
   UnknownGateError,
@@ -133,9 +134,18 @@ export const gatesRouter = router({
       }
     }),
 
+  // A signup's address is masked the same way a member's is in the Users
+  // tab unless the role holds users.read_pii — gates.read alone is a
+  // read-only view (AUDITOR). Roles that work the waitlist (LAUNCH-MANAGER)
+  // are granted users.read_pii in the seed, since delivering an invite
+  // link needs the real address.
   listSignups: hasPermission('gates.read')
     .input(listGateSignupsInputSchema)
-    .query(({ ctx, input }) => listSignups(ctx.appEnv.db, input.gateKey, input)),
+    .query(async ({ ctx, input }) => {
+      const page = await listSignups(ctx.appEnv.db, input.gateKey, input)
+      if (ctx.permissions.includes('users.read_pii')) return page
+      return { ...page, signups: page.signups.map((signup) => ({ ...signup, email: maskEmail(signup.email) })) }
+    }),
 
   grantSignup: hasPermission('gates.manage')
     .input(grantGateSignupInputSchema)

@@ -230,7 +230,11 @@ function SignupsPanel({ gateKey, canManage, onChanged }: { gateKey: string; canM
                     <Badge>{t('gates.signups.pending')}</Badge>
                   )}
                 </td>
-                <td>{new Date(signup.createdAt).toLocaleString(i18n.language)}</td>
+                <td>
+                  <CopyText copyLabel={t('users.copy')} copiedLabel={t('users.copied')}>
+                    {new Date(signup.createdAt).toLocaleString(i18n.language)}
+                  </CopyText>
+                </td>
                 <td>
                   {!canManage ? null : signup.status === 'granted' ? (
                     <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
