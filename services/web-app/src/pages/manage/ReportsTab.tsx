@@ -671,8 +671,12 @@ function HistoryModal({
   const [selected, setSelected] = useState<SessionReport | null>(null)
   const [selectedRoster, setSelectedRoster] = useState<RosterEntry[]>([])
   const [selectedError, setSelectedError] = useState<string | null>(null)
+  // null = every member passed in; a userId narrows the list to reports
+  // naming that one member, so a pattern on one person isn't lost in the
+  // noise of the others.
+  const [filterUserId, setFilterUserId] = useState<string | null>(null)
 
-  const targets = new Set(targetUserIds)
+  const targets = new Set(filterUserId ? [filterUserId] : targetUserIds)
   const subjects = history?.subjects.filter((s) => targets.has(s.userId)) ?? []
   const priorById = new Map<string, PriorReport>()
   for (const subject of subjects) for (const prior of subject.priorReports) priorById.set(prior.id, prior)
@@ -688,11 +692,13 @@ function HistoryModal({
   // their own entries so they aren't lost.
   const looseNotes = subjects.flatMap((s) => s.notes.filter((n) => !n.reportId).map((n) => ({ ...n, userId: s.userId })))
 
-  // Open on the newest prior report so the right pane is never empty.
+  // Open on the newest prior report so the right pane is never empty, and
+  // re-seed when a filter hides the one that was selected.
   useEffect(() => {
-    if (selectedId === null && priors.length > 0) setSelectedId(priors[0]!.id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only seed once the list first arrives
-  }, [priors.length])
+    if (priors.length === 0) return
+    if (selectedId === null || !priors.some((p) => p.id === selectedId)) setSelectedId(priors[0]!.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on what changes the visible list, not on selectedId itself
+  }, [priors.length, filterUserId])
 
   useEffect(() => {
     if (!selectedId) return
@@ -717,12 +723,33 @@ function HistoryModal({
   return (
     <Modal isOpen onOpenChange={(open) => !open && onClose()} title={t('reports.history.title')} className="reports-history-modal">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+        {/* The member chips double as the filter: all, or one. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }} role="radiogroup" aria-label={t('reports.history.filterLabel')}>
           <Text variant="muted" as="span" style={{ margin: 0 }}>
             {t('reports.history.about')}
           </Text>
+          {targetUserIds.length > 1 && (
+            <button
+              type="button"
+              role="radio"
+              aria-checked={filterUserId === null}
+              className={['reports-history__filter', filterUserId === null && 'reports-history__filter--active'].filter(Boolean).join(' ')}
+              onClick={() => setFilterUserId(null)}
+            >
+              {t('reports.history.everyone')}
+            </button>
+          )}
           {targetUserIds.map((id) => (
-            <MemberChip key={id} userId={id} roster={roster} />
+            <button
+              key={id}
+              type="button"
+              role="radio"
+              aria-checked={filterUserId === id}
+              className={['reports-history__filter', filterUserId === id && 'reports-history__filter--active'].filter(Boolean).join(' ')}
+              onClick={() => setFilterUserId((current) => (current === id && targetUserIds.length > 1 ? null : id))}
+            >
+              <MemberChip userId={id} roster={roster} />
+            </button>
           ))}
         </div>
         {error && <Alert variant="urgent">{error}</Alert>}

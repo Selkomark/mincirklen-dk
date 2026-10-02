@@ -267,3 +267,38 @@
 .reports-history__columns {
   height: 70vh;
 }
+
+/* Member filter in the history view: the chips are the control. A bare
+   button wrapper so the chip inside keeps its look; the active one gets
+   the accent ring, matching a selected list entry. */
+.reports-history__filter {
+  padding: 2px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-full);
+  background: none;
+  color: var(--text-primary);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: border-color var(--duration-fast) var(--easing-standard);
+}
+
+.reports-history__filter:hover {
+  border-color: var(--border-strong);
+}
+
+.reports-history__filter--active {
+  border-color: var(--accent-safe);
+}
+
+.reports-history__filter--active .reports-member-chip {
+  background: var(--accent-safe-surface);
+  color: var(--accent-safe);
+}
+
+/* The "everyone" option is text-only; pad it like a chip. */
+.reports-history__filter:not(:has(.reports-member-chip)) {
+  padding: 6px 12px;
+}

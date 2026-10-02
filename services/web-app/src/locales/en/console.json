@@ -309,7 +309,9 @@
       "listLabel": "Prior reports",
       "selectPrompt": "Select a report on the left to see it here.",
       "notesFromReport": "Notes from this report",
-      "looseNotes": "Notes added under Users"
+      "looseNotes": "Notes added under Users",
+      "filterLabel": "Show reports about",
+      "everyone": "Everyone"
     }
   }
 }

@@ -309,7 +309,9 @@
       "listLabel": "Tidligere rapporter",
       "selectPrompt": "Vælg en rapport til venstre for at se den her.",
       "notesFromReport": "Notater fra denne rapport",
-      "looseNotes": "Notater tilføjet under Brugere"
+      "looseNotes": "Notater tilføjet under Brugere",
+      "filterLabel": "Vis rapporter om",
+      "everyone": "Alle"
     }
   }
 }

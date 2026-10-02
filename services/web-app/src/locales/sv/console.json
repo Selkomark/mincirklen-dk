@@ -309,7 +309,9 @@
       "listLabel": "Tidigare rapporter",
       "selectPrompt": "Välj en rapport till vänster för att se den här.",
       "notesFromReport": "Anteckningar från den här rapporten",
-      "looseNotes": "Anteckningar tillagda under Användare"
+      "looseNotes": "Anteckningar tillagda under Användare",
+      "filterLabel": "Visa rapporter om",
+      "everyone": "Alla"
     }
   }
 }
