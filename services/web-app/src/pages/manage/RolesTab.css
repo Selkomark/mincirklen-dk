@@ -13,3 +13,29 @@
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: var(--space-4) var(--space-5);
 }
+
+.roles-permission-group {
+  margin-bottom: var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+/* Search highlights — the same accent surface the DS uses for a
+   selected Select option, so a hit reads as "picked out," not as an
+   error or a success state. The item gets a small negative margin so
+   the highlighted pill sits flush with unhighlighted rows. */
+.roles-permission-group--matched {
+  color: var(--accent-safe);
+}
+
+.roles-permission-item {
+  margin: 0 calc(-1 * var(--space-2));
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+}
+
+.roles-permission-item--matched {
+  background: var(--accent-safe-surface);
+}

@@ -1,8 +1,8 @@
-// Client-side search over the Roles table (RolesTab.tsx). The list is
-// small and already fully loaded, so this runs in the browser against
-// everything we know about a role — not just its name — and is meant
-// to answer "which role lets someone do X" as much as "find the role
-// called Y":
+// Client-side search for RolesTab.tsx — the Roles table and, inside the
+// edit-role modal, the permission list. Both lists are small and fully
+// loaded, so this runs in the browser. For roles it searches everything
+// we know about one — not just its name — to answer "which role lets
+// someone do X" as much as "find the role called Y":
 //
 //   - name, description, attached session-policy name
 //   - every permission the role holds: slug parts and description
@@ -84,7 +84,7 @@ const FACTOR_PREFIX = 0.8
 const FACTOR_SYNONYM = 0.6
 const FACTOR_FUZZY = 0.5
 
-interface Field {
+export interface Field {
   tokens: Set<string>
   weight: number
 }
@@ -178,11 +178,11 @@ function buildFields(role: SearchableRole): Field[] {
   return fields
 }
 
-// Score > 0 means every query token found something; 0 means filtered
-// out. Each token contributes its single best (weight × factor) hit.
-export function scoreRole(role: SearchableRole, queryTokens: string[]): number {
+// Score > 0 means every query token found something in some field; 0
+// means filtered out. Each token contributes its single best
+// (weight × factor) hit.
+export function scoreFields(fields: Field[], queryTokens: string[]): number {
   if (queryTokens.length === 0) return 1
-  const fields = buildFields(role)
   let total = 0
   for (const queryToken of queryTokens) {
     let best = 0
@@ -193,6 +193,10 @@ export function scoreRole(role: SearchableRole, queryTokens: string[]): number {
     total += best
   }
   return total
+}
+
+export function scoreRole(role: SearchableRole, queryTokens: string[]): number {
+  return scoreFields(buildFields(role), queryTokens)
 }
 
 // Filters and ranks. An empty/whitespace query returns the input
@@ -207,4 +211,44 @@ export function searchRoles<T extends SearchableRole>(roles: T[], query: string)
     .filter((entry) => entry.score > 0)
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .map((entry) => entry.role)
+}
+
+// The edit-role modal's permission filter. Groups are the slug-prefix
+// categories PermissionEditor already renders. A query that matches a
+// category (its prefix, e.g. "policies" → session_policies) keeps the
+// whole group, so someone can type an area and tick everything in it;
+// otherwise a group survives only through the individual permissions
+// that match. `matched` flags drive the highlight — a category hit
+// highlights the header, an item hit highlights the row.
+export interface PermissionGroupResult<P extends SearchablePermission> {
+  prefix: string
+  categoryMatched: boolean
+  permissions: { permission: P; matched: boolean }[]
+}
+
+export function searchPermissionGroups<P extends SearchablePermission>(
+  groups: [string, P[]][],
+  query: string,
+): PermissionGroupResult<P>[] {
+  const queryTokens = tokenize(query)
+  if (queryTokens.length === 0) {
+    return groups.map(([prefix, permissions]) => ({
+      prefix,
+      categoryMatched: false,
+      permissions: permissions.map((permission) => ({ permission, matched: false })),
+    }))
+  }
+
+  const results: PermissionGroupResult<P>[] = []
+  for (const [prefix, permissions] of groups) {
+    const categoryMatched = scoreFields([{ tokens: new Set(tokenize(prefix)), weight: 1 }], queryTokens) > 0
+    const scored = permissions.map((permission) => {
+      const fields: Field[] = [{ tokens: new Set(tokenize(permission.slug)), weight: WEIGHT_SLUG }]
+      if (permission.description) fields.push({ tokens: new Set(tokenize(permission.description)), weight: WEIGHT_PERMISSION_DESCRIPTION })
+      return { permission, matched: scoreFields(fields, queryTokens) > 0 }
+    })
+    const visible = categoryMatched ? scored : scored.filter((entry) => entry.matched)
+    if (visible.length > 0) results.push({ prefix, categoryMatched, permissions: visible })
+  }
+  return results
 }

@@ -11,7 +11,7 @@ import { Tab, TabList, TabPanel, Tabs } from '../../components/Tabs'
 import { Text } from '../../components/Text'
 import { TextField } from '../../components/TextField'
 import { getTrpc, postTrpc } from './manageShared'
-import { searchRoles } from './roleSearch'
+import { searchPermissionGroups, searchRoles } from './roleSearch'
 import './RolesTab.css'
 
 interface Role {
@@ -134,39 +134,62 @@ function PermissionEditor({
   selectedIds: Set<string>
   onChange: (next: Set<string>) => void
 }) {
+  const [query, setQuery] = useState('')
+  const groups = searchPermissionGroups(groupByPrefix(allPermissions), query)
+
   return (
-    <div className="roles-permission-grid">
-      {groupByPrefix(allPermissions).map(([prefix, permissions]) => (
-        <div key={prefix}>
-          <div
-            style={{
-              fontSize: 'var(--font-size-xs)',
-              fontWeight: 'var(--font-weight-bold)',
-              color: 'var(--text-secondary)',
-              textTransform: 'uppercase',
-              marginBottom: 4,
-            }}
-          >
-            {prefix}
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-            {permissions.map((permission) => (
-              <Checkbox
-                key={permission.id}
-                isSelected={selectedIds.has(permission.id)}
-                onChange={(isSelected) => {
-                  const next = new Set(selectedIds)
-                  if (isSelected) next.add(permission.id)
-                  else next.delete(permission.id)
-                  onChange(next)
-                }}
-              >
-                {permission.slug}
-              </Checkbox>
-            ))}
-          </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+      {/* alignItems: flex-end lines the section label up with the
+          search input, not with the input's own label above it. */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-primary)', paddingBottom: 12 }}>
+          Permissions
         </div>
-      ))}
+        <div style={{ flex: '1 1 200px', maxWidth: 300 }}>
+          <TextField
+            label="Search permissions"
+            placeholder="e.g. edit users, timeout…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {groups.length === 0 ? (
+        <Text variant="muted" style={{ margin: 0 }}>
+          No permissions match “{query.trim()}”.
+        </Text>
+      ) : (
+        <div className="roles-permission-grid">
+          {groups.map(({ prefix, categoryMatched, permissions }) => (
+            <div key={prefix}>
+              <div className={['roles-permission-group', categoryMatched && 'roles-permission-group--matched'].filter(Boolean).join(' ')}>
+                {prefix}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+                {permissions.map(({ permission, matched }) => (
+                  <div
+                    key={permission.id}
+                    className={['roles-permission-item', matched && 'roles-permission-item--matched'].filter(Boolean).join(' ')}
+                  >
+                    <Checkbox
+                      isSelected={selectedIds.has(permission.id)}
+                      onChange={(isSelected) => {
+                        const next = new Set(selectedIds)
+                        if (isSelected) next.add(permission.id)
+                        else next.delete(permission.id)
+                        onChange(next)
+                      }}
+                    >
+                      {permission.slug}
+                    </Checkbox>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -255,11 +278,13 @@ function EditRoleModal({
         <SessionPolicySelect value={policyId} onChange={setPolicyId} sessionPolicies={sessionPolicies} isDisabled={saving} />
 
         <div>
-          <div style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-primary)', marginBottom: 'var(--space-2)' }}>
-            Permissions
-          </div>
           {role.isSystem ? (
-            <Alert variant="info">System role — holds every permission and cannot be edited.</Alert>
+            <>
+              <div style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-primary)', marginBottom: 'var(--space-2)' }}>
+                Permissions
+              </div>
+              <Alert variant="info">System role — holds every permission and cannot be edited.</Alert>
+            </>
           ) : selectedIds ? (
             <PermissionEditor allPermissions={allPermissions} selectedIds={selectedIds} onChange={setSelectedIds} />
           ) : (
