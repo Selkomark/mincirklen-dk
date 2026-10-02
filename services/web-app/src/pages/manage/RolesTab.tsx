@@ -14,7 +14,7 @@ import { Tab, TabList, TabPanel, Tabs } from '../../components/Tabs'
 import { Text } from '../../components/Text'
 import { TextField } from '../../components/TextField'
 import { getTrpc, postTrpc } from './manageShared'
-import { searchPermissionGroups, searchRoles } from './roleSearch'
+import { highlightRanges, searchPermissionGroups, searchRoles } from './roleSearch'
 import './RolesTab.css'
 
 interface Role {
@@ -122,6 +122,24 @@ function groupByPrefix(permissions: Permission[]): [string, Permission[]][] {
 }
 
 const EMPTY_CELL = <span style={{ color: 'var(--text-secondary)' }}>—</span>
+
+// Text with the stretches the current query matches wrapped in <mark>.
+function Highlighted({ text, query }: { text: string; query: string }) {
+  if (!query.trim()) return <>{text}</>
+  return (
+    <>
+      {highlightRanges(text, query).map((range, i) =>
+        range.hit ? (
+          <mark key={i} className="roles-highlight">
+            {text.slice(range.start, range.end)}
+          </mark>
+        ) : (
+          <span key={i}>{text.slice(range.start, range.end)}</span>
+        ),
+      )}
+    </>
+  )
+}
 
 // Same column count as the real table so the layout doesn't jump once
 // data lands — see .agents/skills/skeleton-loading.
@@ -232,7 +250,7 @@ function PermissionEditor({
                         onChange(next)
                       }}
                     >
-                      {permission.slug}
+                      <Highlighted text={permission.slug} query={query} />
                     </Checkbox>
                   </div>
                 ))}
@@ -633,16 +651,16 @@ function RolesPanel({
               <tr key={role.id}>
                 <td>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-                    <CopyText copyLabel={t('users.copy')} copiedLabel={t('users.copied')} style={{ fontWeight: 'var(--font-weight-medium)' }}>
-                      {role.name}
+                    <CopyText value={role.name} copyLabel={t('users.copy')} copiedLabel={t('users.copied')} style={{ fontWeight: 'var(--font-weight-medium)' }}>
+                      <Highlighted text={role.name} query={query} />
                     </CopyText>
                     {role.isSystem && <Badge variant="info">{t('roles.system')}</Badge>}
                   </div>
                 </td>
                 <td>
                   {role.description ? (
-                    <CopyText copyLabel={t('users.copy')} copiedLabel={t('users.copied')}>
-                      {role.description}
+                    <CopyText value={role.description} copyLabel={t('users.copy')} copiedLabel={t('users.copied')}>
+                      <Highlighted text={role.description} query={query} />
                     </CopyText>
                   ) : (
                     EMPTY_CELL

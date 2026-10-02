@@ -359,6 +359,11 @@ function matchFactor(queryToken: string, field: Field, tables: Map<string, strin
   return best
 }
 
+// Held by every role that can reach /manage at all, so it says nothing
+// about any one of them — left out of the index, or "access" would match
+// the whole table.
+const UBIQUITOUS_PERMISSIONS = new Set(['admin.access'])
+
 function buildFields(role: SearchableRole): Field[] {
   const fields: Field[] = [{ tokens: new Set(tokenize(role.name)), weight: WEIGHT_NAME }]
   if (role.description) fields.push({ tokens: new Set(tokenize(role.description)), weight: WEIGHT_DESCRIPTION })
@@ -367,6 +372,7 @@ function buildFields(role: SearchableRole): Field[] {
   const slugTokens = new Set<string>()
   const permissionDescriptionTokens = new Set<string>()
   for (const permission of role.permissions) {
+    if (UBIQUITOUS_PERMISSIONS.has(permission.slug)) continue
     for (const token of tokenize(permission.slug)) slugTokens.add(token)
     if (permission.description) for (const token of tokenize(permission.description)) permissionDescriptionTokens.add(token)
   }
@@ -462,4 +468,37 @@ export function searchPermissionGroups<P extends SearchablePermission>(
     if (visible.length > 0) results.push({ prefix, label, categoryMatched, permissions: visible })
   }
   return results
+}
+
+// Which stretches of a displayed text a query literally matches — for
+// <mark>-style highlighting in the table. A word is a hit when it starts
+// with a query word, or their stems match (so "policies" lights up for
+// "policy"). Only literal/stem hits: a row that matched through a
+// synonym or a permission it holds shows no highlight in its name, which
+// is right — nothing in that text matched.
+export function highlightRanges(text: string, query: string): Array<{ start: number; end: number; hit: boolean }> {
+  const queryWords = query.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 0)
+  if (queryWords.length === 0 || !text) return [{ start: 0, end: text.length, hit: false }]
+  const queryStems = queryWords.map(stem)
+  const ranges: Array<{ start: number; end: number; hit: boolean }> = []
+  const wordPattern = /[\p{L}\p{N}]+/gu
+  let cursor = 0
+  for (const match of text.matchAll(wordPattern)) {
+    const start = match.index ?? 0
+    const end = start + match[0].length
+    const word = match[0].toLowerCase()
+    const wordStem = stem(word)
+    const hit = queryWords.some((q, i) => word.startsWith(q) || wordStem === queryStems[i] || wordStem.startsWith(queryStems[i]!))
+    if (start > cursor) ranges.push({ start: cursor, end: start, hit: false })
+    ranges.push({ start, end, hit })
+    cursor = end
+  }
+  if (cursor < text.length) ranges.push({ start: cursor, end: text.length, hit: false })
+  // Merge adjacent same-kind ranges so the DOM stays small.
+  return ranges.reduce<typeof ranges>((acc, r) => {
+    const last = acc[acc.length - 1]
+    if (last && last.hit === r.hit && last.end === r.start) last.end = r.end
+    else acc.push({ ...r })
+    return acc
+  }, [])
 }

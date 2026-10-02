@@ -76,3 +76,12 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Search hits inside a cell — the same accent surface as a matched
+   permission row, no browser-default yellow. */
+.roles-highlight {
+  background: var(--accent-safe-surface);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}

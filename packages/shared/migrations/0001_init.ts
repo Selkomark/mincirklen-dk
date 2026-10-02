@@ -229,7 +229,7 @@ export async function up(db: Kysely<any>): Promise<void> {
   // controllers/oauthController.ts.
   const adminRole = await db
     .insertInto('roles')
-    .values({ name: 'ADMIN', description: 'Full platform access', is_system: true })
+    .values({ name: 'ADMIN', description: 'Unrestricted — holds every permission', is_system: true })
     .returning('id')
     .executeTakeFirstOrThrow()
 

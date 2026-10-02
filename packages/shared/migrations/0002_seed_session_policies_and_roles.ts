@@ -57,31 +57,31 @@ const READ_EVERYTHING = ['admin.access', 'roles.read', 'session_policies.read', 
 const SEEDED_ROLES: SeededRole[] = [
   {
     name: 'MODERATOR',
-    description: 'Reviews flagged and crisis moderation events',
+    description: 'Reviews flagged messages and decides session reports',
     permissions: ['admin.access', 'moderation_events.review'],
     policy: policyName(10, 'hour'),
   },
   {
     name: 'TRUST-SAFETY-LEAD',
-    description: 'Moderation plus the ability to see users and change their roles',
+    description: 'Senior moderation: can also ban members',
     permissions: ['admin.access', 'moderation_events.review', 'users.read', 'users.update'],
     policy: policyName(3, 'hour'),
   },
   {
     name: 'SUPPORT',
-    description: 'Helps members with their accounts; can see users and their roles but not change them',
+    description: 'Looks up member accounts and helps with sign-in problems',
     permissions: ['admin.access', 'users.read'],
     policy: policyName(10, 'hour'),
   },
   {
     name: 'LAUNCH-MANAGER',
-    description: 'Runs early-access gates and their waitlists',
+    description: 'Opens gates and works the waitlist',
     permissions: ['admin.access', 'gates.read', 'gates.manage'],
     policy: policyName(10, 'hour'),
   },
   {
     name: 'ACCESS-MANAGER',
-    description: 'Manages roles, permissions, session policies and who holds which role',
+    description: 'Creates roles, grants them to people, sets session policies',
     permissions: [
       'admin.access',
       'roles.read',
@@ -97,7 +97,7 @@ const SEEDED_ROLES: SeededRole[] = [
   },
   {
     name: 'AUDITOR',
-    description: 'Read-only view across the whole admin area',
+    description: 'Read-only: can look at everything, change nothing',
     permissions: READ_EVERYTHING,
     policy: policyName(1, 'day'),
   },
