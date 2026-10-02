@@ -10,6 +10,7 @@ import { Table } from '../../components/Table'
 import { Text } from '../../components/Text'
 import { Textarea } from '../../components/Textarea'
 import { getTrpc, postTrpc } from './manageShared'
+import { ReportByIdModal } from './ReportsTab'
 
 interface UserWithRoles {
   id: string
@@ -34,6 +35,7 @@ interface MemberNote {
   reportId: string | null
   body: string
   createdBy: string | null
+  createdByLabel: string | null
   createdAt: string
 }
 
@@ -45,6 +47,7 @@ function NotesModal({ userId, canAddNote, onClose }: { userId: string; canAddNot
   const [draft, setDraft] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [openReportId, setOpenReportId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -93,15 +96,21 @@ function NotesModal({ userId, canAddNote, onClose }: { userId: string; canAddNot
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', maxHeight: '40vh', overflowY: 'auto' }}>
             {notes.map((note) => (
               <div key={note.id} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>
-                  {new Date(note.createdAt).toLocaleString(i18n.language)}
-                  {note.reportId ? ` · ${t('users.notes.fromReport')}` : ''}
+                <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)', display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <span>{new Date(note.createdAt).toLocaleString(i18n.language)}</span>
+                  {note.createdByLabel && <span>{t('users.notes.by', { who: note.createdByLabel })}</span>}
+                  {note.reportId && (
+                    <Button variant="ghost" onPress={() => setOpenReportId(note.reportId)}>
+                      {t('users.notes.viewReport')}
+                    </Button>
+                  )}
                 </span>
                 <span style={{ fontSize: 'var(--font-size-sm)', whiteSpace: 'pre-wrap' }}>{note.body}</span>
               </div>
             ))}
           </div>
         )}
+        {openReportId && <ReportByIdModal reportId={openReportId} canBan={false} onClose={() => setOpenReportId(null)} />}
         {canAddNote && (
           <form
             onSubmit={(e) => {

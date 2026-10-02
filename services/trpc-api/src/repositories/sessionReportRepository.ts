@@ -61,31 +61,73 @@ export interface ListSessionReportsResult {
 // display name; never user_profiles — a reviewer sees raw user ids, not
 // decrypted identities, exactly as the moderation queue does (CHARTER.md
 // §4). Cross-referencing an id is what the Users tab is for.
+const REPORT_COLUMNS = [
+  'session_reports.id as id',
+  'session_reports.session_id as session_id',
+  'sessions.name as session_name',
+  'session_reports.reporter_user_id as reporter_user_id',
+  'session_reports.about_user_ids as about_user_ids',
+  'session_reports.message_ids as message_ids',
+  'session_reports.body as body',
+  'session_reports.status as status',
+  'session_reports.created_at as created_at',
+  sql<string>`session_reports.created_at::text`.as('created_at_cursor'),
+  'session_reports.reviewed_at as reviewed_at',
+  'session_reports.reviewed_by as reviewed_by',
+  'session_reports.decision_note as decision_note',
+  'session_reports.action as action',
+  'session_reports.action_target_user_ids as action_target_user_ids',
+] as const
+
+function reportsQuery(db: Kysely<Database>) {
+  return db.selectFrom('session_reports').leftJoin('sessions', 'sessions.id', 'session_reports.session_id').select(REPORT_COLUMNS)
+}
+
+type ReportQueryRow = Awaited<ReturnType<ReturnType<typeof reportsQuery>['execute']>>[number]
+
+function toSessionReportRow(row: ReportQueryRow): SessionReportRow {
+  return {
+    id: row.id,
+    sessionId: row.session_id,
+    sessionName: row.session_name,
+    reporterUserId: row.reporter_user_id,
+    aboutUserIds: row.about_user_ids,
+    messageIds: row.message_ids,
+    body: row.body,
+    status: row.status,
+    createdAt: row.created_at,
+    reviewedAt: row.reviewed_at,
+    reviewedBy: row.reviewed_by,
+    decisionNote: row.decision_note,
+    action: row.action,
+    actionTargetUserIds: row.action_target_user_ids,
+  }
+}
+
+export async function findSessionReportById(db: Kysely<Database>, reportId: string): Promise<SessionReportRow | null> {
+  const row = await reportsQuery(db).where('session_reports.id', '=', reportId).executeTakeFirst()
+  return row ? toSessionReportRow(row) : null
+}
+
+// Every other report naming any of these members — the review dialog's
+// history panel. `?|` is jsonb "has any of these keys", which for a
+// jsonb array of strings is "contains any of these values".
+export async function listReportsAboutUsers(db: Kysely<Database>, userIds: string[], excludeReportId: string): Promise<SessionReportRow[]> {
+  if (userIds.length === 0) return []
+  const rows = await reportsQuery(db)
+    .where(sql<boolean>`session_reports.about_user_ids ?| ${userIds}::text[]`)
+    .where('session_reports.id', '!=', excludeReportId)
+    .orderBy('session_reports.created_at', 'desc')
+    .limit(50)
+    .execute()
+  return rows.map(toSessionReportRow)
+}
+
 export async function listSessionReports(
   db: Kysely<Database>,
   params: { status: SessionReportStatus; cursor?: string; limit: number },
 ): Promise<ListSessionReportsResult> {
-  let query = db
-    .selectFrom('session_reports')
-    .leftJoin('sessions', 'sessions.id', 'session_reports.session_id')
-    .select([
-      'session_reports.id as id',
-      'session_reports.session_id as session_id',
-      'sessions.name as session_name',
-      'session_reports.reporter_user_id as reporter_user_id',
-      'session_reports.about_user_ids as about_user_ids',
-      'session_reports.message_ids as message_ids',
-      'session_reports.body as body',
-      'session_reports.status as status',
-      'session_reports.created_at as created_at',
-      sql<string>`session_reports.created_at::text`.as('created_at_cursor'),
-      'session_reports.reviewed_at as reviewed_at',
-      'session_reports.reviewed_by as reviewed_by',
-      'session_reports.decision_note as decision_note',
-      'session_reports.action as action',
-      'session_reports.action_target_user_ids as action_target_user_ids',
-    ])
-    .where('session_reports.status', '=', params.status)
+  let query = reportsQuery(db).where('session_reports.status', '=', params.status)
 
   if (params.cursor) {
     const [cursorCreatedAt, cursorId] = params.cursor.split('|')
@@ -105,22 +147,7 @@ export async function listSessionReports(
   const last = page[page.length - 1]
 
   return {
-    reports: page.map((row) => ({
-      id: row.id,
-      sessionId: row.session_id,
-      sessionName: row.session_name,
-      reporterUserId: row.reporter_user_id,
-      aboutUserIds: row.about_user_ids,
-      messageIds: row.message_ids,
-      body: row.body,
-      status: row.status,
-      createdAt: row.created_at,
-      reviewedAt: row.reviewed_at,
-      reviewedBy: row.reviewed_by,
-      decisionNote: row.decision_note,
-      action: row.action,
-      actionTargetUserIds: row.action_target_user_ids,
-    })),
+    reports: page.map(toSessionReportRow),
     nextCursor: hasMore && last ? `${last.created_at_cursor}|${last.id}` : null,
   }
 }

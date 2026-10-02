@@ -975,6 +975,71 @@ describe('session report actions', () => {
   })
 })
 
+describe('session report history and labels', () => {
+  async function verifiedUser(roleName: string): Promise<{ cookie: string; userId: string }> {
+    const { cookie, userId } = await mintBareUserCookie()
+    await linkIdentity(db, userId, 'google', `test-subject-${userId}`)
+    const profileRes = await app.request('/trpc/auth.completeProfile', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ firstName: 'Mod', lastName: 'Test', gender: 'other', country: 'GB', mobileNumber: '+44 20 7946 0958', stayAnonymous: true }),
+    })
+    expect(profileRes.status).toBe(200)
+    const role = await findRoleByName(db, roleName)
+    if (!role) throw new Error(`seeded ${roleName} role not found`)
+    await assignRoleToUser(db, userId, role.id)
+    return { cookie, userId }
+  }
+
+  test('a decision note shows up in the next report\'s history for the same member, with who wrote it', async () => {
+    const mod = await verifiedUser('MODERATOR')
+    const alice = await insertUser(db)
+    const reporter = await insertUser(db)
+
+    // First report: decided with a note on Alice.
+    const first = await createSession(db)
+    await joinSession(db, first.id, reporter.id)
+    await joinSession(db, first.id, alice.id)
+    await insertSessionReport(db, { sessionId: first.id, reporterUserId: reporter.id, aboutUserIds: [alice.id], messageIds: [], body: 'first time' })
+    const firstReport = await db.selectFrom('session_reports').select('id').where('session_id', '=', first.id).executeTakeFirstOrThrow()
+    const decide = await app.request('/trpc/sessionReports.review', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: mod.cookie },
+      body: JSON.stringify({ reportId: firstReport.id, status: 'reviewed', note: 'Borderline — watch for a repeat.', action: 'note', targetUserIds: [alice.id] }),
+    })
+    expect(decide.status).toBe(200)
+
+    // Second report about Alice: its history carries the note and the prior report.
+    const second = await createSession(db)
+    await joinSession(db, second.id, reporter.id)
+    await joinSession(db, second.id, alice.id)
+    await insertSessionReport(db, { sessionId: second.id, reporterUserId: reporter.id, aboutUserIds: [alice.id], messageIds: [], body: 'again' })
+    const secondReport = await db.selectFrom('session_reports').select('id').where('session_id', '=', second.id).executeTakeFirstOrThrow()
+
+    const res = await app.request(`/trpc/sessionReports.subjectHistory?input=${encodeURIComponent(JSON.stringify({ reportId: secondReport.id }))}`, { headers: { cookie: mod.cookie } })
+    expect(res.status).toBe(200)
+    const history = (await res.json()) as {
+      result: { data: { subjects: { userId: string; notes: { body: string; createdByLabel: string | null; reportId: string | null }[]; priorReports: { id: string; action: string | null; appliedToThisMember: boolean; reviewedByLabel: string | null }[] }[] } }
+    }
+    const subject = history.result.data.subjects.find((s) => s.userId === alice.id)!
+    expect(subject.notes).toHaveLength(1)
+    expect(subject.notes[0]).toMatchObject({ body: 'Borderline — watch for a repeat.', reportId: firstReport.id })
+    // Bare test users carry no email, so the label is null here; the shape is what matters.
+    expect(subject.notes[0]!.createdByLabel).toBeNull()
+    expect(subject.priorReports.map((r) => r.id)).toEqual([firstReport.id])
+    expect(subject.priorReports[0]).toMatchObject({ action: 'note', appliedToThisMember: true })
+
+    // The report itself can be fetched by id, decided fields included.
+    const one = await app.request(`/trpc/sessionReports.get?input=${encodeURIComponent(JSON.stringify({ reportId: firstReport.id }))}`, { headers: { cookie: mod.cookie } })
+    expect(one.status).toBe(200)
+    const got = (await one.json()) as { result: { data: { id: string; status: string; decisionNote: string | null; reviewedBy: string | null } } }
+    expect(got.result.data).toMatchObject({ id: firstReport.id, status: 'reviewed', decisionNote: 'Borderline — watch for a repeat.', reviewedBy: mod.userId })
+
+    const missing = await app.request(`/trpc/sessionReports.get?input=${encodeURIComponent(JSON.stringify({ reportId: crypto.randomUUID() }))}`, { headers: { cookie: mod.cookie } })
+    expect(missing.status).toBe(404)
+  })
+})
+
 describe('/health', () => {
   test('reports each dependency check', async () => {
     const res = await app.request('/health')

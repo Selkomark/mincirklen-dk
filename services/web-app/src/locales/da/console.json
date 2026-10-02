@@ -73,7 +73,9 @@
       "addLabel": "Tilføj et notat",
       "add": "Tilføj notat",
       "loadFailed": "Kunne ikke indlæse notater.",
-      "addFailed": "Kunne ikke tilføje notatet."
+      "addFailed": "Kunne ikke tilføje notatet.",
+      "by": "af {{who}}",
+      "viewReport": "Vis rapport"
     }
   },
   "gates": {
@@ -291,6 +293,17 @@
     },
     "banWarning": "En udelukkelse er permanent og gælder alle login-identiteter knyttet til dette medlem.",
     "decisionReviewedWithAction": "Gennemgået — {{action}}",
-    "dismissUnavailable": "At afvise betyder, at der ikke var noget at handle på; vælg \"Ingen yderligere handling\" for at afvise."
+    "dismissUnavailable": "At afvise betyder, at der ikke var noget at handle på; vælg \"Ingen yderligere handling\" for at afvise.",
+    "decidedBy": "Afgjort {{when}} af {{who}}",
+    "history": {
+      "title": "Historik",
+      "none": "Intet på fil om de medlemmer, denne rapport handler om.",
+      "summary": "{{notes}} notater · {{reports}} andre rapporter",
+      "note": "Notat",
+      "by": "af {{who}}",
+      "notThisMember": "et andet medlem",
+      "viewReport": "Vis rapport",
+      "loadFailed": "Kunne ikke indlæse historik."
+    }
   }
 }

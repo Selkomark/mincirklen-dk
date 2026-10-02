@@ -26,6 +26,7 @@ import {
   setRoleSessionPolicy,
   updateRole as updateRoleRow,
   updateSessionPolicy,
+  findMaskedEmails,
 } from '../repositories/rbacRepository'
 import { SystemRoleImmutableError, updateRole as updateRoleService, updateRolePermissions } from '../services/rbacService'
 import { insertMemberNote, listMemberNotes } from '../repositories/memberNoteRepository'
@@ -142,7 +143,15 @@ export const rbacRouter = router({
     // Also written automatically by a session-report 'note' action.
     listNotes: hasPermission('users.read')
       .input(z.object({ userId: z.string().uuid() }))
-      .query(({ ctx, input }) => listMemberNotes(ctx.appEnv.db, input.userId)),
+      .query(async ({ ctx, input }) => {
+        const notes = await listMemberNotes(ctx.appEnv.db, input.userId)
+        const labels = await findMaskedEmails(
+          ctx.appEnv.db,
+          ctx.appEnv.vault,
+          notes.map((n) => n.createdBy).filter((id): id is string => id !== null),
+        )
+        return notes.map((n) => ({ ...n, createdByLabel: n.createdBy ? (labels.get(n.createdBy) ?? null) : null }))
+      }),
 
     addNote: hasPermission('users.update')
       .input(addMemberNoteInputSchema)

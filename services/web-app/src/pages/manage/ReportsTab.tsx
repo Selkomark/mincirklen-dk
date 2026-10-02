@@ -26,7 +26,7 @@ type BanReason = 'predatory_contact' | 'harassment' | 'crisis_abuse' | 'illegal_
 const MEMBER_TARGETED: ReadonlySet<ReportAction> = new Set(['note', 'warn', 'remove_from_session', 'ban'])
 const BAN_REASONS: BanReason[] = ['predatory_contact', 'harassment', 'crisis_abuse', 'illegal_content', 'other']
 
-interface SessionReport {
+export interface SessionReport {
   id: string
   sessionId: string
   sessionName: string | null
@@ -40,9 +40,28 @@ interface SessionReport {
   createdAt: string
   reviewedAt: string | null
   reviewedBy: string | null
+  // The deciding moderator as the admin UI names people: masked email.
+  reviewedByLabel: string | null
   decisionNote: string | null
   action: ReportAction | null
   actionTargetUserIds: string[]
+}
+
+interface SubjectHistory {
+  subjects: {
+    userId: string
+    notes: { id: string; body: string; createdAt: string; createdByLabel: string | null; reportId: string | null }[]
+    priorReports: {
+      id: string
+      sessionName: string | null
+      status: ReportStatus
+      action: ReportAction | null
+      appliedToThisMember: boolean
+      createdAt: string
+      body: string
+      reviewedByLabel: string | null
+    }[]
+  }[]
 }
 
 interface TranscriptPage {
@@ -550,8 +569,147 @@ function DecisionModal({
   )
 }
 
+// ---- History ----
+//
+// What's already on file about the members this report is about — every
+// moderator note on them and every other report naming them. This is
+// where a decision note earns its keep: the next reviewer sees the
+// pattern before deciding, instead of judging each report in isolation.
+function SubjectHistoryPanel({ reportId, roster, canBan }: { reportId: string; roster: RosterEntry[]; canBan: boolean }) {
+  const { t, i18n } = useTranslation('console')
+  const [history, setHistory] = useState<SubjectHistory | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [openReportId, setOpenReportId] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    getTrpc<SubjectHistory>('sessionReports.subjectHistory', { reportId })
+      .then((h) => {
+        if (!cancelled) setHistory(h)
+      })
+      .catch(() => {
+        if (!cancelled) setError(t('reports.history.loadFailed'))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [reportId, t])
+
+  if (error) return <Alert variant="urgent">{error}</Alert>
+  if (!history) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+        <Skeleton width="50%" height={14} />
+        <Skeleton width="70%" height={14} />
+      </div>
+    )
+  }
+
+  const hasAnything = history.subjects.some((s) => s.notes.length > 0 || s.priorReports.length > 0)
+  if (!hasAnything) {
+    return (
+      <Text variant="muted" style={{ margin: 0 }}>
+        {t('reports.history.none')}
+      </Text>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+      {history.subjects
+        .filter((s) => s.notes.length > 0 || s.priorReports.length > 0)
+        .map((subject) => (
+          <div key={subject.userId} className="reports-history__subject">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+              <MemberChip userId={subject.userId} roster={roster} />
+              <Text variant="muted" as="span" style={{ margin: 0 }}>
+                {t('reports.history.summary', { notes: subject.notes.length, reports: subject.priorReports.length })}
+              </Text>
+            </div>
+            {subject.priorReports.map((prior) => (
+              <div key={prior.id} className="reports-history__item">
+                <div className="reports-history__meta">
+                  <span>{new Date(prior.createdAt).toLocaleString(i18n.language)}</span>
+                  <span>·</span>
+                  <span>{prior.sessionName ?? t('reports.unnamedSession')}</span>
+                  <StatusBadge status={prior.status} />
+                  {prior.action && prior.action !== 'none' && (
+                    <Badge variant={prior.appliedToThisMember ? (prior.action === 'ban' ? 'urgent' : 'info') : 'neutral'}>
+                      {t(`reports.actions.${prior.action}.label`)}
+                      {!prior.appliedToThisMember ? ` · ${t('reports.history.notThisMember')}` : ''}
+                    </Badge>
+                  )}
+                  {prior.reviewedByLabel && <span>{t('reports.history.by', { who: prior.reviewedByLabel })}</span>}
+                </div>
+                <div className="reports-history__row">
+                  <span className="reports-excerpt" style={{ flex: 1 }}>
+                    {prior.body}
+                  </span>
+                  <Button variant="ghost" onPress={() => setOpenReportId(prior.id)}>
+                    {t('reports.view')}
+                  </Button>
+                </div>
+              </div>
+            ))}
+            {subject.notes.map((note) => (
+              <div key={note.id} className="reports-history__item">
+                <div className="reports-history__meta">
+                  <span>{new Date(note.createdAt).toLocaleString(i18n.language)}</span>
+                  <Badge>{t('reports.history.note')}</Badge>
+                  {note.createdByLabel && <span>{t('reports.history.by', { who: note.createdByLabel })}</span>}
+                </div>
+                <div className="reports-history__row">
+                  <span style={{ flex: 1, whiteSpace: 'pre-wrap' }}>{note.body}</span>
+                  {note.reportId && (
+                    <Button variant="ghost" onPress={() => setOpenReportId(note.reportId)}>
+                      {t('reports.history.viewReport')}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+      {openReportId && <ReportByIdModal reportId={openReportId} canBan={canBan} onClose={() => setOpenReportId(null)} />}
+    </div>
+  )
+}
+
+// Opens the review dialog for a report known only by id — from a note's
+// "view report" link or a history entry. Fetches the row first so the
+// dialog itself can stay a pure function of a loaded report.
+export function ReportByIdModal({ reportId, canBan, onClose }: { reportId: string; canBan: boolean; onClose: () => void }) {
+  const { t } = useTranslation('console')
+  const [report, setReport] = useState<SessionReport | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    getTrpc<SessionReport>('sessionReports.get', { reportId })
+      .then((r) => {
+        if (!cancelled) setReport(r)
+      })
+      .catch(() => {
+        if (!cancelled) setError(t('reports.loadFailed'))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [reportId, t])
+
+  if (error) {
+    return (
+      <Modal isOpen onOpenChange={(open) => !open && onClose()} title={t('reports.view')}>
+        <Alert variant="urgent">{error}</Alert>
+      </Modal>
+    )
+  }
+  if (!report) return null
+  return <ReviewReportModal report={report} canBan={canBan} onClose={onClose} onDecided={onClose} />
+}
+
 // ---- Review dialog ----
-function ReviewReportModal({
+export function ReviewReportModal({
   report,
   canBan,
   onClose,
@@ -622,7 +780,9 @@ function ReviewReportModal({
           <Alert variant={report.status === 'reviewed' ? 'safe' : 'info'}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <strong>
-                {t('reports.decided', { when: report.reviewedAt ? new Date(report.reviewedAt).toLocaleString(i18n.language) : '—' })}
+                {report.reviewedByLabel
+                  ? t('reports.decidedBy', { when: report.reviewedAt ? new Date(report.reviewedAt).toLocaleString(i18n.language) : '—', who: report.reviewedByLabel })
+                  : t('reports.decided', { when: report.reviewedAt ? new Date(report.reviewedAt).toLocaleString(i18n.language) : '—' })}
               </strong>
               {report.action && report.action !== 'none' && (
                 <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
@@ -636,6 +796,13 @@ function ReviewReportModal({
             </div>
           </Alert>
         )}
+
+        <div>
+          <div className="reports-review__label" style={{ marginBottom: 'var(--space-2)' }}>
+            {t('reports.history.title')}
+          </div>
+          <SubjectHistoryPanel reportId={report.id} roster={roster} canBan={canBan} />
+        </div>
 
         <div>
           <div className="reports-review__label" style={{ marginBottom: 'var(--space-2)' }}>

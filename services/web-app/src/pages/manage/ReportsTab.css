@@ -141,3 +141,41 @@
   font-size: var(--font-size-xs);
   color: var(--text-secondary);
 }
+
+/* History panel in the review dialog: one block per reported member,
+   each prior report / note a compact row with a meta line above it. */
+.reports-history__subject {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.reports-history__item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--border-subtle);
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+}
+
+.reports-history__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.reports-history__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}

@@ -73,7 +73,9 @@
       "addLabel": "Add a note",
       "add": "Add note",
       "loadFailed": "Failed to load notes.",
-      "addFailed": "Failed to add the note."
+      "addFailed": "Failed to add the note.",
+      "by": "by {{who}}",
+      "viewReport": "View report"
     }
   },
   "gates": {
@@ -291,6 +293,17 @@
     },
     "banWarning": "A ban is permanent and applies to every sign-in identity linked to this member.",
     "decisionReviewedWithAction": "Reviewed — {{action}}",
-    "dismissUnavailable": "Dismissing means there was nothing to act on; choose \"No further action\" to dismiss."
+    "dismissUnavailable": "Dismissing means there was nothing to act on; choose \"No further action\" to dismiss.",
+    "decidedBy": "Decided {{when}} by {{who}}",
+    "history": {
+      "title": "History",
+      "none": "Nothing on file about the members this report is about.",
+      "summary": "{{notes}} notes · {{reports}} other reports",
+      "note": "Note",
+      "by": "by {{who}}",
+      "notThisMember": "another member",
+      "viewReport": "View report",
+      "loadFailed": "Failed to load history."
+    }
   }
 }

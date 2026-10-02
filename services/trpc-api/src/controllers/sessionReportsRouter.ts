@@ -5,16 +5,20 @@ import {
 } from '@mincirklen/shared'
 import { TRPCError } from '@trpc/server'
 import { insertAccountBan, insertBanEvidence } from '../repositories/accountBanRepository'
-import { insertMemberNote } from '../repositories/memberNoteRepository'
 import { findMessagesByIds, listTranscriptWindow, removeMessages } from '../repositories/messageRepository'
 import { findSessionName, getRoster, leaveSession } from '../repositories/sessionRepository'
 import {
   applySessionReportDecision,
   findReporterId,
   findSessionReportAnchor,
+  findSessionReportById,
   findSessionReportForReview,
+  listReportsAboutUsers,
   listSessionReports,
+  type SessionReportRow,
 } from '../repositories/sessionReportRepository'
+import { insertMemberNote, listMemberNotesForUsers } from '../repositories/memberNoteRepository'
+import { findMaskedEmails } from '../repositories/rbacRepository'
 import { listIdentitiesForUser } from '../repositories/userIdentityRepository'
 import { findDisplayNames } from '../repositories/userProfileRepository'
 import { setBannedAt } from '../repositories/userRepository'
@@ -30,6 +34,7 @@ import {
 } from '../services/sessionReportService'
 import { emailMember } from './memberEmail'
 import { hasPermission, router } from './trpc'
+import { z } from 'zod'
 
 function toTRPCError(err: unknown): TRPCError {
   if (err instanceof SessionReportNotFoundError) {
@@ -51,10 +56,79 @@ function toTRPCError(err: unknown): TRPCError {
 // sessionRouter.ts's `report`). Two permissions, not one: AUDITOR-style
 // roles get to see the queue without being able to close anything in it;
 // banning needs users.ban on top (checked inside the service).
+// A report as the admin UI shows it: the row plus a human label for the
+// moderator who decided it (masked email, same as the Users tab).
+async function withReviewerLabels(ctx: { appEnv: { db: Parameters<typeof findMaskedEmails>[0]; vault: Parameters<typeof findMaskedEmails>[1] } }, reports: SessionReportRow[]) {
+  const labels = await findMaskedEmails(
+    ctx.appEnv.db,
+    ctx.appEnv.vault,
+    reports.map((r) => r.reviewedBy).filter((id): id is string => id !== null),
+  )
+  return reports.map((report) => ({ ...report, reviewedByLabel: report.reviewedBy ? (labels.get(report.reviewedBy) ?? null) : null }))
+}
+
 export const sessionReportsRouter = router({
   list: hasPermission('session_reports.read')
     .input(listSessionReportsInputSchema)
-    .query(({ ctx, input }) => listSessionReports(ctx.appEnv.db, input)),
+    .query(async ({ ctx, input }) => {
+      const page = await listSessionReports(ctx.appEnv.db, input)
+      return { ...page, reports: await withReviewerLabels(ctx, page.reports) }
+    }),
+
+  // One report by id — how a note's "view report" link and a history
+  // panel's prior-report entries open the review dialog.
+  get: hasPermission('session_reports.read')
+    .input(z.object({ reportId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const report = await findSessionReportById(ctx.appEnv.db, input.reportId)
+      if (!report) throw toTRPCError(new SessionReportNotFoundError('session report not found'))
+      const [labelled] = await withReviewerLabels(ctx, [report])
+      return labelled!
+    }),
+
+  // What's already on file about the members a report is about: every
+  // moderator note on them and every other report naming them. This is
+  // where a decision note becomes useful — the next reviewer sees the
+  // pattern before deciding. Scoped to session_reports.read, not
+  // users.read, so a moderator who can work the queue can see it without
+  // being able to browse all users.
+  subjectHistory: hasPermission('session_reports.read')
+    .input(z.object({ reportId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const { db, vault } = ctx.appEnv
+      const report = await findSessionReportForReview(db, input.reportId)
+      if (!report) throw toTRPCError(new SessionReportNotFoundError('session report not found'))
+
+      const [notes, priorReports] = await Promise.all([
+        listMemberNotesForUsers(db, report.aboutUserIds),
+        listReportsAboutUsers(db, report.aboutUserIds, input.reportId),
+      ])
+      const labels = await findMaskedEmails(db, vault, [
+        ...notes.map((n) => n.createdBy).filter((id): id is string => id !== null),
+        ...priorReports.map((r) => r.reviewedBy).filter((id): id is string => id !== null),
+      ])
+
+      return {
+        subjects: report.aboutUserIds.map((userId) => ({
+          userId,
+          notes: notes
+            .filter((n) => n.userId === userId)
+            .map((n) => ({ ...n, createdByLabel: n.createdBy ? (labels.get(n.createdBy) ?? null) : null })),
+          priorReports: priorReports
+            .filter((r) => r.aboutUserIds.includes(userId))
+            .map((r) => ({
+              id: r.id,
+              sessionName: r.sessionName,
+              status: r.status,
+              action: r.action,
+              appliedToThisMember: r.actionTargetUserIds.includes(userId),
+              createdAt: r.createdAt,
+              body: r.body,
+              reviewedByLabel: r.reviewedBy ? (labels.get(r.reviewedBy) ?? null) : null,
+            })),
+        })),
+      }
+    }),
 
   review: hasPermission('session_reports.review')
     .input(reviewSessionReportInputSchema)

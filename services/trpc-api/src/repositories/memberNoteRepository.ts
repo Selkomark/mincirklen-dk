@@ -21,3 +21,16 @@ export async function listMemberNotes(db: Kysely<Database>, userId: string): Pro
     .execute()
   return rows.map((row) => ({ id: row.id, userId: row.user_id, reportId: row.report_id, body: row.body, createdBy: row.created_by, createdAt: row.created_at }))
 }
+
+// The review dialog's history panel: every note on any of the report's
+// subjects, newest first.
+export async function listMemberNotesForUsers(db: Kysely<Database>, userIds: string[]): Promise<MemberNote[]> {
+  if (userIds.length === 0) return []
+  const rows = await db
+    .selectFrom('member_notes')
+    .select(['id', 'user_id', 'report_id', 'body', 'created_by', 'created_at'])
+    .where('user_id', 'in', userIds)
+    .orderBy('created_at', 'desc')
+    .execute()
+  return rows.map((row) => ({ id: row.id, userId: row.user_id, reportId: row.report_id, body: row.body, createdBy: row.created_by, createdAt: row.created_at }))
+}
