@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from './components/Badge'
 import { Row } from './components/Row'
@@ -41,8 +41,9 @@ function WaitlistForm() {
   const [email, setEmail] = useState('')
   const [state, setState] = useState<SubmitState>({ kind: 'idle' })
 
-  async function handleSubmit() {
-    if (!email.trim()) return
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!email.trim() || state.kind === 'submitting') return
     setState({ kind: 'submitting' })
     try {
       await postTrpc('gates.submitSignup', { gateKey: 'platform_launch', email })
@@ -65,7 +66,12 @@ function WaitlistForm() {
       {state.kind === 'done' ? (
         <Alert variant="safe">{t('waitlist.success')}</Alert>
       ) : (
-        <>
+        <form onSubmit={(e) => void handleSubmit(e)} noValidate>
+          {/* A real <form> so Enter in the email field submits, matching
+              what every browser trains users to expect; the DS Button
+              below is type="submit" for the same reason. noValidate keeps
+              the browser's own email bubble out of the way — the server
+              validates, and the inline Alert reports failures. */}
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div style={{ flex: '1 1 240px' }}>
               <TextField
@@ -87,7 +93,7 @@ function WaitlistForm() {
                 link rather than a second button — "Join the waitlist"
                 is the one real action on this form. */}
             <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-              <Button variant="safe" isPending={state.kind === 'submitting'} onPress={() => void handleSubmit()}>
+              <Button type="submit" variant="safe" isPending={state.kind === 'submitting'}>
                 {t('waitlist.submit')}
               </Button>
               <a href={publicPagePath('how-it-works', locale)} className="ds-inline-link">
@@ -96,7 +102,7 @@ function WaitlistForm() {
             </div>
           </div>
           {state.kind === 'error' && <Alert variant="urgent">{t('waitlist.error')}</Alert>}
-        </>
+        </form>
       )}
     </div>
   )
