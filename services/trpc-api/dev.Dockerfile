@@ -15,6 +15,7 @@ WORKDIR /app
 COPY package.json bun.lock ./
 COPY packages/proto/package.json packages/proto/package.json
 COPY packages/shared/package.json packages/shared/package.json
+COPY packages/emails/package.json packages/emails/package.json
 COPY services/trpc-api/package.json services/trpc-api/package.json
 COPY services/websocket-service/package.json services/websocket-service/package.json
 COPY services/data-export-service/package.json services/data-export-service/package.json

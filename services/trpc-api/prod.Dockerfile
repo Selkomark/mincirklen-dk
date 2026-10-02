@@ -12,11 +12,13 @@ WORKDIR /app
 COPY package.json bun.lock ./
 COPY packages/proto/package.json packages/proto/package.json
 COPY packages/shared/package.json packages/shared/package.json
+COPY packages/emails/package.json packages/emails/package.json
 COPY services/trpc-api/package.json services/trpc-api/package.json
 COPY services/websocket-service/package.json services/websocket-service/package.json
 RUN bun install --frozen-lockfile
 COPY packages/proto packages/proto
 COPY packages/shared packages/shared
+COPY packages/emails packages/emails
 COPY services/trpc-api services/trpc-api
 WORKDIR /app/services/trpc-api
 RUN bun run build

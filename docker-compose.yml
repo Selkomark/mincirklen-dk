@@ -391,6 +391,7 @@ services:
       - ./services/trpc-api/src:/app/services/trpc-api/src
       - ./packages/shared/src:/app/packages/shared/src
       - ./packages/shared/migrations:/app/packages/shared/migrations
+      - ./packages/emails/src:/app/packages/emails/src
       - ./packages/proto/src:/app/packages/proto/src
     depends_on:
       postgres:

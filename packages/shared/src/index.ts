@@ -10,6 +10,7 @@ export * from './schemas/topic'
 export * from './schemas/rbac'
 export * from './schemas/featureGate'
 export * from './schemas/sessionReport'
+export * from './schemas/email'
 
 export * from './constants/roundPacing'
 export * from './constants/session'
