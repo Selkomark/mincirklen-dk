@@ -5,6 +5,7 @@ import { Alert } from '../../components/Alert'
 import { Badge } from '../../components/Badge'
 import { Button } from '../../components/Button'
 import { Checkbox } from '../../components/Checkbox'
+import { CopyText } from '../../components/CopyText'
 import { Modal } from '../../components/Modal'
 import { Select, SelectItem } from '../../components/Select'
 import { Skeleton } from '../../components/Skeleton'
@@ -615,11 +616,21 @@ function RolesPanel({
               <tr key={role.id}>
                 <td>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 'var(--font-weight-medium)' }}>{role.name}</span>
+                    <CopyText copyLabel={t('users.copy')} copiedLabel={t('users.copied')} style={{ fontWeight: 'var(--font-weight-medium)' }}>
+                      {role.name}
+                    </CopyText>
                     {role.isSystem && <Badge variant="info">{t('roles.system')}</Badge>}
                   </div>
                 </td>
-                <td>{role.description ?? EMPTY_CELL}</td>
+                <td>
+                  {role.description ? (
+                    <CopyText copyLabel={t('users.copy')} copiedLabel={t('users.copied')}>
+                      {role.description}
+                    </CopyText>
+                  ) : (
+                    EMPTY_CELL
+                  )}
+                </td>
                 <td>{role.isSystem ? t('common.all') : role.permissions.length}</td>
                 <td>
                   {policy ? (
@@ -697,7 +708,11 @@ function SessionPoliciesPanel({
             const users = roles.filter((role) => role.sessionPolicyId === policy.id)
             return (
               <tr key={policy.id}>
-                <td style={{ fontWeight: 'var(--font-weight-medium)' }}>{policy.name}</td>
+                <td>
+                  <CopyText copyLabel={t('users.copy')} copiedLabel={t('users.copied')} style={{ fontWeight: 'var(--font-weight-medium)' }}>
+                    {policy.name}
+                  </CopyText>
+                </td>
                 <td>{formatDuration(t, policy.attributes.maxIdleSeconds)}</td>
                 <td>
                   {users.length === 0 ? (

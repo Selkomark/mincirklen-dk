@@ -4,6 +4,7 @@ import { Alert } from '../../components/Alert'
 import { Badge } from '../../components/Badge'
 import { Button } from '../../components/Button'
 import { Checkbox } from '../../components/Checkbox'
+import { CopyText } from '../../components/CopyText'
 import { Modal } from '../../components/Modal'
 import { Select, SelectItem } from '../../components/Select'
 import { Skeleton } from '../../components/Skeleton'
@@ -1162,9 +1163,26 @@ function ReportsPanel({ status, canBan }: { status: ReportStatus; canBan: boolea
             )}
             {reports.map((report) => (
               <tr key={report.id}>
-                <td style={{ whiteSpace: 'nowrap' }}>{new Date(report.createdAt).toLocaleString(i18n.language)}</td>
-                <td>{report.sessionName ?? <span style={{ color: 'var(--text-secondary)' }}>{t('reports.unnamedSession')}</span>}</td>
-                <td className="reports-excerpt">{report.body}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  <CopyText copyLabel={t('users.copy')} copiedLabel={t('users.copied')}>
+                    {new Date(report.createdAt).toLocaleString(i18n.language)}
+                  </CopyText>
+                </td>
+                <td>
+                  {report.sessionName ? (
+                    <CopyText copyLabel={t('users.copy')} copiedLabel={t('users.copied')}>
+                      {report.sessionName}
+                    </CopyText>
+                  ) : (
+                    <span style={{ color: 'var(--text-secondary)' }}>{t('reports.unnamedSession')}</span>
+                  )}
+                </td>
+                <td>
+                  {/* Copies the whole report text, not the clipped line. */}
+                  <CopyText value={report.body} copyLabel={t('users.copy')} copiedLabel={t('users.copied')} style={{ maxWidth: '100%' }}>
+                    <span className="reports-excerpt reports-excerpt--block">{report.body}</span>
+                  </CopyText>
+                </td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                   <Button variant={status === 'open' ? 'safe' : 'ghost'} onPress={() => setReviewing(report)}>
                     {status === 'open' ? t('reports.review') : t('reports.view')}

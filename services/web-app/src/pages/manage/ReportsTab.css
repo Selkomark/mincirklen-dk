@@ -320,3 +320,10 @@
   font-weight: var(--font-weight-medium);
   color: var(--text-primary);
 }
+
+/* The excerpt inside a CopyText needs to be a block to clip; the inline
+   wrapper around it just sizes to the cell. */
+.reports-excerpt--block {
+  display: block;
+  min-width: 0;
+}

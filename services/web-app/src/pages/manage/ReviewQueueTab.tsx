@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '../../components/Button'
 import { Badge } from '../../components/Badge'
+import { CopyText } from '../../components/CopyText'
 import { Alert } from '../../components/Alert'
 import { Table } from '../../components/Table'
 import { getTrpc, postTrpc } from './manageShared'
@@ -83,13 +84,27 @@ export function ReviewQueueTab() {
             <tbody>
               {events.map((event) => (
                 <tr key={event.id}>
-                  <td style={{ whiteSpace: 'nowrap' }}>{new Date(event.createdAt).toLocaleString(i18n.language)}</td>
-                  <td>
-                    <Badge variant={event.classification === 'crisis' ? 'urgent' : 'safe'}>
-                      {t(`review.classification.${event.classification}`)}
-                    </Badge>
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    <CopyText copyLabel={t('users.copy')} copiedLabel={t('users.copied')}>
+                      {new Date(event.createdAt).toLocaleString(i18n.language)}
+                    </CopyText>
                   </td>
-                  <td style={{ maxWidth: 360 }}>{event.message?.body ?? t('review.messageRemoved')}</td>
+                  <td>
+                    <CopyText value={t(`review.classification.${event.classification}`)} copyLabel={t('users.copy')} copiedLabel={t('users.copied')}>
+                      <Badge variant={event.classification === 'crisis' ? 'urgent' : 'safe'}>
+                        {t(`review.classification.${event.classification}`)}
+                      </Badge>
+                    </CopyText>
+                  </td>
+                  <td style={{ maxWidth: 360 }}>
+                    {event.message ? (
+                      <CopyText copyLabel={t('users.copy')} copiedLabel={t('users.copied')} style={{ whiteSpace: 'pre-wrap' }}>
+                        {event.message.body}
+                      </CopyText>
+                    ) : (
+                      <span style={{ color: 'var(--text-secondary)' }}>{t('review.messageRemoved')}</span>
+                    )}
+                  </td>
                   <td>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
                       {OUTCOMES.map((outcome) => (
