@@ -256,3 +256,14 @@
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
 }
+
+/* Inside the history view's right-hand pane the transcript shares the
+   column with the report details, so it takes less of the viewport. */
+.reports-transcript--compact {
+  height: 40vh;
+  min-height: 240px;
+}
+
+.reports-history__columns {
+  height: 70vh;
+}

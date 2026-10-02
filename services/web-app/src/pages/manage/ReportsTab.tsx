@@ -247,7 +247,7 @@ function MessageSkeleton() {
   )
 }
 
-function Transcript({ reportId, onRoster }: { reportId: string; onRoster: (roster: RosterEntry[]) => void }) {
+function Transcript({ reportId, onRoster, compact = false }: { reportId: string; onRoster: (roster: RosterEntry[]) => void; compact?: boolean }) {
   const { t, i18n } = useTranslation('console')
   const { t: st } = useTranslation('session')
   const { page, error, hasOlder, hasNewer, loadingOlder, loadingNewer, loadOlder, loadNewer, topShiftVersion } = useTranscript(reportId)
@@ -321,10 +321,12 @@ function Transcript({ reportId, onRoster }: { reportId: string; onRoster: (roste
     // eslint-disable-next-line react-hooks/exhaustive-deps -- snapshotBeforeShift/loadOlder/loadNewer read live state; re-arming is keyed on what actually changes the sentinels.
   }, [page, hasOlder, hasNewer, page?.messages.length])
 
+  const transcriptClass = ['reports-transcript', compact && 'reports-transcript--compact'].filter(Boolean).join(' ')
+
   if (error) return <Alert variant="urgent">{error}</Alert>
   if (!page) {
     return (
-      <div className="reports-transcript">
+      <div className={transcriptClass}>
         <MessageSkeleton />
         <MessageSkeleton />
         <MessageSkeleton />
@@ -367,7 +369,7 @@ function Transcript({ reportId, onRoster }: { reportId: string; onRoster: (roste
   }
 
   return (
-    <div ref={containerRef} className="reports-transcript">
+    <div ref={containerRef} className={transcriptClass}>
       {hasOlder ? (
         <div ref={topSentinelRef} style={{ height: 1, flexShrink: 0 }} />
       ) : (
@@ -573,7 +575,7 @@ function DecisionModal({
           </Button>
         </div>
       </div>
-      {historyOpen && <HistoryModal report={report} targetUserIds={[...targets]} roster={roster} canBan={canBan} onClose={() => setHistoryOpen(false)} />}
+      {historyOpen && <HistoryModal report={report} targetUserIds={[...targets]} roster={roster} onClose={() => setHistoryOpen(false)} />}
     </Modal>
   )
 }
@@ -613,7 +615,7 @@ type SubjectNote = SubjectHistory['subjects'][number]['notes'][number]
 // One line under the report details: how much is on file, and the button
 // that opens the full two-column view. Nothing on file reads as a plain
 // sentence with no button.
-function HistorySummary({ report, roster, canBan }: { report: SessionReport; roster: RosterEntry[]; canBan: boolean }) {
+function HistorySummary({ report, roster }: { report: SessionReport; roster: RosterEntry[] }) {
   const { t } = useTranslation('console')
   const { history, error } = useSubjectHistory(report.id)
   const [open, setOpen] = useState(false)
@@ -639,7 +641,7 @@ function HistorySummary({ report, roster, canBan }: { report: SessionReport; ros
       <Button variant="secondary" onPress={() => setOpen(true)}>
         {t('reports.history.open')}
       </Button>
-      {open && <HistoryModal report={report} targetUserIds={report.aboutUserIds} roster={roster} canBan={canBan} onClose={() => setOpen(false)} />}
+      {open && <HistoryModal report={report} targetUserIds={report.aboutUserIds} roster={roster} onClose={() => setOpen(false)} />}
     </div>
   )
 }
@@ -656,13 +658,11 @@ function HistoryModal({
   report,
   targetUserIds,
   roster,
-  canBan,
   onClose,
 }: {
   report: SessionReport
   targetUserIds: string[]
   roster: RosterEntry[]
-  canBan: boolean
   onClose: () => void
 }) {
   const { t, i18n } = useTranslation('console')
@@ -671,7 +671,6 @@ function HistoryModal({
   const [selected, setSelected] = useState<SessionReport | null>(null)
   const [selectedRoster, setSelectedRoster] = useState<RosterEntry[]>([])
   const [selectedError, setSelectedError] = useState<string | null>(null)
-  const [openFull, setOpenFull] = useState(false)
 
   const targets = new Set(targetUserIds)
   const subjects = history?.subjects.filter((s) => targets.has(s.userId)) ?? []
@@ -699,15 +698,13 @@ function HistoryModal({
     if (!selectedId) return
     let cancelled = false
     setSelected(null)
+    setSelectedRoster([])
     setSelectedError(null)
-    Promise.all([
-      getTrpc<SessionReport>('sessionReports.get', { reportId: selectedId }),
-      getTrpc<TranscriptPage>('sessionReports.transcript', { reportId: selectedId, direction: 'around', limit: 1 }),
-    ])
-      .then(([r, page]) => {
-        if (cancelled) return
-        setSelected(r)
-        setSelectedRoster(page.roster)
+    // The roster for this circle's labels arrives with the transcript
+    // below (onRoster), so only the report row is fetched here.
+    getTrpc<SessionReport>('sessionReports.get', { reportId: selectedId })
+      .then((r) => {
+        if (!cancelled) setSelected(r)
       })
       .catch(() => {
         if (!cancelled) setSelectedError(t('reports.loadFailed'))
@@ -794,13 +791,8 @@ function HistoryModal({
               )}
               {selected && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-                    <div style={{ fontWeight: 'var(--font-weight-bold)' as unknown as number, color: 'var(--text-primary)' }}>
-                      {selected.sessionName ?? t('reports.unnamedSession')}
-                    </div>
-                    <Button variant="ghost" onPress={() => setOpenFull(true)}>
-                      {t('reports.history.openConversation')}
-                    </Button>
+                  <div style={{ fontWeight: 'var(--font-weight-bold)' as unknown as number, color: 'var(--text-primary)' }}>
+                    {selected.sessionName ?? t('reports.unnamedSession')}
                   </div>
                   <ReportSummary report={selected} roster={selectedRoster} />
                   {(notesByReport.get(selected.id) ?? []).length > 0 && (
@@ -817,13 +809,22 @@ function HistoryModal({
                       ))}
                     </div>
                   )}
+                  {/* The same conversation view the review dialog shows,
+                      anchored on this prior report's filing moment, so a
+                      pattern can be read in context rather than from the
+                      report text alone. */}
+                  <div>
+                    <div className="reports-review__label" style={{ marginBottom: 'var(--space-2)' }}>
+                      {t('reports.transcriptTitle')}
+                    </div>
+                    <Transcript key={selected.id} reportId={selected.id} onRoster={setSelectedRoster} compact />
+                  </div>
                 </div>
               )}
             </div>
           </div>
         )}
       </div>
-      {openFull && selectedId && <ReportByIdModal reportId={selectedId} canBan={canBan} onClose={() => setOpenFull(false)} />}
     </Modal>
   )
 }
@@ -969,7 +970,7 @@ export function ReviewReportModal({
           <div className="reports-review__label" style={{ marginBottom: 'var(--space-2)' }}>
             {t('reports.history.title')}
           </div>
-          <HistorySummary report={report} roster={roster} canBan={canBan} />
+          <HistorySummary report={report} roster={roster} />
         </div>
 
         <div>
