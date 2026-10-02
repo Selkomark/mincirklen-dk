@@ -75,3 +75,9 @@ export async function findEmailForUser(db: Kysely<Database>, kms: KmsConfig, use
   if (!row?.email_ciphertext) return null
   return decryptField(kms, row.email_ciphertext)
 }
+
+// The other half of lifting a ban: the live-block flag goes, so the
+// person's next login (now passing the ban check) works normally.
+export async function clearBannedAt(db: Kysely<Database>, userId: string): Promise<void> {
+  await db.updateTable('users').set({ banned_at: null }).where('id', '=', userId).execute()
+}

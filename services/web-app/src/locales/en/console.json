@@ -81,7 +81,16 @@
       "viewReport": "View report"
     },
     "copy": "Copy",
-    "copied": "Copied"
+    "copied": "Copied",
+    "unban": {
+      "open": "Lift ban",
+      "title": "Lift this ban",
+      "intro": "The member will be able to sign in again and will be emailed that their account is open, with a reminder of the community guidelines and terms. Your note below is kept for moderators and is never sent to them.",
+      "noteLabel": "Why the ban is lifted",
+      "notePlaceholder": "What changed, what was reviewed, any conditions…",
+      "confirm": "Lift ban and notify the member",
+      "failed": "Failed to lift the ban — they may already be unbanned."
+    }
   },
   "gates": {
     "loadFailed": "Failed to load gates.",

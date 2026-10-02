@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import {
   memberActionEmail,
+  memberUnbannedEmail,
   memberBannedEmail,
   memberMessagesHiddenEmail,
   memberRemovedFromCircleEmail,
@@ -39,6 +40,15 @@ describe('moderation emails', () => {
     expect(email.text).toContain('harassment of another member')
     expect(email.text).toContain('request a copy')
     expect(memberBannedEmail('other').text).toContain('serious breach')
+  })
+
+  test('lifting a ban says only that the account is open, and links the rules', () => {
+    const email = memberUnbannedEmail({ terms: 'https://x/terms', guidelines: 'https://x/guidelines' })
+    expect(email.subject).toBe('Your MinCirklen account is open again')
+    expect(email.text).toContain('https://x/terms')
+    expect(email.text).toContain('https://x/guidelines')
+    expect(email.text).not.toContain('note')
+    expect(email.text).toEndWith("You don't need to reply.")
   })
 
   test('memberActionEmail routes each action to its template', () => {

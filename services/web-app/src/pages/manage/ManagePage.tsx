@@ -218,7 +218,7 @@ function SectionContent({ section, access }: { section: ManageSection; access: A
     )
   }
   if (section === 'gates') return <GatesTab canManage={can('gates.manage')} />
-  return <UsersTab canEditRoles={can('users.update')} canAddNote={can('users.update')} />
+  return <UsersTab canEditRoles={can('users.update')} canAddNote={can('users.update')} canBan={can('users.ban')} />
 }
 
 // Reachable at /manage(/review|/roles|/users) by any regular, verified

@@ -25,6 +25,8 @@ export async function findBanByIdentityHash(
     .select(['id', 'reason_category', 'decision_summary', 'banned_at'])
     .where('provider', '=', provider)
     .where('identity_hash', '=', identityHash)
+    // A lifted ban is history, not a block (migrations/0013).
+    .where('lifted_at', 'is', null)
     .orderBy('banned_at', 'desc')
     .executeTakeFirst()
 
@@ -72,4 +74,20 @@ export async function insertBanEvidence(
     .insertInto('account_ban_evidence')
     .values({ ban_id: params.banId, evidence_type: params.evidenceType, snapshot: sql`${JSON.stringify(params.snapshot)}::jsonb` })
     .execute()
+}
+
+// Lifts every active ban on these identities (banService.ts's unbanUser).
+// Rows stay; lifted_at is what the login check keys on.
+export async function liftBansForIdentities(
+  db: Kysely<Database>,
+  params: { identityHashes: string[]; liftedBy: string; note: string },
+): Promise<number> {
+  if (params.identityHashes.length === 0) return 0
+  const result = await db
+    .updateTable('account_bans')
+    .set({ lifted_at: sql`now()`, lifted_by: params.liftedBy, lift_note: params.note })
+    .where('identity_hash', 'in', params.identityHashes)
+    .where('lifted_at', 'is', null)
+    .executeTakeFirst()
+  return Number(result.numUpdatedRows)
 }

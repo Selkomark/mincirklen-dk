@@ -81,7 +81,16 @@
       "viewReport": "Visa rapport"
     },
     "copy": "Kopiera",
-    "copied": "Kopierat"
+    "copied": "Kopierat",
+    "unban": {
+      "open": "Häv avstängning",
+      "title": "Häv den här avstängningen",
+      "intro": "Medlemmen kan logga in igen och får ett mejl om att kontot är öppet, med en påminnelse om gemenskapsriktlinjerna och villkoren. Din anteckning nedan sparas för moderatorer och skickas aldrig till dem.",
+      "noteLabel": "Varför avstängningen hävs",
+      "notePlaceholder": "Vad som förändrats, vad som granskats, eventuella villkor…",
+      "confirm": "Häv avstängningen och meddela medlemmen",
+      "failed": "Kunde inte häva avstängningen — den kan redan vara hävd."
+    }
   },
   "gates": {
     "loadFailed": "Kunde inte ladda åtkomstgrindar.",

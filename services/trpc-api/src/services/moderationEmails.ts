@@ -90,6 +90,20 @@ export function memberBannedEmail(reasonCategory: BanReasonCategory): EmailConte
   }
 }
 
+// Lifting a ban. Says only that the account is open again — never the
+// moderator's reasoning — and points at what we expect going forward.
+export function memberUnbannedEmail(links: { terms: string; guidelines: string }): EmailContent {
+  return {
+    subject: 'Your MinCirklen account is open again',
+    text:
+      'Good news: your MinCirklen account has been reopened and you can sign in again.\n\n' +
+      'We ask everyone in a circle to look after one another. Before you come back, please take a moment with our ' +
+      `community guidelines (${links.guidelines}) and terms and conditions (${links.terms}) — they are what let people share here safely. ` +
+      'A further serious breach would mean the account is closed for good.' +
+      SIGN_OFF,
+  }
+}
+
 // Which member-facing email, if any, an action on a member calls for.
 // 'note' is internal and 'none' is no action; 'warn' carries its own text
 // (memberWarnedEmail) and isn't built here.

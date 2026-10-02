@@ -162,22 +162,68 @@ function NotesModal({ userId, canAddNote, onClose }: { userId: string; canAddNot
   )
 }
 
+// Lifting a ban: the moderator writes why (kept on the ban record and
+// as a note on the member, never sent), then confirms. The member gets a
+// plain "your account is open again" email from the server.
+function UnbanModal({ userId, onClose, onDone }: { userId: string; onClose: () => void; onDone: () => void }) {
+  const { t } = useTranslation('console')
+  const [note, setNote] = useState('')
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const lift = async () => {
+    if (!note.trim()) return
+    setPending(true)
+    setError(null)
+    try {
+      await postTrpc('rbac.users.unban', { userId, note: note.trim() })
+      onDone()
+    } catch {
+      setError(t('users.unban.failed'))
+      setPending(false)
+    }
+  }
+
+  return (
+    <Modal isOpen onOpenChange={(open) => !open && onClose()} title={t('users.unban.title')}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <Text variant="muted" style={{ margin: 0 }}>
+          {t('users.unban.intro')}
+        </Text>
+        {error && <Alert variant="urgent">{error}</Alert>}
+        <Textarea label={t('users.unban.noteLabel')} placeholder={t('users.unban.notePlaceholder')} value={note} onChange={(e) => setNote(e.target.value)} rows={4} autoFocus />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
+          <Button variant="ghost" onPress={onClose} isDisabled={pending}>
+            {t('common.cancel')}
+          </Button>
+          <Button variant="safe" isPending={pending} isDisabled={!note.trim()} onPress={() => void lift()}>
+            {t('users.unban.confirm')}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 function EditRolesRow({
   user,
   allRoles,
   canEditRoles,
   canAddNote,
+  canBan,
   onSaved,
 }: {
   user: UserWithRoles
   allRoles: Role[]
   canEditRoles: boolean
   canAddNote: boolean
+  canBan: boolean
   onSaved: () => void
 }) {
   const { t } = useTranslation('console')
   const [editing, setEditing] = useState(false)
   const [notesOpen, setNotesOpen] = useState(false)
+  const [unbanOpen, setUnbanOpen] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(user.roles.map((r) => r.id)))
   const [saving, setSaving] = useState(false)
 
@@ -217,6 +263,11 @@ function EditRolesRow({
         <td>{user.bannedAt ? <Badge variant="urgent">{t('users.banned')}</Badge> : null}</td>
         <td>
           <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'flex-end' }}>
+            {user.bannedAt && canBan && (
+              <Button variant="secondary" onPress={() => setUnbanOpen(true)}>
+                {t('users.unban.open')}
+              </Button>
+            )}
             <Button variant="ghost" onPress={() => setNotesOpen(true)}>
               {t('users.notes.open')}
             </Button>
@@ -227,6 +278,16 @@ function EditRolesRow({
             )}
           </div>
           {notesOpen && <NotesModal userId={user.id} canAddNote={canAddNote} onClose={() => setNotesOpen(false)} />}
+          {unbanOpen && (
+            <UnbanModal
+              userId={user.id}
+              onClose={() => setUnbanOpen(false)}
+              onDone={() => {
+                setUnbanOpen(false)
+                onSaved()
+              }}
+            />
+          )}
         </td>
       </tr>
     )
@@ -272,7 +333,7 @@ function EditRolesRow({
   )
 }
 
-export function UsersTab({ canEditRoles, canAddNote }: { canEditRoles: boolean; canAddNote: boolean }) {
+export function UsersTab({ canEditRoles, canAddNote, canBan }: { canEditRoles: boolean; canAddNote: boolean; canBan: boolean }) {
   const { t } = useTranslation('console')
   const [users, setUsers] = useState<UserWithRoles[] | null>(null)
   const [roles, setRoles] = useState<Role[] | null>(null)
@@ -321,7 +382,7 @@ export function UsersTab({ canEditRoles, canAddNote }: { canEditRoles: boolean; 
           </thead>
           <tbody>
             {users.map((user) => (
-              <EditRolesRow key={user.id} user={user} allRoles={roles} canEditRoles={canEditRoles} canAddNote={canAddNote} onSaved={() => void load()} />
+              <EditRolesRow key={user.id} user={user} allRoles={roles} canEditRoles={canEditRoles} canAddNote={canAddNote} canBan={canBan} onSaved={() => void load()} />
             ))}
           </tbody>
         </Table>

@@ -10,6 +10,7 @@ import { insertMessage, listMessages as listMessagesRepo } from './repositories/
 import { linkIdentity } from './repositories/userIdentityRepository'
 import { upsertState } from './repositories/featureGateStateRepository'
 import { insertSignup } from './repositories/gateSignupRepository'
+import { findBanByIdentityHash } from './repositories/accountBanRepository'
 import {
   assignRoleToUser,
   createRole,
@@ -1181,6 +1182,73 @@ describe('gate signup addresses and users.read_pii', () => {
     expect(await find(launch.cookie)).toBe(address)
     const admin = await verifiedUser('ADMIN')
     expect(await find(admin.cookie)).toBe(address)
+  })
+})
+
+describe('rbac.users.unban', () => {
+  test('lifts the identity ban, clears the live block, leaves a note, and the login check passes again', async () => {
+    const lead = await (async () => {
+      const { cookie, userId } = await mintBareUserCookie()
+      await linkIdentity(db, userId, 'google', `test-subject-${userId}`)
+      const profileRes = await app.request('/trpc/auth.completeProfile', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', cookie },
+        body: JSON.stringify({ firstName: 'Lead', lastName: 'Test', gender: 'other', country: 'GB', mobileNumber: '+44 20 7946 0958', stayAnonymous: true }),
+      })
+      expect(profileRes.status).toBe(200)
+      const role = await findRoleByName(db, 'TRUST-SAFETY-LEAD')
+      if (!role) throw new Error('seeded TRUST-SAFETY-LEAD role not found')
+      await assignRoleToUser(db, userId, role.id)
+      return { cookie, userId }
+    })()
+
+    // Ban Bob through a report decision, then lift it.
+    const session = await createSession(db)
+    const reporter = await insertUser(db)
+    const bob = await insertUser(db)
+    await linkIdentity(db, bob.id, 'google', `test-subject-${bob.id}`)
+    await joinSession(db, session.id, reporter.id)
+    await joinSession(db, session.id, bob.id)
+    await insertSessionReport(db, { sessionId: session.id, reporterUserId: reporter.id, aboutUserIds: [bob.id], messageIds: [], body: 'e2e unban' })
+    const report = await db.selectFrom('session_reports').select('id').where('session_id', '=', session.id).executeTakeFirstOrThrow()
+    const ban = await app.request('/trpc/sessionReports.review', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: lead.cookie },
+      body: JSON.stringify({ reportId: report.id, status: 'reviewed', note: 'Ban.', outcomes: [{ action: 'ban', targetUserIds: [bob.id], banReasonCategory: 'harassment' }] }),
+    })
+    expect(ban.status).toBe(200)
+    expect(await findBanByIdentityHash(db, 'google', `test-subject-${bob.id}`)).not.toBeNull()
+
+    const noNote = await app.request('/trpc/rbac.users.unban', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: lead.cookie },
+      body: JSON.stringify({ userId: bob.id, note: '  ' }),
+    })
+    expect(noNote.status).toBe(400)
+
+    const res = await app.request('/trpc/rbac.users.unban', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: lead.cookie },
+      body: JSON.stringify({ userId: bob.id, note: 'Appeal upheld — context was missing from the report.' }),
+    })
+    expect(res.status).toBe(200)
+
+    expect((await db.selectFrom('users').select('banned_at').where('id', '=', bob.id).executeTakeFirstOrThrow()).banned_at).toBeNull()
+    expect(await findBanByIdentityHash(db, 'google', `test-subject-${bob.id}`)).toBeNull()
+    const row = await db.selectFrom('account_bans').select(['lifted_at', 'lifted_by', 'lift_note']).where('user_id_at_ban_time', '=', bob.id).executeTakeFirstOrThrow()
+    expect(row.lifted_at).not.toBeNull()
+    expect(row.lifted_by).toBe(lead.userId)
+    expect(row.lift_note).toBe('Appeal upheld — context was missing from the report.')
+    const notes = await db.selectFrom('member_notes').select('body').where('user_id', '=', bob.id).orderBy('created_at', 'desc').execute()
+    expect(notes[0]?.body).toBe('Appeal upheld — context was missing from the report.')
+
+    // Not banned any more — a second lift is a conflict.
+    const again = await app.request('/trpc/rbac.users.unban', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: lead.cookie },
+      body: JSON.stringify({ userId: bob.id, note: 'x' }),
+    })
+    expect(again.status).toBe(409)
   })
 })
 

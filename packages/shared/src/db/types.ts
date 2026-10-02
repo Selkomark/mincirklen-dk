@@ -231,6 +231,11 @@ export interface AccountBansTable {
   banned_at: Timestamp
   banned_by: string
   user_id_at_ban_time: string | null
+  // Set when a moderator lifts the ban (migrations/0013). The row stays
+  // as the record; the login check skips lifted rows.
+  lifted_at: NullableTimestamp
+  lifted_by: string | null
+  lift_note: string | null
 }
 
 export interface AccountBanEvidenceTable {

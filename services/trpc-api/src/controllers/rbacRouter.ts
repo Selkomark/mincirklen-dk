@@ -8,6 +8,7 @@ import {
   updateRolePermissionsInputSchema,
   updateSessionPolicyInputSchema,
   updateUserRolesInputSchema,
+  unbanUserInputSchema,
 } from '@mincirklen/shared'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
@@ -30,6 +31,12 @@ import {
 } from '../repositories/rbacRepository'
 import { SystemRoleImmutableError, updateRole as updateRoleService, updateRolePermissions } from '../services/rbacService'
 import { insertMemberNote, listMemberNotes } from '../repositories/memberNoteRepository'
+import { liftBansForIdentities } from '../repositories/accountBanRepository'
+import { listIdentitiesForUser } from '../repositories/userIdentityRepository'
+import { clearBannedAt, isUserBanned } from '../repositories/userRepository'
+import { memberUnbannedEmail } from '../services/moderationEmails'
+import { UnbanNoteRequiredError, UserNotBannedError, unbanUser } from '../services/unbanService'
+import { emailMember } from './memberEmail'
 import { hasPermission, router, verifiedProcedure } from './trpc'
 
 function toTRPCError(err: unknown): TRPCError {
@@ -158,6 +165,35 @@ export const rbacRouter = router({
       .mutation(async ({ ctx, input }) => {
         await insertMemberNote(ctx.appEnv.db, { userId: input.userId, body: input.body, createdBy: ctx.userId })
         return { ok: true }
+      }),
+
+    // Lifting a ban is the same power as issuing one (users.ban). The note
+    // is required: it's the record for the next reviewer, never emailed.
+    unban: hasPermission('users.ban')
+      .input(unbanUserInputSchema)
+      .mutation(async ({ ctx, input }) => {
+        const { db, vault, publicBaseUrl } = ctx.appEnv
+        try {
+          await unbanUser(
+            {
+              isBanned: () => isUserBanned(db, input.userId),
+              listIdentities: () => listIdentitiesForUser(db, input.userId),
+              liftBans: (identityHashes, note) => liftBansForIdentities(db, { identityHashes, liftedBy: ctx.userId, note }),
+              clearBannedAt: () => clearBannedAt(db, input.userId),
+              addMemberNote: (note) => insertMemberNote(db, { userId: input.userId, body: note, createdBy: ctx.userId }),
+              // Bare paths: App.tsx's locale redirect sends them to the
+              // reader's own language.
+              notifyUnbanned: () =>
+                emailMember(db, vault, input.userId, memberUnbannedEmail({ terms: `${publicBaseUrl}/terms-and-conditions`, guidelines: `${publicBaseUrl}/community-guidelines` })),
+            },
+            { userId: input.userId, note: input.note, liftedBy: ctx.userId },
+          )
+          return { ok: true }
+        } catch (err) {
+          if (err instanceof UnbanNoteRequiredError) throw new TRPCError({ code: 'BAD_REQUEST', message: err.message })
+          if (err instanceof UserNotBannedError) throw new TRPCError({ code: 'CONFLICT', message: err.message })
+          throw err
+        }
       }),
 
     list: hasPermission('users.read')

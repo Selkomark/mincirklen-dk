@@ -81,7 +81,16 @@
       "viewReport": "Vis rapport"
     },
     "copy": "Kopiér",
-    "copied": "Kopieret"
+    "copied": "Kopieret",
+    "unban": {
+      "open": "Ophæv udelukkelse",
+      "title": "Ophæv denne udelukkelse",
+      "intro": "Medlemmet kan logge ind igen og får en e-mail om, at kontoen er åben, med en påmindelse om fællesskabsreglerne og vilkårene. Dit notat nedenfor gemmes til moderatorer og sendes aldrig til dem.",
+      "noteLabel": "Hvorfor udelukkelsen ophæves",
+      "notePlaceholder": "Hvad der har ændret sig, hvad der blev gennemgået, eventuelle betingelser…",
+      "confirm": "Ophæv udelukkelsen og giv medlemmet besked",
+      "failed": "Kunne ikke ophæve udelukkelsen — den er muligvis allerede ophævet."
+    }
   },
   "gates": {
     "loadFailed": "Kunne ikke indlæse adgangsporte.",

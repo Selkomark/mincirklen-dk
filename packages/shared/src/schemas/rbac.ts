@@ -56,6 +56,14 @@ export const listUsersInputSchema = z.object({
 })
 export type ListUsersInput = z.infer<typeof listUsersInputSchema>
 
+export const unbanUserInputSchema = z.object({
+  userId: z.string().uuid(),
+  // Why the ban is lifted — kept on the ban row and as a moderator note
+  // on the member, never sent to them.
+  note: z.string().trim().min(1).max(2000),
+})
+export type UnbanUserInput = z.infer<typeof unbanUserInputSchema>
+
 export const updateUserRolesInputSchema = z.object({
   userId: z.string().uuid(),
   roleIds: z.array(z.string().uuid()),
