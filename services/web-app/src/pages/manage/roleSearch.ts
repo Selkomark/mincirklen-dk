@@ -241,6 +241,7 @@ const WEIGHT_PERMISSION_DESCRIPTION = 1
 
 // How much a less-direct match is worth relative to an exact one.
 const FACTOR_PREFIX = 0.8
+const FACTOR_INFIX = 0.65
 const FACTOR_SYNONYM = 0.6
 const FACTOR_FUZZY = 0.5
 
@@ -344,6 +345,9 @@ function matchFactor(queryToken: string, field: Field, tables: Map<string, strin
   const typos = allowedTypos(queryToken)
   for (const token of field.tokens) {
     if (queryToken.length >= 2 && token.startsWith(queryToken)) best = Math.max(best, FACTOR_PREFIX)
+    // Anywhere inside a word too ("ditor" → auditor), once the query is
+    // long enough not to hit everything.
+    else if (queryToken.length >= 3 && token.includes(queryToken)) best = Math.max(best, FACTOR_INFIX)
     else if (typos > 0 && withinEditDistance(queryToken, token, typos)) best = Math.max(best, FACTOR_FUZZY)
   }
 
@@ -471,34 +475,53 @@ export function searchPermissionGroups<P extends SearchablePermission>(
 }
 
 // Which stretches of a displayed text a query literally matches — for
-// <mark>-style highlighting in the table. A word is a hit when it starts
-// with a query word, or their stems match (so "policies" lights up for
-// "policy"). Only literal/stem hits: a row that matched through a
-// synonym or a permission it holds shows no highlight in its name, which
-// is right — nothing in that text matched.
+// <mark>-style highlighting in the table. Exactly the matching
+// characters, not the whole word: every case-insensitive occurrence of
+// each query word anywhere in the text, plus — where a word matches only
+// through its stem ("policy" for "policies") — the prefix the two share.
+// Only literal/stem hits: a row that matched through a synonym or a
+// permission it holds shows no highlight in its name, which is right —
+// nothing in that text matched.
 export function highlightRanges(text: string, query: string): Array<{ start: number; end: number; hit: boolean }> {
   const queryWords = query.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 0)
   if (queryWords.length === 0 || !text) return [{ start: 0, end: text.length, hit: false }]
+
+  const lower = text.toLowerCase()
+  const hits: boolean[] = new Array<boolean>(text.length).fill(false)
+
+  for (const q of queryWords) {
+    let from = 0
+    for (;;) {
+      const at = lower.indexOf(q, from)
+      if (at === -1) break
+      for (let i = at; i < at + q.length; i++) hits[i] = true
+      from = at + 1
+    }
+  }
+
   const queryStems = queryWords.map(stem)
-  const ranges: Array<{ start: number; end: number; hit: boolean }> = []
-  const wordPattern = /[\p{L}\p{N}]+/gu
-  let cursor = 0
-  for (const match of text.matchAll(wordPattern)) {
+  for (const match of text.matchAll(/[\p{L}\p{N}]+/gu)) {
     const start = match.index ?? 0
-    const end = start + match[0].length
     const word = match[0].toLowerCase()
     const wordStem = stem(word)
-    const hit = queryWords.some((q, i) => word.startsWith(q) || wordStem === queryStems[i] || wordStem.startsWith(queryStems[i]!))
-    if (start > cursor) ranges.push({ start: cursor, end: start, hit: false })
-    ranges.push({ start, end, hit })
-    cursor = end
+    queryWords.forEach((q, i) => {
+      if (word.includes(q)) return
+      const qs = queryStems[i]!
+      if (wordStem === qs || wordStem.startsWith(qs) || qs.startsWith(wordStem)) {
+        let shared = 0
+        while (shared < word.length && shared < q.length && word[shared] === q[shared]) shared++
+        for (let k = start; k < start + shared; k++) hits[k] = true
+      }
+    })
   }
-  if (cursor < text.length) ranges.push({ start: cursor, end: text.length, hit: false })
-  // Merge adjacent same-kind ranges so the DOM stays small.
-  return ranges.reduce<typeof ranges>((acc, r) => {
-    const last = acc[acc.length - 1]
-    if (last && last.hit === r.hit && last.end === r.start) last.end = r.end
-    else acc.push({ ...r })
-    return acc
-  }, [])
+
+  const ranges: Array<{ start: number; end: number; hit: boolean }> = []
+  let runStart = 0
+  for (let i = 1; i <= text.length; i++) {
+    if (i === text.length || hits[i] !== hits[runStart]) {
+      ranges.push({ start: runStart, end: i, hit: hits[runStart]! })
+      runStart = i
+    }
+  }
+  return ranges
 }

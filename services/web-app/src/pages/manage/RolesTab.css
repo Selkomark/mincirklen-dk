@@ -80,8 +80,9 @@
 /* Search hits inside a cell — the same accent surface as a matched
    permission row, no browser-default yellow. */
 .roles-highlight {
-  background: var(--accent-safe-surface);
-  color: inherit;
+  background: var(--accent-safe);
+  color: var(--surface-app);
+  font-weight: var(--font-weight-bold);
   border-radius: 2px;
   padding: 0 1px;
 }
