@@ -867,7 +867,7 @@ describe('session report actions', () => {
   test("note: lands in the member's history, readable via rbac.users.listNotes", async () => {
     const mod = await verifiedUser('MODERATOR')
     const { alice, reportId } = await reportedScenario()
-    const res = await review(mod.cookie, { reportId, status: 'reviewed', note: 'Pattern worth watching.', action: 'note', targetUserIds: [alice.id] })
+    const res = await review(mod.cookie, { reportId, status: 'reviewed', note: 'Pattern worth watching.', outcomes: [{ action: 'note', targetUserIds: [alice.id] }] })
     expect(res.status).toBe(200)
 
     const admin = await verifiedUser('ADMIN')
@@ -877,15 +877,14 @@ describe('session report actions', () => {
     expect(notes.result.data).toHaveLength(1)
     expect(notes.result.data[0]).toMatchObject({ body: 'Pattern worth watching.', reportId, createdBy: mod.userId })
 
-    const stored = await db.selectFrom('session_reports').select(['action', 'action_target_user_ids']).where('id', '=', reportId).executeTakeFirstOrThrow()
-    expect(stored.action).toBe('note')
-    expect(stored.action_target_user_ids).toEqual([alice.id])
+    const stored = await db.selectFrom('session_report_actions').select(['action', 'target_user_ids']).where('report_id', '=', reportId).execute()
+    expect(stored).toEqual([{ action: 'note', target_user_ids: [alice.id] }])
   })
 
   test('remove_from_session: the member stops being a member of that circle', async () => {
     const mod = await verifiedUser('MODERATOR')
     const { session, alice, reportId } = await reportedScenario()
-    const res = await review(mod.cookie, { reportId, status: 'reviewed', note: 'Out of this circle.', action: 'remove_from_session', targetUserIds: [alice.id] })
+    const res = await review(mod.cookie, { reportId, status: 'reviewed', note: 'Out of this circle.', outcomes: [{ action: 'remove_from_session', targetUserIds: [alice.id] }] })
     expect(res.status).toBe(200)
     const row = await db.selectFrom('session_users').select('left_at').where('session_id', '=', session.id).where('user_id', '=', alice.id).executeTakeFirstOrThrow()
     expect(row.left_at).not.toBeNull()
@@ -900,7 +899,7 @@ describe('session report actions', () => {
     await joinSession(db, session.id, member.userId)
     await insertSessionReport(db, { sessionId: session.id, reporterUserId: reporter.id, aboutUserIds: [member.userId], messageIds: [], body: 'e2e removal' })
     const report = await db.selectFrom('session_reports').select('id').where('session_id', '=', session.id).executeTakeFirstOrThrow()
-    expect((await review(mod.cookie, { reportId: report.id, status: 'reviewed', note: 'Removed.', action: 'remove_from_session', targetUserIds: [member.userId] })).status).toBe(200)
+    expect((await review(mod.cookie, { reportId: report.id, status: 'reviewed', note: 'Removed.', outcomes: [{ action: 'remove_from_session', targetUserIds: [member.userId] }] })).status).toBe(200)
 
     const visit = await app.request('/trpc/session.visit', {
       method: 'POST',
@@ -917,7 +916,7 @@ describe('session report actions', () => {
   test('hide_messages: the named messages become removed, and the author still sees them as such', async () => {
     const mod = await verifiedUser('MODERATOR')
     const { session, alice, message, reportId } = await reportedScenario()
-    const res = await review(mod.cookie, { reportId, status: 'reviewed', note: 'Took it down.', action: 'hide_messages' })
+    const res = await review(mod.cookie, { reportId, status: 'reviewed', note: 'Took it down.', outcomes: [{ action: 'hide_messages' }] })
     expect(res.status).toBe(200)
     const row = await db.selectFrom('messages').select(['moderation_status', 'removed_by']).where('id', '=', message.id).executeTakeFirstOrThrow()
     expect(row.moderation_status).toBe('removed')
@@ -934,23 +933,23 @@ describe('session report actions', () => {
   test('warn: needs member text, then records the decision (delivery is the logging stand-in)', async () => {
     const mod = await verifiedUser('MODERATOR')
     const { alice, reportId } = await reportedScenario()
-    const missing = await review(mod.cookie, { reportId, status: 'reviewed', note: 'Warned.', action: 'warn', targetUserIds: [alice.id] })
+    const missing = await review(mod.cookie, { reportId, status: 'reviewed', note: 'Warned.', outcomes: [{ action: 'warn', targetUserIds: [alice.id] }] })
     expect(missing.status).toBe(400)
-    const res = await review(mod.cookie, { reportId, status: 'reviewed', note: 'Warned.', action: 'warn', targetUserIds: [alice.id], memberMessage: 'Please keep it kind.' })
+    const res = await review(mod.cookie, { reportId, status: 'reviewed', note: 'Warned.', outcomes: [{ action: 'warn', targetUserIds: [alice.id], memberMessage: 'Please keep it kind.' }] })
     expect(res.status).toBe(200)
-    const stored = await db.selectFrom('session_reports').select('action').where('id', '=', reportId).executeTakeFirstOrThrow()
-    expect(stored.action).toBe('warn')
+    const stored = await db.selectFrom('session_report_actions').select(['action', 'member_message']).where('report_id', '=', reportId).execute()
+    expect(stored).toEqual([{ action: 'warn', member_message: 'Please keep it kind.' }])
   })
 
   test('ban: refused without users.ban; with it, records the identity ban with evidence and blocks the account', async () => {
     const { alice, message, reportId } = await reportedScenario()
 
     const mod = await verifiedUser('MODERATOR')
-    const forbidden = await review(mod.cookie, { reportId, status: 'reviewed', note: 'Ban.', action: 'ban', targetUserIds: [alice.id], banReasonCategory: 'harassment' })
+    const forbidden = await review(mod.cookie, { reportId, status: 'reviewed', note: 'Ban.', outcomes: [{ action: 'ban', targetUserIds: [alice.id], banReasonCategory: 'harassment' }] })
     expect(forbidden.status).toBe(403)
 
     const lead = await verifiedUser('TRUST-SAFETY-LEAD')
-    const res = await review(lead.cookie, { reportId, status: 'reviewed', note: 'Repeated harassment, see messages.', action: 'ban', targetUserIds: [alice.id], banReasonCategory: 'harassment' })
+    const res = await review(lead.cookie, { reportId, status: 'reviewed', note: 'Repeated harassment, see messages.', outcomes: [{ action: 'ban', targetUserIds: [alice.id], banReasonCategory: 'harassment' }] })
     expect(res.status).toBe(200)
 
     const ban = await db.selectFrom('account_bans').selectAll().where('user_id_at_ban_time', '=', alice.id).executeTakeFirstOrThrow()
@@ -966,11 +965,46 @@ describe('session report actions', () => {
     expect(user.banned_at).not.toBeNull()
   })
 
+  test('one decision, different outcomes per member: warn one and ban another', async () => {
+    const lead = await verifiedUser('TRUST-SAFETY-LEAD')
+    const session = await createSession(db)
+    const reporter = await insertUser(db)
+    const alice = await insertUser(db)
+    const bob = await insertUser(db)
+    await linkIdentity(db, bob.id, 'google', `test-subject-${bob.id}`)
+    for (const u of [reporter, alice, bob]) await joinSession(db, session.id, u.id)
+    await insertSessionReport(db, { sessionId: session.id, reporterUserId: reporter.id, aboutUserIds: [alice.id, bob.id], messageIds: [], body: 'two of them' })
+    const report = await db.selectFrom('session_reports').select('id').where('session_id', '=', session.id).executeTakeFirstOrThrow()
+
+    const res = await review(lead.cookie, {
+      reportId: report.id,
+      status: 'reviewed',
+      note: 'Alice was provoked; Bob started it and kept going.',
+      outcomes: [
+        { action: 'warn', targetUserIds: [alice.id], memberMessage: 'Please step back next time.' },
+        { action: 'ban', targetUserIds: [bob.id], banReasonCategory: 'harassment' },
+      ],
+    })
+    expect(res.status).toBe(200)
+
+    const stored = await db.selectFrom('session_report_actions').select(['action', 'target_user_ids']).where('report_id', '=', report.id).orderBy('created_at').execute()
+    expect(stored.map((r) => [r.action, r.target_user_ids])).toEqual([
+      ['warn', [alice.id]],
+      ['ban', [bob.id]],
+    ])
+    expect((await db.selectFrom('users').select('banned_at').where('id', '=', alice.id).executeTakeFirstOrThrow()).banned_at).toBeNull()
+    expect((await db.selectFrom('users').select('banned_at').where('id', '=', bob.id).executeTakeFirstOrThrow()).banned_at).not.toBeNull()
+
+    const one = await app.request(`/trpc/sessionReports.get?input=${encodeURIComponent(JSON.stringify({ reportId: report.id }))}`, { headers: { cookie: lead.cookie } })
+    const got = (await one.json()) as { result: { data: { outcomes: { action: string; targetUserIds: string[] }[] } } }
+    expect(got.result.data.outcomes.map((o) => o.action)).toEqual(['warn', 'ban'])
+  })
+
   test('an action on someone the report is not about is rejected', async () => {
     const mod = await verifiedUser('MODERATOR')
     const { reportId } = await reportedScenario()
     const stranger = await insertUser(db)
-    const res = await review(mod.cookie, { reportId, status: 'reviewed', note: 'x', action: 'note', targetUserIds: [stranger.id] })
+    const res = await review(mod.cookie, { reportId, status: 'reviewed', note: 'x', outcomes: [{ action: 'note', targetUserIds: [stranger.id] }] })
     expect(res.status).toBe(400)
   })
 })
@@ -1005,7 +1039,7 @@ describe('session report history and labels', () => {
     const decide = await app.request('/trpc/sessionReports.review', {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie: mod.cookie },
-      body: JSON.stringify({ reportId: firstReport.id, status: 'reviewed', note: 'Borderline — watch for a repeat.', action: 'note', targetUserIds: [alice.id] }),
+      body: JSON.stringify({ reportId: firstReport.id, status: 'reviewed', note: 'Borderline — watch for a repeat.', outcomes: [{ action: 'note', targetUserIds: [alice.id] }] }),
     })
     expect(decide.status).toBe(200)
 
@@ -1019,7 +1053,7 @@ describe('session report history and labels', () => {
     const res = await app.request(`/trpc/sessionReports.subjectHistory?input=${encodeURIComponent(JSON.stringify({ reportId: secondReport.id }))}`, { headers: { cookie: mod.cookie } })
     expect(res.status).toBe(200)
     const history = (await res.json()) as {
-      result: { data: { subjects: { userId: string; notes: { body: string; createdByLabel: string | null; reportId: string | null }[]; priorReports: { id: string; action: string | null; appliedToThisMember: boolean; reviewedByLabel: string | null }[] }[] } }
+      result: { data: { subjects: { userId: string; notes: { body: string; createdByLabel: string | null; reportId: string | null }[]; priorReports: { id: string; outcomes: { action: string; appliedToThisMember: boolean }[]; reviewedByLabel: string | null }[] }[] } }
     }
     const subject = history.result.data.subjects.find((s) => s.userId === alice.id)!
     expect(subject.notes).toHaveLength(1)
@@ -1027,7 +1061,7 @@ describe('session report history and labels', () => {
     // Bare test users carry no email, so the label is null here; the shape is what matters.
     expect(subject.notes[0]!.createdByLabel).toBeNull()
     expect(subject.priorReports.map((r) => r.id)).toEqual([firstReport.id])
-    expect(subject.priorReports[0]).toMatchObject({ action: 'note', appliedToThisMember: true })
+    expect(subject.priorReports[0]!.outcomes).toEqual([{ action: 'note', appliedToThisMember: true }])
 
     // The report itself can be fetched by id, decided fields included.
     const one = await app.request(`/trpc/sessionReports.get?input=${encodeURIComponent(JSON.stringify({ reportId: firstReport.id }))}`, { headers: { cookie: mod.cookie } })

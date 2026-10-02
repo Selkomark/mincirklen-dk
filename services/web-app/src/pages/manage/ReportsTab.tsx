@@ -5,7 +5,6 @@ import { Badge } from '../../components/Badge'
 import { Button } from '../../components/Button'
 import { Checkbox } from '../../components/Checkbox'
 import { Modal } from '../../components/Modal'
-import { Radio, RadioGroup } from '../../components/RadioGroup'
 import { Select, SelectItem } from '../../components/Select'
 import { Skeleton } from '../../components/Skeleton'
 import { Table } from '../../components/Table'
@@ -21,10 +20,19 @@ import './ReportsTab.css'
 type ReportStatus = 'open' | 'reviewed' | 'dismissed'
 type Decision = Exclude<ReportStatus, 'open'>
 type ReportAction = 'none' | 'note' | 'warn' | 'remove_from_session' | 'hide_messages' | 'ban'
+type OutcomeAction = Exclude<ReportAction, 'none'>
 type BanReason = 'predatory_contact' | 'harassment' | 'crisis_abuse' | 'illegal_content' | 'other'
 
 const MEMBER_TARGETED: ReadonlySet<ReportAction> = new Set(['note', 'warn', 'remove_from_session', 'ban'])
+const OUTCOME_ACTIONS: OutcomeAction[] = ['note', 'warn', 'remove_from_session', 'hide_messages', 'ban']
 const BAN_REASONS: BanReason[] = ['predatory_contact', 'harassment', 'crisis_abuse', 'illegal_content', 'other']
+
+interface ReportOutcome {
+  action: OutcomeAction
+  targetUserIds: string[]
+  memberMessage: string | null
+  banReasonCategory: BanReason | null
+}
 
 export interface SessionReport {
   id: string
@@ -43,8 +51,9 @@ export interface SessionReport {
   // The deciding moderator, by email — staff identifying staff.
   reviewedByLabel: string | null
   decisionNote: string | null
-  action: ReportAction | null
-  actionTargetUserIds: string[]
+  // What was done, outcome by outcome; empty for open reports and for
+  // "no further action".
+  outcomes: ReportOutcome[]
 }
 
 interface SubjectHistory {
@@ -55,8 +64,7 @@ interface SubjectHistory {
       id: string
       sessionName: string | null
       status: ReportStatus
-      action: ReportAction | null
-      appliedToThisMember: boolean
+      outcomes: { action: OutcomeAction; appliedToThisMember: boolean }[]
       createdAt: string
       body: string
       reviewedByLabel: string | null
@@ -398,11 +406,23 @@ function Transcript({ reportId, onRoster, compact = false }: { reportId: string;
 // the reviewer has written why. The reasoning is the record
 // (sessionReportService.ts refuses a decision without it), and asking
 // for it before offering outcomes makes that the natural order rather
-// than an afterthought. Then one action — none, a note on the member, a
-// warning, removal from this circle, hiding the named messages, or a ban
-// (only offered to holders of users.ban; the server checks too) — and
-// finally the decision itself. Dismissing is only possible with no
-// action, since dismissing means there was nothing to act on.
+// than an afterthought.
+//
+// Then the outcomes. A report about several members rarely calls for the
+// same response to each — one may need a warning, another a ban — so a
+// decision is a list of outcomes, each an action with its own members
+// and whatever that action needs (warning text, ban reason). A member can
+// sit in more than one. No outcomes at all is "no further action", and
+// is the only shape that can be dismissed. Banning is offered only to
+// holders of users.ban; the server checks too.
+interface DraftOutcome {
+  key: number
+  action: OutcomeAction | null
+  targets: Set<string>
+  memberMessage: string
+  banReason: BanReason | null
+}
+
 function DecisionModal({
   report,
   roster,
@@ -418,26 +438,38 @@ function DecisionModal({
 }) {
   const { t } = useTranslation('console')
   const [note, setNote] = useState('')
-  const [action, setAction] = useState<ReportAction>('none')
-  const [targets, setTargets] = useState<Set<string>>(() => new Set(report.aboutUserIds))
-  const [memberMessage, setMemberMessage] = useState('')
-  const [banReason, setBanReason] = useState<BanReason | null>(null)
+  const [outcomes, setOutcomes] = useState<DraftOutcome[]>([])
   const [pending, setPending] = useState<Decision | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const nextKey = useRef(1)
 
   const noteReady = note.trim().length > 0
-  const needsTargets = MEMBER_TARGETED.has(action)
-  const actionReady =
-    action === 'none' ||
-    (action === 'hide_messages' && report.messageIds.length > 0) ||
-    (needsTargets &&
-      targets.size > 0 &&
-      (action !== 'warn' || memberMessage.trim().length > 0) &&
-      (action !== 'ban' || banReason !== null))
-  const ready = noteReady && actionReady
+  const actions = OUTCOME_ACTIONS.filter((a) => a !== 'ban' || canBan)
 
-  const actions: ReportAction[] = ['none', 'note', 'warn', 'remove_from_session', 'hide_messages', ...(canBan ? (['ban'] as const) : [])]
+  const outcomeValid = (o: DraftOutcome): boolean => {
+    if (!o.action) return false
+    if (o.action === 'hide_messages') return report.messageIds.length > 0
+    if (o.targets.size === 0) return false
+    if (o.action === 'warn' && o.memberMessage.trim().length === 0) return false
+    if (o.action === 'ban' && o.banReason === null) return false
+    return true
+  }
+  const allValid = outcomes.every(outcomeValid)
+  const ready = noteReady && allValid
+
+  const addOutcome = () => {
+    // A new outcome starts with every member ticked — narrowing is one
+    // click per member; widening would be one per member too, but the
+    // common case is "this applies to the people in the report".
+    setOutcomes((prev) => [...prev, { key: nextKey.current++, action: null, targets: new Set(report.aboutUserIds), memberMessage: '', banReason: null }])
+  }
+  const updateOutcome = (key: number, patch: Partial<DraftOutcome>) =>
+    setOutcomes((prev) => prev.map((o) => (o.key === key ? { ...o, ...patch } : o)))
+  const removeOutcome = (key: number) => setOutcomes((prev) => prev.filter((o) => o.key !== key))
+
+  // History for whoever the outcomes touch — or everyone when none yet.
+  const historyTargets = outcomes.length > 0 ? [...new Set(outcomes.flatMap((o) => [...o.targets]))] : report.aboutUserIds
 
   const decide = async (status: Decision) => {
     if (!ready) return
@@ -448,10 +480,12 @@ function DecisionModal({
         reportId: report.id,
         status,
         note: note.trim(),
-        action,
-        targetUserIds: needsTargets ? [...targets] : [],
-        memberMessage: action === 'warn' ? memberMessage.trim() : undefined,
-        banReasonCategory: action === 'ban' ? banReason : undefined,
+        outcomes: outcomes.map((o) => ({
+          action: o.action,
+          targetUserIds: MEMBER_TARGETED.has(o.action!) ? [...o.targets] : [],
+          memberMessage: o.action === 'warn' ? o.memberMessage.trim() : undefined,
+          banReasonCategory: o.action === 'ban' ? o.banReason : undefined,
+        })),
       })
       onDecided()
     } catch {
@@ -477,93 +511,134 @@ function DecisionModal({
         />
 
         <fieldset className="reports-decision__step" disabled={!noteReady}>
-          <RadioGroup label={t('reports.actionLabel')} value={action} onChange={(value) => setAction(value as ReportAction)} isDisabled={!noteReady}>
-            {actions.map((value) => (
-              <Radio key={value} value={value} isDisabled={value === 'hide_messages' && report.messageIds.length === 0}>
-                <span className="reports-decision__option">
-                  <span>{t(`reports.actions.${value}.label`)}</span>
-                  <span className="reports-decision__hint">
-                    {value === 'hide_messages' && report.messageIds.length === 0 ? t('reports.actions.hide_messages.unavailable') : t(`reports.actions.${value}.hint`)}
-                  </span>
-                </span>
-              </Radio>
-            ))}
-          </RadioGroup>
-
-          {needsTargets && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-                <div className="reports-review__label">{t('reports.targetsLabel')}</div>
-                {/* Prior reports and notes about exactly the members ticked
-                    here — the pattern a decision should rest on. */}
-                <Button variant="ghost" isDisabled={targets.size === 0} onPress={() => setHistoryOpen(true)}>
-                  {t('reports.history.open')}
-                </Button>
-              </div>
-              <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-                {report.aboutUserIds.map((id) => (
-                  <Checkbox
-                    key={id}
-                    isSelected={targets.has(id)}
-                    onChange={(isSelected) =>
-                      setTargets((prev) => {
-                        const next = new Set(prev)
-                        if (isSelected) next.add(id)
-                        else next.delete(id)
-                        return next
-                      })
-                    }
-                  >
-                    <MemberChip userId={id} roster={roster} />
-                  </Checkbox>
-                ))}
-              </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+              <span className="reports-review__label">{t('reports.outcomes.members')}</span>
+              {report.aboutUserIds.map((id) => (
+                <MemberChip key={id} userId={id} roster={roster} />
+              ))}
             </div>
-          )}
+            <Button variant="ghost" isDisabled={historyTargets.length === 0} onPress={() => setHistoryOpen(true)}>
+              {t('reports.history.open')}
+            </Button>
+          </div>
 
-          {action === 'warn' && (
-            <Textarea
-              label={t('reports.memberMessageLabel')}
-              hint={t('reports.memberMessageHint')}
-              placeholder={t('reports.memberMessagePlaceholder')}
-              value={memberMessage}
-              onChange={(e) => setMemberMessage(e.target.value)}
-              rows={4}
-            />
-          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+            <div className="reports-review__label">{t('reports.outcomes.title')}</div>
+            {outcomes.length === 0 && (
+              <Text variant="muted" style={{ margin: 0 }}>
+                {t('reports.outcomes.none')}
+              </Text>
+            )}
+            {outcomes.map((outcome, index) => (
+              <div key={outcome.key} className="reports-outcome">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
+                  <span className="reports-outcome__title">{t('reports.outcomes.nth', { n: index + 1 })}</span>
+                  <Button variant="ghost" onPress={() => removeOutcome(outcome.key)}>
+                    {t('reports.outcomes.remove')}
+                  </Button>
+                </div>
+                <Select
+                  label={t('reports.outcomes.actionLabel')}
+                  placeholder={t('reports.outcomes.actionPlaceholder')}
+                  selectedKey={outcome.action}
+                  onSelectionChange={(key) => updateOutcome(outcome.key, { action: key as OutcomeAction })}
+                >
+                  {actions.map((action) => (
+                    <SelectItem key={action} id={action} textValue={t(`reports.actions.${action}.label`)} isDisabled={action === 'hide_messages' && report.messageIds.length === 0}>
+                      <span className="reports-decision__option">
+                        <span>{t(`reports.actions.${action}.label`)}</span>
+                        <span className="reports-decision__hint">
+                          {action === 'hide_messages' && report.messageIds.length === 0 ? t('reports.actions.hide_messages.unavailable') : t(`reports.actions.${action}.hint`)}
+                        </span>
+                      </span>
+                    </SelectItem>
+                  ))}
+                </Select>
+                {outcome.action && (
+                  <Text variant="muted" style={{ margin: 0, fontSize: 'var(--font-size-xs)' }}>
+                    {t(`reports.actions.${outcome.action}.hint`)}
+                  </Text>
+                )}
 
-          {action === 'ban' && (
-            <>
-              <Select
-                label={t('reports.banReasonLabel')}
-                placeholder={t('reports.banReasonPlaceholder')}
-                selectedKey={banReason}
-                onSelectionChange={(key) => setBanReason(key as BanReason)}
-              >
-                {BAN_REASONS.map((reason) => (
-                  <SelectItem key={reason} id={reason}>
-                    {t(`reports.banReasons.${reason}`)}
-                  </SelectItem>
-                ))}
-              </Select>
-              <Alert variant="urgent">{t('reports.banWarning')}</Alert>
-            </>
-          )}
+                {outcome.action && MEMBER_TARGETED.has(outcome.action) && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                    <div className="reports-review__label">{t('reports.targetsLabel')}</div>
+                    <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+                      {report.aboutUserIds.map((id) => (
+                        <Checkbox
+                          key={id}
+                          isSelected={outcome.targets.has(id)}
+                          onChange={(isSelected) => {
+                            const next = new Set(outcome.targets)
+                            if (isSelected) next.add(id)
+                            else next.delete(id)
+                            updateOutcome(outcome.key, { targets: next })
+                          }}
+                        >
+                          <MemberChip userId={id} roster={roster} />
+                        </Checkbox>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {outcome.action === 'warn' && (
+                  <Textarea
+                    label={t('reports.memberMessageLabel')}
+                    hint={t('reports.memberMessageHint')}
+                    placeholder={t('reports.memberMessagePlaceholder')}
+                    value={outcome.memberMessage}
+                    onChange={(e) => updateOutcome(outcome.key, { memberMessage: e.target.value })}
+                    rows={3}
+                  />
+                )}
+
+                {outcome.action === 'ban' && (
+                  <>
+                    <Select
+                      label={t('reports.banReasonLabel')}
+                      placeholder={t('reports.banReasonPlaceholder')}
+                      selectedKey={outcome.banReason}
+                      onSelectionChange={(key) => updateOutcome(outcome.key, { banReason: key as BanReason })}
+                    >
+                      {BAN_REASONS.map((reason) => (
+                        <SelectItem key={reason} id={reason}>
+                          {t(`reports.banReasons.${reason}`)}
+                        </SelectItem>
+                      ))}
+                    </Select>
+                    <Alert variant="urgent">{t('reports.banWarning')}</Alert>
+                  </>
+                )}
+              </div>
+            ))}
+            <div>
+              <Button variant="secondary" onPress={addOutcome} isDisabled={outcomes.length >= 10}>
+                {t('reports.outcomes.add')}
+              </Button>
+            </div>
+          </div>
         </fieldset>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-          <Button variant={action === 'ban' ? 'urgent' : 'safe'} isDisabled={!ready || pending !== null} isPending={pending === 'reviewed'} onPress={() => void decide('reviewed')}>
-            {action === 'none' ? t('reports.decisionReviewed') : t('reports.decisionReviewedWithAction', { action: t(`reports.actions.${action}.label`) })}
+          <Button
+            variant={outcomes.some((o) => o.action === 'ban') ? 'urgent' : 'safe'}
+            isDisabled={!ready || pending !== null}
+            isPending={pending === 'reviewed'}
+            onPress={() => void decide('reviewed')}
+          >
+            {outcomes.length === 0 ? t('reports.decisionReviewed') : t('reports.decisionReviewedWithOutcomes', { count: outcomes.length })}
           </Button>
           <Button
             variant="secondary"
-            isDisabled={!noteReady || action !== 'none' || pending !== null}
+            isDisabled={!noteReady || outcomes.length > 0 || pending !== null}
             isPending={pending === 'dismissed'}
             onPress={() => void decide('dismissed')}
           >
             {t('reports.decisionDismissed')}
           </Button>
-          {action !== 'none' && (
+          {outcomes.length > 0 && (
             <Text variant="muted" style={{ margin: 0, fontSize: 'var(--font-size-xs)' }}>
               {t('reports.dismissUnavailable')}
             </Text>
@@ -575,7 +650,7 @@ function DecisionModal({
           </Button>
         </div>
       </div>
-      {historyOpen && <HistoryModal report={report} targetUserIds={[...targets]} roster={roster} onClose={() => setHistoryOpen(false)} />}
+      {historyOpen && <HistoryModal report={report} targetUserIds={historyTargets} roster={roster} onClose={() => setHistoryOpen(false)} />}
     </Modal>
   )
 }
@@ -774,11 +849,12 @@ function HistoryModal({
                   <span className="reports-history__meta">
                     <span>{new Date(prior.createdAt).toLocaleDateString(i18n.language)}</span>
                     <StatusBadge status={prior.status} />
-                    {prior.action && prior.action !== 'none' && (
-                      <Badge variant={prior.appliedToThisMember ? (prior.action === 'ban' ? 'urgent' : 'info') : 'neutral'}>
-                        {t(`reports.actions.${prior.action}.label`)}
+                    {prior.outcomes.map((o, i) => (
+                      <Badge key={i} variant={o.appliedToThisMember ? (o.action === 'ban' ? 'urgent' : 'info') : 'neutral'}>
+                        {t(`reports.actions.${o.action}.label`)}
+                        {!o.appliedToThisMember ? ` · ${t('reports.history.notThisMember')}` : ''}
                       </Badge>
-                    )}
+                    ))}
                   </span>
                   <span className="reports-history__entry-circle">{prior.sessionName ?? t('reports.unnamedSession')}</span>
                   <span className="reports-excerpt" style={{ maxWidth: 'none' }}>
@@ -943,14 +1019,18 @@ function ReportSummary({ report, roster }: { report: SessionReport; roster: Rost
                 ? t('reports.decidedBy', { when: report.reviewedAt ? new Date(report.reviewedAt).toLocaleString(i18n.language) : '—', who: report.reviewedByLabel })
                 : t('reports.decided', { when: report.reviewedAt ? new Date(report.reviewedAt).toLocaleString(i18n.language) : '—' })}
             </strong>
-            {report.action && report.action !== 'none' && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-                <Badge variant={report.action === 'ban' ? 'urgent' : 'info'}>{t(`reports.actions.${report.action}.label`)}</Badge>
-                {report.actionTargetUserIds.map((id) => (
-                  <MemberChip key={id} userId={id} roster={roster} />
-                ))}
+            {report.outcomes.map((outcome, index) => (
+              <span key={index} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+                <Badge variant={outcome.action === 'ban' ? 'urgent' : 'info'}>{t(`reports.actions.${outcome.action}.label`)}</Badge>
+                {outcome.action === 'hide_messages' ? (
+                  <Text variant="muted" as="span" style={{ margin: 0 }}>
+                    {t('reports.messagesReported', { count: report.messageIds.length })}
+                  </Text>
+                ) : (
+                  outcome.targetUserIds.map((id) => <MemberChip key={id} userId={id} roster={roster} />)
+                )}
               </span>
-            )}
+            ))}
             <span style={{ whiteSpace: 'pre-wrap' }}>{report.decisionNote ?? t('reports.noNote')}</span>
           </div>
         </Alert>

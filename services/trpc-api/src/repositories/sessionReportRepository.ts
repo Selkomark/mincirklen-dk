@@ -1,4 +1,4 @@
-import type { Database, SessionReportAction, SessionReportDecision, SessionReportStatus } from '@mincirklen/shared'
+import type { BanReasonCategory, Database, SessionReportAction, SessionReportDecision, SessionReportStatus } from '@mincirklen/shared'
 import { sql, type Kysely } from 'kysely'
 
 // "Report this session" (SessionPage.tsx's ReportSessionModal) — a
@@ -46,8 +46,16 @@ export interface SessionReportRow {
   reviewedAt: Date | null
   reviewedBy: string | null
   decisionNote: string | null
-  action: SessionReportAction | null
-  actionTargetUserIds: string[]
+  // What was done, outcome by outcome (session_report_actions). Empty
+  // for open reports and for "no further action".
+  outcomes: ReportOutcome[]
+}
+
+export interface ReportOutcome {
+  action: Exclude<SessionReportAction, 'none'>
+  targetUserIds: string[]
+  memberMessage: string | null
+  banReasonCategory: BanReasonCategory | null
 }
 
 export interface ListSessionReportsResult {
@@ -75,8 +83,6 @@ const REPORT_COLUMNS = [
   'session_reports.reviewed_at as reviewed_at',
   'session_reports.reviewed_by as reviewed_by',
   'session_reports.decision_note as decision_note',
-  'session_reports.action as action',
-  'session_reports.action_target_user_ids as action_target_user_ids',
 ] as const
 
 function reportsQuery(db: Kysely<Database>) {
@@ -84,6 +90,35 @@ function reportsQuery(db: Kysely<Database>) {
 }
 
 type ReportQueryRow = Awaited<ReturnType<ReturnType<typeof reportsQuery>['execute']>>[number]
+
+// Outcomes for a set of reports in one query, grouped by report, in the
+// order they were recorded.
+async function outcomesByReport(db: Kysely<Database>, reportIds: string[]): Promise<Map<string, ReportOutcome[]>> {
+  const out = new Map<string, ReportOutcome[]>()
+  if (reportIds.length === 0) return out
+  const rows = await db
+    .selectFrom('session_report_actions')
+    .select(['report_id', 'action', 'target_user_ids', 'member_message', 'ban_reason_category'])
+    .where('report_id', 'in', reportIds)
+    .orderBy('created_at', 'asc')
+    .orderBy('id', 'asc')
+    .execute()
+  for (const row of rows) {
+    out.set(row.report_id, [
+      ...(out.get(row.report_id) ?? []),
+      { action: row.action, targetUserIds: row.target_user_ids, memberMessage: row.member_message, banReasonCategory: row.ban_reason_category },
+    ])
+  }
+  return out
+}
+
+async function attachOutcomes(db: Kysely<Database>, rows: ReportQueryRow[]): Promise<SessionReportRow[]> {
+  const outcomes = await outcomesByReport(
+    db,
+    rows.map((row) => row.id),
+  )
+  return rows.map((row) => ({ ...toSessionReportRow(row), outcomes: outcomes.get(row.id) ?? [] }))
+}
 
 function toSessionReportRow(row: ReportQueryRow): SessionReportRow {
   return {
@@ -99,14 +134,15 @@ function toSessionReportRow(row: ReportQueryRow): SessionReportRow {
     reviewedAt: row.reviewed_at,
     reviewedBy: row.reviewed_by,
     decisionNote: row.decision_note,
-    action: row.action,
-    actionTargetUserIds: row.action_target_user_ids,
+    outcomes: [],
   }
 }
 
 export async function findSessionReportById(db: Kysely<Database>, reportId: string): Promise<SessionReportRow | null> {
   const row = await reportsQuery(db).where('session_reports.id', '=', reportId).executeTakeFirst()
-  return row ? toSessionReportRow(row) : null
+  if (!row) return null
+  const [report] = await attachOutcomes(db, [row])
+  return report ?? null
 }
 
 // Every other report naming any of these members — the review dialog's
@@ -120,7 +156,7 @@ export async function listReportsAboutUsers(db: Kysely<Database>, userIds: strin
     .orderBy('session_reports.created_at', 'desc')
     .limit(50)
     .execute()
-  return rows.map(toSessionReportRow)
+  return attachOutcomes(db, rows)
 }
 
 export async function listSessionReports(
@@ -147,7 +183,7 @@ export async function listSessionReports(
   const last = page[page.length - 1]
 
   return {
-    reports: page.map(toSessionReportRow),
+    reports: await attachOutcomes(db, page),
     nextCursor: hasMore && last ? `${last.created_at_cursor}|${last.id}` : null,
   }
 }
@@ -199,6 +235,8 @@ export async function findSessionReportAnchor(
     : null
 }
 
+// The decision and its outcomes land together — one transaction, so a
+// report is never marked decided with half its outcomes missing.
 export async function applySessionReportDecision(
   db: Kysely<Database>,
   params: {
@@ -206,22 +244,30 @@ export async function applySessionReportDecision(
     status: SessionReportDecision
     reviewedBy: string
     note: string
-    action: SessionReportAction
-    targetUserIds: string[]
+    outcomes: ReportOutcome[]
   },
 ): Promise<void> {
-  await db
-    .updateTable('session_reports')
-    .set({
-      status: params.status,
-      reviewed_at: sql`now()`,
-      reviewed_by: params.reviewedBy,
-      decision_note: params.note,
-      action: params.action,
-      action_target_user_ids: sql`${JSON.stringify(params.targetUserIds)}::jsonb`,
-    })
-    .where('id', '=', params.reportId)
-    .execute()
+  await db.transaction().execute(async (trx) => {
+    await trx
+      .updateTable('session_reports')
+      .set({ status: params.status, reviewed_at: sql`now()`, reviewed_by: params.reviewedBy, decision_note: params.note })
+      .where('id', '=', params.reportId)
+      .execute()
+    if (params.outcomes.length > 0) {
+      await trx
+        .insertInto('session_report_actions')
+        .values(
+          params.outcomes.map((outcome) => ({
+            report_id: params.reportId,
+            action: outcome.action,
+            target_user_ids: sql`${JSON.stringify(outcome.targetUserIds)}::jsonb`,
+            member_message: outcome.memberMessage,
+            ban_reason_category: outcome.banReasonCategory,
+          })),
+        )
+        .execute()
+    }
+  })
 }
 
 // Who filed it — null once they've deleted their account (0001_init's

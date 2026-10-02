@@ -186,14 +186,20 @@ export interface SessionReportsTable {
   // decided before that migration — none in practice, the feature
   // shipped together.
   decision_note: string | null
-  // What the reviewer did about it, beyond recording the decision —
-  // migrations/0006_moderation_actions.ts, sessionReportService.ts.
-  // Null on rows decided before that migration.
-  action: SessionReportAction | null
-  // Which of about_user_ids the action applied to (member-targeted
-  // actions); empty for 'none' / 'hide_messages'. Defaults to [] on
-  // insert (a report is filed without one).
-  action_target_user_ids: JSONColumnType<string[], string[] | undefined>
+}
+
+// One outcome of a report's decision — migrations/0007_session_report_outcomes.ts.
+// Several per report: warn one member, ban another. 0006's single
+// action/action_target_user_ids pair on session_reports was folded in
+// here and dropped.
+export interface SessionReportActionsTable {
+  id: Generated<string>
+  report_id: string
+  action: Exclude<SessionReportAction, 'none'>
+  target_user_ids: JSONColumnType<string[], string[] | undefined>
+  member_message: string | null
+  ban_reason_category: 'predatory_contact' | 'harassment' | 'crisis_abuse' | 'illegal_content' | 'other' | null
+  created_at: Timestamp
 }
 
 // Moderator-only history on a member — migrations/0006_moderation_actions.ts.
@@ -316,6 +322,7 @@ export interface Database {
   moderation_events: ModerationEventsTable
   feedback_ratings: FeedbackRatingsTable
   session_reports: SessionReportsTable
+  session_report_actions: SessionReportActionsTable
   member_notes: MemberNotesTable
   user_identities: UserIdentitiesTable
   user_profiles: UserProfilesTable

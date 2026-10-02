@@ -250,7 +250,6 @@
     "messagesReported_one": "{{count}} meddelande rapporterat",
     "messagesReported_other": "{{count}} meddelanden rapporterade",
     "removed": "Borttaget av en moderator efter en rapport",
-    "actionLabel": "Vad som ska göras",
     "targetsLabel": "Gäller",
     "actions": {
       "none": {
@@ -292,8 +291,7 @@
       "other": "Annat"
     },
     "banWarning": "En avstängning är permanent och gäller alla inloggningsidentiteter kopplade till medlemmen.",
-    "decisionReviewedWithAction": "Granskad — {{action}}",
-    "dismissUnavailable": "Att avfärda betyder att det inte fanns något att agera på; välj \"Ingen ytterligare åtgärd\" för att avfärda.",
+    "dismissUnavailable": "Att avfärda betyder att det inte fanns något att agera på; ta bort utfallen för att avfärda.",
     "decidedBy": "Beslutad {{when}} av {{who}}",
     "history": {
       "title": "Historik",
@@ -312,6 +310,18 @@
       "looseNotes": "Anteckningar tillagda under Användare",
       "filterLabel": "Visa rapporter om",
       "everyone": "Alla"
-    }
+    },
+    "outcomes": {
+      "title": "Utfall",
+      "members": "Medlemmar i den här rapporten",
+      "none": "Inga utfall ännu — beslutet registreras utan ytterligare åtgärd. Lägg till ett för att agera på en medlem eller de rapporterade meddelandena; lägg till flera för att behandla medlemmar olika.",
+      "add": "Lägg till ett utfall",
+      "remove": "Ta bort",
+      "nth": "Utfall {{n}}",
+      "actionLabel": "Åtgärd",
+      "actionPlaceholder": "Välj vad som ska göras"
+    },
+    "decisionReviewedWithOutcomes_one": "Granskad — tillämpa {{count}} utfall",
+    "decisionReviewedWithOutcomes_other": "Granskad — tillämpa {{count}} utfall"
   }
 }

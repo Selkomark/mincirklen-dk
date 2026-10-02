@@ -250,7 +250,6 @@
     "messagesReported_one": "{{count}} message reported",
     "messagesReported_other": "{{count}} messages reported",
     "removed": "Removed by a moderator after a report",
-    "actionLabel": "What to do about it",
     "targetsLabel": "Apply to",
     "actions": {
       "none": {
@@ -292,8 +291,7 @@
       "other": "Other"
     },
     "banWarning": "A ban is permanent and applies to every sign-in identity linked to this member.",
-    "decisionReviewedWithAction": "Reviewed — {{action}}",
-    "dismissUnavailable": "Dismissing means there was nothing to act on; choose \"No further action\" to dismiss.",
+    "dismissUnavailable": "Dismissing means there was nothing to act on; remove the outcomes to dismiss.",
     "decidedBy": "Decided {{when}} by {{who}}",
     "history": {
       "title": "History",
@@ -312,6 +310,18 @@
       "looseNotes": "Notes added under Users",
       "filterLabel": "Show reports about",
       "everyone": "Everyone"
-    }
+    },
+    "outcomes": {
+      "title": "Outcomes",
+      "members": "Members in this report",
+      "none": "No outcomes yet — the decision will be recorded with no further action. Add one to act on a member or the reported messages; add several to treat members differently.",
+      "add": "Add an outcome",
+      "remove": "Remove",
+      "nth": "Outcome {{n}}",
+      "actionLabel": "Action",
+      "actionPlaceholder": "Choose what to do"
+    },
+    "decisionReviewedWithOutcomes_one": "Reviewed — apply {{count}} outcome",
+    "decisionReviewedWithOutcomes_other": "Reviewed — apply {{count}} outcomes"
   }
 }

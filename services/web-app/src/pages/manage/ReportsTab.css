@@ -302,3 +302,21 @@
 .reports-history__filter:not(:has(.reports-member-chip)) {
   padding: 6px 12px;
 }
+
+/* One outcome in the decision dialog: a bordered card so several read as
+   separate decisions, each with its own action and members. */
+.reports-outcome {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+
+.reports-outcome__title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}

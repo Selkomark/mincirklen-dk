@@ -121,8 +121,12 @@ export const sessionReportsRouter = router({
               id: r.id,
               sessionName: r.sessionName,
               status: r.status,
-              action: r.action,
-              appliedToThisMember: r.actionTargetUserIds.includes(userId),
+              // Each outcome, flagged with whether it applied to this member
+              // (hide_messages has no members; it's shown as applying to all).
+              outcomes: r.outcomes.map((o) => ({
+                action: o.action,
+                appliedToThisMember: o.action === 'hide_messages' || o.targetUserIds.includes(userId),
+              })),
               createdAt: r.createdAt,
               body: r.body,
               reviewedByLabel: r.reviewedBy ? (labels.get(r.reviewedBy) ?? null) : null,
@@ -168,26 +172,32 @@ export const sessionReportsRouter = router({
                 },
               )
             },
-            notifyDecision: async ({ status, action, targetUserIds, banReasonCategory }) => {
+            notifyDecision: async ({ status, outcomes }) => {
               // The reporter: that it was decided, never what was done.
-              const anchor = await findSessionReportAnchor(db, input.reportId)
-              const reporterId = anchor ? await findReporterId(db, input.reportId) : null
+              const reporterId = await findReporterId(db, input.reportId)
               if (reporterId) await emailMember(db, vault, reporterId, reportDecidedEmail(status))
 
-              // Members acted on. 'warn' already went out via sendWarning;
-              // 'note' is internal. Hidden messages: tell each author.
-              if (action === 'remove_from_session' || action === 'ban') {
-                const circleName = await findSessionName(db, report.sessionId)
-                for (const userId of targetUserIds) {
-                  await emailMember(db, vault, userId, memberActionEmail(action, { circleName, hiddenCount: 0, banReasonCategory }))
-                }
-              } else if (action === 'hide_messages') {
-                const circleName = await findSessionName(db, report.sessionId)
-                const hidden = await findMessagesByIds(db, report.sessionId, report.messageIds)
-                const byAuthor = new Map<string, number>()
-                for (const m of hidden) byAuthor.set(m.userId, (byAuthor.get(m.userId) ?? 0) + 1)
-                for (const [userId, count] of byAuthor) {
-                  await emailMember(db, vault, userId, memberActionEmail('hide_messages', { circleName, hiddenCount: count, banReasonCategory: null }))
+              // Members acted on, outcome by outcome. 'warn' already went
+              // out via sendWarning; 'note' is internal. Hidden messages:
+              // tell each author.
+              const circleName = await findSessionName(db, report.sessionId)
+              for (const outcome of outcomes) {
+                if (outcome.action === 'remove_from_session' || outcome.action === 'ban') {
+                  for (const userId of outcome.targetUserIds) {
+                    await emailMember(
+                      db,
+                      vault,
+                      userId,
+                      memberActionEmail(outcome.action, { circleName, hiddenCount: 0, banReasonCategory: outcome.banReasonCategory }),
+                    )
+                  }
+                } else if (outcome.action === 'hide_messages') {
+                  const hidden = await findMessagesByIds(db, report.sessionId, report.messageIds)
+                  const byAuthor = new Map<string, number>()
+                  for (const m of hidden) byAuthor.set(m.userId, (byAuthor.get(m.userId) ?? 0) + 1)
+                  for (const [userId, count] of byAuthor) {
+                    await emailMember(db, vault, userId, memberActionEmail('hide_messages', { circleName, hiddenCount: count, banReasonCategory: null }))
+                  }
                 }
               }
             },
@@ -195,10 +205,7 @@ export const sessionReportsRouter = router({
           {
             status: input.status,
             note: input.note,
-            action: input.action,
-            targetUserIds: input.targetUserIds,
-            memberMessage: input.memberMessage,
-            banReasonCategory: input.banReasonCategory,
+            outcomes: input.outcomes,
             canBan: ctx.permissions.includes('users.ban'),
           },
         )

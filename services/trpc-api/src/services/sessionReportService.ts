@@ -1,4 +1,4 @@
-import type { BanReasonCategory, SessionReportAction } from '@mincirklen/shared'
+import type { BanReasonCategory, SessionReportAction, SessionReportOutcome } from '@mincirklen/shared'
 import { NotAMemberError } from './messageService'
 
 // "Report this session" (SessionPage.tsx's ReportSessionModal). Unlike
@@ -130,34 +130,35 @@ export class SessionReportForbiddenActionError extends Error {
 
 const MEMBER_TARGETED_ACTIONS: ReadonlySet<SessionReportAction> = new Set(['note', 'warn', 'remove_from_session', 'ban'])
 
+// One outcome as the service validates and runs it — the schema's shape
+// (SessionReportOutcome) with targets de-duplicated.
+export interface ResolvedOutcome {
+  action: Exclude<SessionReportAction, 'none'>
+  targetUserIds: string[]
+  memberMessage: string | null
+  banReasonCategory: BanReasonCategory | null
+}
+
 export interface ReviewSessionReportDeps {
   findReport(): Promise<{ status: SessionReportStatus; sessionId: string; aboutUserIds: string[]; messageIds: string[] } | null>
-  applyDecision(params: { status: SessionReportDecision; note: string; action: SessionReportAction; targetUserIds: string[] }): Promise<void>
+  applyDecision(params: { status: SessionReportDecision; note: string; outcomes: ResolvedOutcome[] }): Promise<void>
   addMemberNote(userId: string, note: string): Promise<void>
   sendWarning(userId: string, message: string): Promise<void>
   removeFromSession(userId: string): Promise<void>
   hideMessages(messageIds: string[]): Promise<void>
   banUser(userId: string, reasonCategory: BanReasonCategory, decisionSummary: string): Promise<void>
   // Member-facing follow-up, once the decision is on record: the
-  // reporter hears their report was decided; members an action was
-  // taken on hear what happened to them (warn carries its own text and
-  // is sent by sendWarning above; note is internal, so nothing). Best-
-  // effort — the router's implementation never throws.
-  notifyDecision(params: {
-    status: SessionReportDecision
-    action: SessionReportAction
-    targetUserIds: string[]
-    banReasonCategory: BanReasonCategory | null
-  }): Promise<void>
+  // reporter hears their report was decided; members an outcome applied
+  // to hear what happened to them (warn carries its own text and is sent
+  // by sendWarning above; note is internal, so nothing). Best-effort —
+  // the router's implementation never throws.
+  notifyDecision(params: { status: SessionReportDecision; outcomes: ResolvedOutcome[] }): Promise<void>
 }
 
 export interface ReviewSessionReportParams {
   status: SessionReportDecision
   note: string
-  action: SessionReportAction
-  targetUserIds: string[]
-  memberMessage?: string
-  banReasonCategory?: BanReasonCategory
+  outcomes: SessionReportOutcome[]
   canBan: boolean
 }
 
@@ -174,59 +175,70 @@ export async function reviewSessionReport(deps: ReviewSessionReportDeps, params:
     throw new SessionReportAlreadyResolvedError(`session report is already ${report.status}`)
   }
 
-  const { action } = params
-  if (action !== 'none' && params.status === 'dismissed') {
-    throw new SessionReportInvalidActionError('a dismissed report cannot carry an action')
+  if (params.outcomes.length > 0 && params.status === 'dismissed') {
+    throw new SessionReportInvalidActionError('a dismissed report cannot carry an outcome')
   }
 
-  const targets = [...new Set(params.targetUserIds)]
-  if (MEMBER_TARGETED_ACTIONS.has(action)) {
-    if (targets.length === 0) {
-      throw new SessionReportInvalidActionError(`${action} needs at least one member to apply to`)
+  const subjects = new Set(report.aboutUserIds)
+  const outcomes: ResolvedOutcome[] = params.outcomes.map((outcome) => {
+    const targets = [...new Set(outcome.targetUserIds)]
+    const memberMessage = outcome.memberMessage?.trim() ?? ''
+    if (MEMBER_TARGETED_ACTIONS.has(outcome.action)) {
+      if (targets.length === 0) {
+        throw new SessionReportInvalidActionError(`${outcome.action} needs at least one member to apply to`)
+      }
+      if (targets.some((id) => !subjects.has(id))) {
+        throw new SessionReportInvalidActionError('an outcome can only apply to members the report is about')
+      }
     }
-    const subjects = new Set(report.aboutUserIds)
-    if (targets.some((id) => !subjects.has(id))) {
-      throw new SessionReportInvalidActionError('an action can only apply to members the report is about')
+    if (outcome.action === 'warn' && !memberMessage) {
+      throw new SessionReportInvalidActionError('a warning needs the text the member will receive')
+    }
+    if (outcome.action === 'hide_messages' && report.messageIds.length === 0) {
+      throw new SessionReportInvalidActionError('this report names no messages to hide')
+    }
+    if (outcome.action === 'ban') {
+      if (!params.canBan) {
+        throw new SessionReportForbiddenActionError('banning needs the users.ban permission')
+      }
+      if (!outcome.banReasonCategory) {
+        throw new SessionReportInvalidActionError('a ban needs a reason category')
+      }
+    }
+    return {
+      action: outcome.action,
+      targetUserIds: MEMBER_TARGETED_ACTIONS.has(outcome.action) ? targets : [],
+      memberMessage: outcome.action === 'warn' ? memberMessage : null,
+      banReasonCategory: outcome.action === 'ban' ? (outcome.banReasonCategory ?? null) : null,
+    }
+  })
+  if (outcomes.filter((o) => o.action === 'hide_messages').length > 1) {
+    throw new SessionReportInvalidActionError('the reported messages can only be hidden once')
+  }
+
+  // Everything is validated before anything runs, so a bad second outcome
+  // can't leave the first half-applied. Then run in order — a member can
+  // be in several outcomes (a note and a warning, say), each applies.
+  for (const outcome of outcomes) {
+    switch (outcome.action) {
+      case 'note':
+        for (const userId of outcome.targetUserIds) await deps.addMemberNote(userId, note)
+        break
+      case 'warn':
+        for (const userId of outcome.targetUserIds) await deps.sendWarning(userId, outcome.memberMessage!)
+        break
+      case 'remove_from_session':
+        for (const userId of outcome.targetUserIds) await deps.removeFromSession(userId)
+        break
+      case 'hide_messages':
+        await deps.hideMessages(report.messageIds)
+        break
+      case 'ban':
+        for (const userId of outcome.targetUserIds) await deps.banUser(userId, outcome.banReasonCategory!, note)
+        break
     }
   }
 
-  const memberMessage = params.memberMessage?.trim() ?? ''
-  if (action === 'warn' && !memberMessage) {
-    throw new SessionReportInvalidActionError('a warning needs the text the member will receive')
-  }
-  if (action === 'hide_messages' && report.messageIds.length === 0) {
-    throw new SessionReportInvalidActionError('this report names no messages to hide')
-  }
-  if (action === 'ban') {
-    if (!params.canBan) {
-      throw new SessionReportForbiddenActionError('banning needs the users.ban permission')
-    }
-    if (!params.banReasonCategory) {
-      throw new SessionReportInvalidActionError('a ban needs a reason category')
-    }
-  }
-
-  switch (action) {
-    case 'note':
-      for (const userId of targets) await deps.addMemberNote(userId, note)
-      break
-    case 'warn':
-      for (const userId of targets) await deps.sendWarning(userId, memberMessage)
-      break
-    case 'remove_from_session':
-      for (const userId of targets) await deps.removeFromSession(userId)
-      break
-    case 'hide_messages':
-      await deps.hideMessages(report.messageIds)
-      break
-    case 'ban':
-      for (const userId of targets) await deps.banUser(userId, params.banReasonCategory!, note)
-      break
-    case 'none':
-      break
-  }
-
-  const recordedTargets = MEMBER_TARGETED_ACTIONS.has(action) ? targets : []
-  await deps.applyDecision({ status: params.status, note, action, targetUserIds: recordedTargets })
-  await deps.notifyDecision({ status: params.status, action, targetUserIds: recordedTargets, banReasonCategory: params.banReasonCategory ?? null })
+  await deps.applyDecision({ status: params.status, note, outcomes })
+  await deps.notifyDecision({ status: params.status, outcomes })
 }

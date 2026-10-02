@@ -250,7 +250,6 @@
     "messagesReported_one": "{{count}} besked rapporteret",
     "messagesReported_other": "{{count}} beskeder rapporteret",
     "removed": "Fjernet af en moderator efter en rapport",
-    "actionLabel": "Hvad skal der gøres",
     "targetsLabel": "Gælder for",
     "actions": {
       "none": {
@@ -292,8 +291,7 @@
       "other": "Andet"
     },
     "banWarning": "En udelukkelse er permanent og gælder alle login-identiteter knyttet til dette medlem.",
-    "decisionReviewedWithAction": "Gennemgået — {{action}}",
-    "dismissUnavailable": "At afvise betyder, at der ikke var noget at handle på; vælg \"Ingen yderligere handling\" for at afvise.",
+    "dismissUnavailable": "At afvise betyder, at der ikke var noget at handle på; fjern udfaldene for at afvise.",
     "decidedBy": "Afgjort {{when}} af {{who}}",
     "history": {
       "title": "Historik",
@@ -312,6 +310,18 @@
       "looseNotes": "Notater tilføjet under Brugere",
       "filterLabel": "Vis rapporter om",
       "everyone": "Alle"
-    }
+    },
+    "outcomes": {
+      "title": "Udfald",
+      "members": "Medlemmer i denne rapport",
+      "none": "Ingen udfald endnu — afgørelsen registreres uden yderligere handling. Tilføj ét for at handle på et medlem eller de rapporterede beskeder; tilføj flere for at behandle medlemmer forskelligt.",
+      "add": "Tilføj et udfald",
+      "remove": "Fjern",
+      "nth": "Udfald {{n}}",
+      "actionLabel": "Handling",
+      "actionPlaceholder": "Vælg, hvad der skal gøres"
+    },
+    "decisionReviewedWithOutcomes_one": "Gennemgået — anvend {{count}} udfald",
+    "decisionReviewedWithOutcomes_other": "Gennemgået — anvend {{count}} udfald"
   }
 }

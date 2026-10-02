@@ -28,17 +28,28 @@ export type SessionReportAction = z.infer<typeof sessionReportActionSchema>
 export const banReasonCategorySchema = z.enum(['predatory_contact', 'harassment', 'crisis_abuse', 'illegal_content', 'other'])
 export type BanReasonCategory = z.infer<typeof banReasonCategorySchema>
 
+// One outcome of a decision: an action and the members it applies to.
+// A report can carry several — warn one member, ban another — each with
+// its own extra field where the action needs one. hide_messages is the
+// exception: it applies to the messages the report names, not to
+// members, so its targets are empty.
+export const sessionReportOutcomeSchema = z.object({
+  action: sessionReportActionSchema.exclude(['none']),
+  targetUserIds: z.array(z.string().uuid()).default([]),
+  // Member-facing text for a warning — distinct from the decision note,
+  // which is internal and never leaves the admin area.
+  memberMessage: z.string().trim().max(2000).optional(),
+  banReasonCategory: banReasonCategorySchema.optional(),
+})
+export type SessionReportOutcome = z.infer<typeof sessionReportOutcomeSchema>
+
 export const reviewSessionReportInputSchema = z.object({
   reportId: z.string().uuid(),
   status: sessionReportDecisionSchema,
   // The reviewer's reasoning — the record of why, not optional.
   note: z.string().trim().min(1).max(2000),
-  action: sessionReportActionSchema.default('none'),
-  targetUserIds: z.array(z.string().uuid()).default([]),
-  // Member-facing text for a warning — distinct from `note`, which is
-  // internal and never leaves the admin area.
-  memberMessage: z.string().trim().max(2000).optional(),
-  banReasonCategory: banReasonCategorySchema.optional(),
+  // Empty means "no further action"; dismissing requires it empty.
+  outcomes: z.array(sessionReportOutcomeSchema).max(10).default([]),
 })
 export type ReviewSessionReportInput = z.infer<typeof reviewSessionReportInputSchema>
 
