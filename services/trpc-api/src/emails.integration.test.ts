@@ -5,7 +5,7 @@ import type { OutboundEmail } from './adapters/emailAdapter'
 import { encryptField } from './adapters/kmsAdapter'
 import { hashEmail } from './auth/emailHash'
 import { upsertState } from './repositories/featureGateStateRepository'
-import { assignRoleToUser, findRoleByName } from './repositories/rbacRepository'
+import { assignRoleToUser, createRole, findRoleByName, replaceRolePermissions } from './repositories/rbacRepository'
 import { linkIdentity } from './repositories/userIdentityRepository'
 import { insertUser, setEmail } from './repositories/userRepository'
 import { insertEmailMessage, markEmailMessageSent } from './repositories/emailMessageRepository'
@@ -74,6 +74,30 @@ async function verifiedUser(roleName: string | null): Promise<{ cookie: string; 
   return { cookie, userId: user.id }
 }
 
+// SUPPORT/TRUST-SAFETY-LEAD/AUDITOR no longer hold any emails.*
+// permission (migration 0018) — every seeded role now has either none
+// or both (ADMIN only). This stands in for "a role holding emails.read
+// alone" so the read/send and read/PII permission boundaries stay
+// covered independent of which real seeded role happens to have email
+// access today.
+// Unique per test run (role names are globally unique, and the `test`
+// schema persists across separate `bun test` invocations rather than
+// being dropped each time — re-running the suite with a fixed literal
+// name here hit a duplicate-name conflict on the second run).
+let emailsReadOnlyRoleId: string | null = null
+async function verifiedUserWithEmailsReadOnly(): Promise<{ cookie: string; userId: string }> {
+  if (!emailsReadOnlyRoleId) {
+    const roleName = `EMAILS-READ-ONLY-TEST-${crypto.randomUUID().slice(0, 8).toUpperCase()}`
+    const role = await createRole(db, { name: roleName, description: null })
+    const permission = await db.selectFrom('permissions').select('id').where('slug', '=', 'emails.read').executeTakeFirstOrThrow()
+    await replaceRolePermissions(db, role.id, [permission.id])
+    emailsReadOnlyRoleId = role.id
+  }
+  const user = await verifiedUser(null)
+  await assignRoleToUser(db, user.userId, emailsReadOnlyRoleId)
+  return user
+}
+
 const query = (path: string, input: unknown, cookie: string) =>
   app.request(`/trpc/${path}?input=${encodeURIComponent(JSON.stringify(input))}`, { headers: { cookie } })
 const call = (path: string, input: unknown, cookie: string) =>
@@ -91,10 +115,18 @@ describe('emails.* permissions', () => {
     expect((await query('emails.templates.preview', { templateKey: 'report_received' }, nobody.cookie)).status).toBe(403)
     expect((await call('emails.sendTest', { templateKey: 'report_received', to: 'x@y.z' }, nobody.cookie)).status).toBe(403)
 
-    // AUDITOR reads but cannot send.
-    const auditor = await verifiedUser('AUDITOR')
-    expect((await query('emails.templates.list', undefined, auditor.cookie)).status).toBe(200)
-    expect((await call('emails.sendTest', { templateKey: 'report_received', to: 'x@y.z' }, auditor.cookie)).status).toBe(403)
+    // A role holding emails.read alone reads but cannot send.
+    const readOnly = await verifiedUserWithEmailsReadOnly()
+    expect((await query('emails.templates.list', undefined, readOnly.cookie)).status).toBe(200)
+    expect((await call('emails.sendTest', { templateKey: 'report_received', to: 'x@y.z' }, readOnly.cookie)).status).toBe(403)
+  })
+
+  test('SUPPORT, TRUST-SAFETY-LEAD and AUDITOR have no email access (0018)', async () => {
+    for (const roleName of ['SUPPORT', 'TRUST-SAFETY-LEAD', 'AUDITOR']) {
+      const user = await verifiedUser(roleName)
+      expect((await query('emails.list', { limit: 10 }, user.cookie)).status).toBe(403)
+      expect((await query('emails.templates.list', undefined, user.cookie)).status).toBe(403)
+    }
   })
 })
 
@@ -115,10 +147,10 @@ describe('emails.list / emails.get', () => {
     })
 
     type Msg = { id: string; toEmailMasked: string; toEmail: string | null; status: string; templateKey: string }
-    const auditor = await verifiedUser('AUDITOR')
-    const auditorList = await data<{ messages: Msg[] }>(await query('emails.list', { limit: 100 }, auditor.cookie))
-    const auditorRow = auditorList.messages.find((m) => m.id === id)
-    expect(auditorRow).toMatchObject({ toEmailMasked: 'm***@example.com', toEmail: null, status: 'sent', templateKey: 'report_received' })
+    const readOnly = await verifiedUserWithEmailsReadOnly()
+    const readOnlyList = await data<{ messages: Msg[] }>(await query('emails.list', { limit: 100 }, readOnly.cookie))
+    const readOnlyRow = readOnlyList.messages.find((m) => m.id === id)
+    expect(readOnlyRow).toMatchObject({ toEmailMasked: 'm***@example.com', toEmail: null, status: 'sent', templateKey: 'report_received' })
 
     const admin = await verifiedUser('ADMIN')
     const adminGet = await data<{ message: Msg & { variables: Record<string, unknown>; language: string }; events: { type: string; data: Record<string, unknown> }[] }>(
