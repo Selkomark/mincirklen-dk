@@ -119,9 +119,12 @@ so every email `trpc-api` would send is written to its log
 under `/manage/emails`. To send for real, put `EMAIL_PROVIDER=ahasend`
 plus `AHASEND_ACCOUNT_ID`, `AHASEND_API_KEY` and `AHASEND_DEFAULT_FROM` in
 `.env` and `docker compose up -d trpc-api`; to receive the provider's
-delivery events too, add `AHASEND_WEBHOOK_SECRET` and run
-`ahasend routes listen --forward-to https://trpc.dev-mincirklen.dk/webhooks/ahasend`.
-See `docs/email_automation.md`.
+delivery events too, add `AHASEND_WEBHOOK_SECRET` and either run
+`ahasend routes listen --forward-to https://trpc.dev-mincirklen.dk/webhooks/ahasend`
+on your host, or `docker compose --profile ahasend-webhook up -d
+ahasend-webhook-forwarder` to run the same CLI containerized (no
+official image exists — `local-infra/ahasend-cli` builds one). See
+`docs/email_automation.md`.
 
 `vault` runs in dev mode (in-memory, auto-unsealed, fixed root token
 `dev-only-not-for-production`) as a local stand-in for the cloud KMS

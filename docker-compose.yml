@@ -421,6 +421,55 @@ services:
       gcs-init:
         condition: service_completed_successfully
 
+  # Forwards AhaSend's real webhook deliveries (bounces, opens, clicks,
+  # suppressions, ...) to trpc-api locally — see docs/email_automation.md.
+  # There's no official ahasend-cli image; local-infra/ahasend-cli builds
+  # one from the same binary setup-ahasend.sh (sibling selkomark.com
+  # repo) installs on a host, pinned to linux/amd64 since that's the
+  # only platform AhaSend publishes a Linux binary for (runs under
+  # Rosetta/QEMU emulation on Apple Silicon, same posture as the `dns`
+  # service above).
+  #
+  # Gated behind a profile, not part of a normal `docker compose up -d`
+  # — most of the time nothing is testing real AhaSend delivery, and
+  # unlike every other service here this one can't just sit healthy with
+  # no credentials set. Run it with:
+  #   docker compose --profile ahasend-webhook up -d ahasend-webhook-forwarder
+  #
+  # `webhooks listen` with no --webhook-id creates a temporary webhook
+  # and prints a FRESH signing secret to this container's own logs
+  # (`docker compose logs -f ahasend-webhook-forwarder`) every time it
+  # starts — copy that into AHASEND_WEBHOOK_SECRET in .env and restart
+  # trpc-api, or the webhook route 401s every event as unsigned.
+  ahasend-webhook-forwarder:
+    build:
+      context: local-infra/ahasend-cli
+    container_name: mincirklen-ahasend-webhook-forwarder
+    platform: linux/amd64
+    restart: 'no'
+    profiles:
+      - ahasend-webhook
+    environment:
+      AHASEND_API_KEY: ${AHASEND_API_KEY:-}
+      AHASEND_ACCOUNT_ID: ${AHASEND_ACCOUNT_ID:-}
+    entrypoint: ['sh', '-c']
+    command:
+      - |
+        set -e
+        if [ -z "$$AHASEND_API_KEY" ] || [ -z "$$AHASEND_ACCOUNT_ID" ]; then
+          echo "AHASEND_API_KEY and AHASEND_ACCOUNT_ID must both be set in .env — see docs/email_automation.md." >&2
+          exit 1
+        fi
+        # Container-to-container, not the public trpc.dev-mincirklen.dk
+        # host — both sides are on this compose network already, no need
+        # to round-trip through Caddy/DNS/certs for a purely outbound
+        # forwarding connection.
+        exec ahasend --api-key "$$AHASEND_API_KEY" --account-id "$$AHASEND_ACCOUNT_ID" \
+          webhooks listen --forward-to http://trpc-api:8787/webhooks/ahasend
+    depends_on:
+      trpc-api:
+        condition: service_started
+
   websocket-service:
     build:
       context: .

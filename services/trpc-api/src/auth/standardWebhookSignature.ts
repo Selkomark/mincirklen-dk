@@ -1,12 +1,23 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 
-// Verifies a webhook delivery signed per the Standard Webhooks spec,
-// which AhaSend uses: three headers — `webhook-id`, `webhook-timestamp`
-// (unix seconds) and `webhook-signature` (space-separated `v1,<base64>`
-// entries, several when the secret is being rotated) — and a signature
-// that is HMAC-SHA256 over `${id}.${timestamp}.${rawBody}` under the
-// decoded secret. The secret is handed out as `whsec_<base64>` (AhaSend
-// prefixes its own `aha-whsec-`); the base64 part is the key.
+// Verifies a webhook delivery signed per the Standard Webhooks spec's
+// header shape, which AhaSend uses: three headers — `webhook-id`,
+// `webhook-timestamp` (unix seconds) and `webhook-signature`
+// (space-separated `v1,<base64>` entries, several when the secret is
+// being rotated) — and a signature that is HMAC-SHA256 over
+// `${id}.${timestamp}.${rawBody}`.
+//
+// The key, deliberately NOT what the generic spec or this file's own
+// earlier version assumed: AhaSend signs with the raw secret STRING
+// bytes as-is — prefix (`aha-whsec-`) included, no base64 decoding.
+// Confirmed directly against a real `ahasend webhooks listen` session
+// (captured the exact forwarded request+secret and found the only key
+// that reproduced its signature was the untouched secret string) — the
+// generic spec's "strip whsec_, base64-decode the rest" convention,
+// which this file previously implemented and both the sign/verify sides
+// of its own test suite agreed with each other on, never matched what
+// AhaSend's real CLI actually does. A same-file round-trip test can't
+// catch this kind of bug; only testing against the real provider does.
 //
 // Never throws: a malformed header is just an invalid signature. The
 // timestamp window stops a captured delivery being replayed later; the
@@ -16,8 +27,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
 const DEFAULT_TOLERANCE_SECONDS = 5 * 60
 
 export function decodeStandardWebhookSecret(secret: string): Buffer {
-  const encoded = secret.replace(/^(whsec_|aha-whsec-)/, '')
-  return Buffer.from(encoded, 'base64')
+  return Buffer.from(secret, 'utf8')
 }
 
 export interface StandardWebhookHeaders {

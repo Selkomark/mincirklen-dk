@@ -1,7 +1,14 @@
 import { describe, expect, test } from 'bun:test'
 import { decodeStandardWebhookSecret, signStandardWebhook, verifyStandardWebhookSignature } from './standardWebhookSignature'
 
-const SECRET = 'whsec_' + Buffer.from('a-32-byte-ish-secret-for-tests!!').toString('base64')
+// Shaped like a real AhaSend secret (`aha-whsec-` + an opaque token) —
+// not a `whsec_<base64>` one. Confirmed directly against a live
+// `ahasend webhooks listen` session that AhaSend signs with this exact
+// string's raw bytes, prefix included, never base64-decoded — see this
+// file's own doc comment. Deliberately not valid base64 payload-wise,
+// so a regression back to the old strip-and-decode behavior would fail
+// loudly here instead of silently passing.
+const SECRET = 'aha-whsec-dWiior5LxSoboJuNonP96S01PI1P7pdcyuSaRXkr6pnmx1002pOemDhcrBRlXDgZ'
 const NOW = new Date('2026-10-03T12:00:00Z')
 const TS = String(Math.floor(NOW.getTime() / 1000))
 const BODY = '{"type":"message.delivered","data":{"id":"<m1@x>"}}'
@@ -10,12 +17,29 @@ function headers(sig: string, overrides: Partial<{ id: string; ts: string }> = {
   return { webhookId: overrides.id ?? 'msg_1', timestamp: overrides.ts ?? TS, signatureHeader: sig }
 }
 
+describe('decodeStandardWebhookSecret', () => {
+  test('is the untouched secret string, prefix included — never stripped or base64-decoded', () => {
+    expect(decodeStandardWebhookSecret(SECRET)).toEqual(Buffer.from(SECRET, 'utf8'))
+  })
+})
+
 describe('verifyStandardWebhookSignature', () => {
-  test('accepts a correctly signed delivery under either secret prefix', () => {
+  test('accepts a correctly signed delivery', () => {
     expect(verifyStandardWebhookSignature(headers(signStandardWebhook('msg_1', TS, BODY, SECRET)), BODY, SECRET, NOW)).toBe(true)
-    const aha = SECRET.replace('whsec_', 'aha-whsec-')
-    expect(verifyStandardWebhookSignature(headers(signStandardWebhook('msg_1', TS, BODY, aha)), BODY, aha, NOW)).toBe(true)
-    expect(decodeStandardWebhookSecret(aha).equals(decodeStandardWebhookSecret(SECRET))).toBe(true)
+  })
+
+  // The real bug this reproduces: a previous version of this file
+  // stripped `aha-whsec-`/`whsec_` and base64-decoded the remainder,
+  // which made every self-consistency test above pass (sign and verify
+  // used the same wrong derivation) while rejecting every real AhaSend
+  // delivery. This recomputes the signature the way AhaSend's own CLI
+  // actually does — raw secret bytes, no decoding — independently of
+  // signStandardWebhook, so a regression to the old behavior fails here
+  // even though the rest of this suite would still pass.
+  test('matches a signature computed independently the way AhaSend actually signs (regression guard)', () => {
+    const { createHmac } = require('node:crypto') as typeof import('node:crypto')
+    const independentSig = createHmac('sha256', Buffer.from(SECRET, 'utf8')).update(`msg_1.${TS}.${BODY}`).digest('base64')
+    expect(verifyStandardWebhookSignature(headers(`v1,${independentSig}`), BODY, SECRET, NOW)).toBe(true)
   })
 
   test('rejects a wrong secret, a tampered body, or a different webhook id', () => {
@@ -48,7 +72,7 @@ describe('verifyStandardWebhookSignature', () => {
     expect(verifyStandardWebhookSignature({ webhookId: undefined, timestamp: TS, signatureHeader: good }, BODY, SECRET, NOW)).toBe(false)
     expect(verifyStandardWebhookSignature({ webhookId: 'msg_1', timestamp: undefined, signatureHeader: good }, BODY, SECRET, NOW)).toBe(false)
     expect(verifyStandardWebhookSignature({ webhookId: 'msg_1', timestamp: TS, signatureHeader: undefined }, BODY, SECRET, NOW)).toBe(false)
-    expect(verifyStandardWebhookSignature(headers(good), BODY, 'whsec_', NOW)).toBe(false)
+    expect(verifyStandardWebhookSignature(headers(good), BODY, '', NOW)).toBe(false)
   })
 
   test('defaults `now` to the clock', () => {

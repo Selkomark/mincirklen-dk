@@ -93,9 +93,18 @@ Dev values are in `docker-compose.yml`; real ones belong in `.env`
   row under /manage/emails → Sent.
 - Real provider: set `EMAIL_PROVIDER=ahasend` and the `AHASEND_*` values
   in `.env`, `docker compose up -d trpc-api`, send a test from
-  /manage/emails → Templates. For the webhook,
-  `ahasend routes listen --forward-to https://trpc.dev-mincirklen.dk/webhooks/ahasend`
-  and watch the message's timeline fill in.
+  /manage/emails → Templates. For the webhook, either run the CLI on
+  your host (`ahasend routes listen --forward-to
+  https://trpc.dev-mincirklen.dk/webhooks/ahasend`) or bring up the
+  containerized version instead:
+  `docker compose --profile ahasend-webhook up -d ahasend-webhook-forwarder`
+  (needs `AHASEND_API_KEY`/`AHASEND_ACCOUNT_ID` already in `.env` — see
+  that service's own comment in `docker-compose.yml`). Either way it
+  prints a **fresh** webhook signing secret to its own log every time it
+  starts (`docker compose logs -f ahasend-webhook-forwarder`) — copy
+  that into `AHASEND_WEBHOOK_SECRET` in `.env` and
+  `docker compose up -d trpc-api` before the route will accept anything,
+  then watch the message's timeline fill in.
 - Tests: `bun test` in `packages/emails` (rendering, wording rules) and
   `services/trpc-api` (adapter against an in-process fake server,
   signature verification, status rules, webhook end to end, the
@@ -171,7 +180,10 @@ us; we match on the subject and act.
 - AhaSend CLI forwards real inbound events to a local server:
   `ahasend routes listen --forward-to https://trpc.dev-mincirklen.dk/<webhook-path>`
   (the dev hostnames are the Caddy ones — see `docs/local_dev.md`; never
-  `localhost:port`).
+  `localhost:port`) — or the containerized `ahasend-webhook-forwarder`
+  service (`docker-compose.yml`), which forwards container-to-container
+  instead and needs no Caddy/DNS/cert setup. Same CLI, same
+  fresh-secret-per-run caveat, either way.
 - Integration test the webhook with a recorded payload and a seeded ban
   row carrying an `email_hash`, asserting the reply goes to the record's
   address and that a mismatched `from` gets nothing.
